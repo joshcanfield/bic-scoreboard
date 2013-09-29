@@ -1,0 +1,72 @@
+description = "Bremerton Ice Arena ScoreBoard"
+
+apply plugin: "java"
+apply plugin: "idea"
+apply plugin: 'groovy'
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+group = "canfield.josh"
+version = "1.0-SNAPSHOT"
+
+project.ext {
+    jackson = [version: "1.9.9"]
+    jetty = [version: "8.1.12.v20130726"]
+    resteasy = [version: "3.0.4.Final"]
+}
+
+print "version " + project.ext.jackson.version
+repositories {
+    mavenCentral()
+
+    // purejavacomm
+    mavenRepo name: "SparetimeLabs", url: "http://www.sparetimelabs.com/maven2"
+}
+
+// This simulates Maven's "provided" scope, until it is officially supported by Gradle
+// See http://jira.codehaus.org/browse/GRADLE-784
+
+configurations {
+    provided
+}
+
+sourceSets {
+    main {
+        compileClasspath += configurations.provided
+    }
+    test {
+        compileClasspath += configurations.provided
+        runtimeClasspath += configurations.provided
+    }
+}
+
+dependencies {
+    compile "com.sparetimelabs:purejavacomm:0.0.17"
+    compile "joda-time:joda-time:2.1"
+    compile "org.eclipse.jetty:jetty-server:${project.jetty.version}"
+    compile "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
+
+    compile "org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}"
+    compile "org.jboss.resteasy:resteasy-jackson-provider:${project.resteasy.version}"
+    compile "org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}"
+
+    compile "org.codehaus.jackson:jackson-mapper-asl:${project.jackson.version}"
+    compile "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
+
+    testCompile "org.codehaus.groovy:groovy-all:2.0.5"
+
+    testCompile "org.testng:testng:6.1.1"
+}
+
+test {
+    useTestNG()
+
+    //options.suites("src/test/conf/testng.xml")
+
+    jvmArgs("-XX:MaxPermSize=256M")
+
+    enableAssertions = true
+}
+
+// TODO: Configure execution mode for jettyRun task

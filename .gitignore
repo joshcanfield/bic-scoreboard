@@ -1,0 +1,26 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Intellij
+.idea/
+*.iml
+*.iws
+*.ids
+*.ipr
+atlassian-ide-plugin.xml
+
+# Mac
+.DS_Store
+
+# Maven
+logs/
+target/
+
+#vi
+*.swp
+
+# put stuff you don't want checked in here
+local/
+

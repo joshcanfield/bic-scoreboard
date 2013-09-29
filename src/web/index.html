@@ -1,0 +1,210 @@
+<html>
+<head>
+    <title>Scoreboard</title>
+    <script src="/js/jquery-1.10.1.min.js"></script>
+    <script src="/js/scoreboard.js"></script>
+</head>
+<body>
+
+<h1>Clock</h1>
+
+<div id="clock"></div>
+<button id="clock-start">Start</button>
+<button id="clock-pause">Pause</button>
+<button id="clock-set">Set Time</button>
+
+<div id="period"></div>
+<button id="period-set">Set</button>
+
+<div id="home">
+    <div class="score"></div>
+    <button id="home-score-up">+</button>
+    <button id="home-score-down">-</button>
+</div>
+<div id="away">
+    <div class="score"></div>
+    <button id="away-score-up">+</button>
+    <button id="away-score-down">-</button>
+</div>
+
+
+<script>
+    function pad(d, w) {
+        return ("000000" + d).substr(w * -1);
+    }
+
+    Scoreboard = {
+        time: 0,
+        home: {},
+        away: {},
+        update: function (data) {
+            Scoreboard.time = data.time;
+            Scoreboard.period = data.period;
+            Scoreboard.home = data.home;
+            Scoreboard.away = data.away;
+
+            $("#clock").html(pad(Scoreboard.getMinutes(), 2) + ":" + pad(Scoreboard.getSeconds(), 2));
+            $("#period").html(Scoreboard.period);
+
+            $("#home").find("div.score").html(data.home.score);
+            $("#away").find("div.score").html(data.away.score);
+        },
+        startClock: function () {
+            $.ajax({
+                type: "POST",
+                url: "/api/game/clock",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify({
+                    "running": true
+                })
+            }).done(function (data) {
+
+                    })
+        },
+        pauseClock: function () {
+            $.ajax({
+                type: "POST",
+                url: "/api/game/clock",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify({
+                    "running": false
+                })
+            }).done(function (data) {
+
+                    })
+        },
+        setClock: function () {
+            var newTime = prompt("Enter a new time format (20:00)");
+            if (newTime) {
+                var parts = newTime.split(':', 2);
+                if (parts.length != 2) {
+                    alert("Invalid time: " + newTime);
+                    return;
+                }
+                var m = parseInt(parts[0]);
+                var s = parseInt(parts[1]);
+                if (isNaN(m) || isNaN(s)) {
+                    alert("Invalid time: " + newTime);
+                    return;
+                }
+                $.ajax({
+                    type: "POST",
+                    url: "/api/game/clock",
+                    contentType: "application/json",
+                    dataType: "json",
+                    data: JSON.stringify({
+                        "minutes": m,
+                        "seconds": s
+                    })
+                }).done(function (data) {
+
+                        })
+            }
+        },
+        setPeriod: function () {
+            var newPeriod = prompt("Enter a new period");
+            if (newPeriod) {
+                var p = parseInt(newPeriod);
+
+                if (isNaN(p)) {
+                    alert("Invalid period: " + newPeriod);
+                    return;
+                }
+                $.ajax({
+                    type: "POST",
+                    url: "/api/game/",
+                    contentType: "application/json",
+                    dataType: "json",
+                    data: JSON.stringify({
+                        "period": p,
+                    })
+                }).done(function (data) {
+
+                        })
+            }
+        },
+
+        addHomeScore: function () {
+            $.ajax({
+                type: "POST",
+                url: "/api/game/home/goal",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify({
+                    "player": 10,
+                    "assist": 15
+                })
+            }).done(function (data) {
+
+                    })
+        },
+        subHomeScore: function () {
+            $.ajax({
+                type: "DELETE",
+                url: "/api/game/home/goal"
+            }).done(function (data) {
+
+                    })
+        },
+        addAwayScore: function () {
+            $.ajax({
+                type: "POST",
+                url: "/api/game/away/goal",
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify({
+                    "player": 10,
+                    "assist": 15
+                })
+            }).done(function (data) {
+
+                    })
+        },
+        subAwayScore: function () {
+            $.ajax({
+                type: "DELETE",
+                url: "/api/game/away/goal"
+            }).done(function (data) {
+
+                    })
+        },
+        getMinutes: function () {
+            return Math.floor((Scoreboard.time + 999) / (60 * 1000));
+        },
+        getSeconds: function () {
+            return Math.floor((Scoreboard.time + 999) / 1000 % 60);
+        }
+    };
+
+
+    // grab data from the api
+    function update() {
+        $.ajax({
+            url: "/api/game"
+        }).success(function (data) {
+                    Scoreboard.update(data);
+                    setTimeout(update, 500);
+                })
+    }
+
+    $(document).ready(function () {
+                $("#clock-start").click(Scoreboard.startClock);
+                $("#clock-pause").click(Scoreboard.pauseClock);
+                $("#clock-set").click(Scoreboard.setClock);
+
+                $("#period-set").click(Scoreboard.setPeriod);
+
+                $("#home-score-up").click(Scoreboard.addHomeScore);
+                $("#home-score-down").click(Scoreboard.subHomeScore);
+
+                $("#away-score-up").click(Scoreboard.addAwayScore);
+                $("#away-score-down").click(Scoreboard.subAwayScore);
+
+                update()
+            }
+    )
+</script>
+</body>
+</html>
