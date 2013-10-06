@@ -8,6 +8,7 @@ import purejavacomm.SerialPort;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Enumeration;
 
 /**
@@ -21,7 +22,6 @@ public class SerialUpdater {
      * This is the scoreboard data that we're sending down the serial line
      */
     private ScoreBoard scoreBoard;
-
 
 
     private String portName;
@@ -128,7 +128,7 @@ public class SerialUpdater {
             Clock gameClock = scoreBoard.getGameClock();
             // if the game clock is less than a minute we push changes faster
             int millis = gameClock.getMillis();
-            if (millis >= 60 * 1000) {
+            if (millis > 59 * 1000) {
                 sendGameClock(gameClock);
             } else if (millis > 0) {
                 sendLastMinuteGameClock(gameClock);
@@ -164,11 +164,12 @@ public class SerialUpdater {
         }
 
         private void sendLastMinuteGameClock(Clock gameClock) {
+            int s = gameClock.getSeconds();
             send(new byte[]{
                     0x2E,
                     0x79,
-                    digit(10, gameClock.getSeconds(), ZERO_VALUE_EMPTY),
-                    digit(1, gameClock.getSeconds()),
+                    digit(10, s, ZERO_VALUE_EMPTY),
+                    digit(1, s),
                     digit(1, (byte) ((gameClock.getMillis() / 100) % 10)),
                     (byte) 0xFF
             });
@@ -268,27 +269,30 @@ public class SerialUpdater {
         }
     }
 
-    private byte digit(int place, int i, byte zeroValue) {
+    static byte digit(int place, int i, byte zeroValue) {
         int value = (i / place) % 10;
         return value == 0 ? zeroValue : (byte) (value |= value << 4);
     }
 
-    private byte digit(int offset, int value) {
+    static byte digit(int offset, int value) {
         return digit(offset, value, (byte) 0);
     }
 
     long lastSend = 0;
+    byte[] lastMsg = {};
+
     private void send(byte[] msg) {
-
-//        long now = System.currentTimeMillis();
-//        long elapsed = now - lastSend;
-//        lastSend = now;
-//        System.out.printf("%04d: ", elapsed);
-//        for (byte aMsg : msg) {
-//            System.out.printf("%02x ", aMsg);
-//        }
-//        System.out.print("\n");
-
+        if (!Arrays.equals(lastMsg, msg)) {
+            lastMsg = msg;
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastSend;
+            lastSend = now;
+            System.out.printf("%04d: ", elapsed);
+            for (byte aMsg : msg) {
+                System.out.printf("%02x ", aMsg);
+            }
+            System.out.print("\n");
+        }
         if (serialPort != null) {
             OutputStream os;
             try {

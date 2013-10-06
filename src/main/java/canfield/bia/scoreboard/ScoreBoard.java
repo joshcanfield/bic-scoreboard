@@ -47,7 +47,7 @@ public class ScoreBoard {
                             fire(EventType.end_of_period);
                         }
                     }
-                }, 0, 1000 / 60, TimeUnit.MILLISECONDS
+                }, 1000, 1000 / 60, TimeUnit.MILLISECONDS
         );
     }
 
