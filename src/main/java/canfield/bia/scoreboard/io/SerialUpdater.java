@@ -22,6 +22,8 @@ public class SerialUpdater {
      */
     private ScoreBoard scoreBoard;
 
+
+
     private String portName;
     private SerialPort serialPort;
 
@@ -58,6 +60,14 @@ public class SerialUpdater {
         });
     }
 
+    public String getPortName() {
+        return portName;
+    }
+
+    public void setPortName(String portName) {
+        this.portName = portName;
+    }
+
     public void start() {
         // Connect to serial port and start
         if (serialPort == null) {
@@ -75,11 +85,11 @@ public class SerialUpdater {
         try {
             open = (SerialPort) portId.open("BIA Scoreboard", 1000);
         } catch (PortInUseException e) {
-            throw new RuntimeException(String.format("Unable to open serial port '%s'", portName), e);
+            serialPort = null;
+            return;
         }
 
         configure(open);
-
         serialPort = open;
     }
 

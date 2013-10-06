@@ -15,6 +15,7 @@ public class GameApplication extends Application {
     public static final HockeyGame game = new HockeyGame();
 
     static {
+        game.getUpdater().start();
         OBJECTS.add(new GameResource());
         OBJECTS.add(new JacksonJsonProvider());
     }

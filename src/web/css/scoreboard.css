@@ -1,0 +1,49 @@
+#clock_box {
+    text-align: center;
+}
+
+#clock-actions .btn {
+    font-size: 30px;
+}
+
+#clock {
+    color: black;
+    cursor: pointer;
+    font-size: 40px;
+    font-family: monospace;
+}
+
+#clock .editable-empty {
+    color: black;
+}
+
+#period {
+    font-family: monospace;
+    font-size: 30px;
+    display: block;
+}
+
+#add-penalty .modal-body {
+    text-align: center;
+}
+
+#add-penalty .modal-dialog {
+    width: 400px;
+}
+
+.penalty-player {
+}
+
+.penalties {
+    margin-top: 20px;
+}
+h2 {
+    text-align: center;
+}
+
+.score {
+    text-align: center;
+    font-size: 30px;
+    display: block;
+    font-family: monospace;
+}

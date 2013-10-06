@@ -113,11 +113,13 @@ public class GameResource {
         HockeyGame game = GameApplication.getGame();
         ScoreBoard s = game.getScoreBoard();
         if ("home".equals(team)) {
-            int homeScore = s.getHomeScore();
-            s.setHomeScore(homeScore - 1);
+            int score = s.getHomeScore();
+            if (score > 0)
+                s.setHomeScore(score - 1);
         } else if ("away".equals(team)) {
-            int awayScore = s.getAwayScore();
-            s.setAwayScore(awayScore - 1);
+            int score = s.getAwayScore();
+            if (score > 0)
+                s.setAwayScore(score - 1);
         } else {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
         }
