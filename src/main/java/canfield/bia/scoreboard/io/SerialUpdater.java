@@ -37,6 +37,11 @@ public class SerialUpdater {
         clockAndScoreCmd = new ClockAndScoreCmd();
         penaltyClockCmd = new PenaltyClockCmd();
 
+        initListener(scoreBoard);
+    }
+
+    private void initListener(final ScoreBoard scoreBoard) {
+
         scoreBoard.addListener(new ScoreBoard.EventListener() {
             @Override
             public void handle(ScoreBoard.EventType eventType) {
@@ -47,10 +52,21 @@ public class SerialUpdater {
                             // we don't update for 3 seconds while the buzzer is going off...
                             break;
                         }
-                        buzzer_started = null;
+                        Clock gameClock = scoreBoard.getGameClock();
+                        int millis = gameClock.getMillis();
+                        if (buzzer_started != null) {
+                            // clear the buzzer
+                            clockAndScoreCmd.sendGameClock(gameClock, true);
+                        } else if (millis > 59 * 1000) {
+                            clockAndScoreCmd.sendGameClock(gameClock);
+                        } else {
+                            // if the game clock is less than a minute we push changes faster
+                            clockAndScoreCmd.sendLastMinuteGameClock(gameClock);
+                        }
 
-                        clockAndScoreCmd.update();
-                        penaltyClockCmd.update();
+                        penaltyClockCmd.sendPenaltyClock();
+
+                        buzzer_started = null;
                         break;
                     case end_of_period:
                         buzzer_started = now;
@@ -124,22 +140,9 @@ public class SerialUpdater {
         int lastAwayScore = 0;
         private long lastGameClockUpdateMillis;
 
-        void update() {
-            Clock gameClock = scoreBoard.getGameClock();
-            // if the game clock is less than a minute we push changes faster
-            int millis = gameClock.getMillis();
-            if (millis > 59 * 1000) {
-                sendGameClock(gameClock);
-            } else if (millis > 0) {
-                sendLastMinuteGameClock(gameClock);
-            } else {
-                sendGameClock(gameClock, true);
-            }
-        }
-
         private void sendGameClock(Clock gameClock, boolean cancelBuzzer) {
             long now = System.currentTimeMillis();
-            if (!cancelBuzzer && now - lastGameClockUpdateMillis < GAME_CLOCK_UPDATE_INTERVAL_MILLIS) return;
+            if (!cancelBuzzer && (now - lastGameClockUpdateMillis) < GAME_CLOCK_UPDATE_INTERVAL_MILLIS) return;
 
             lastGameClockUpdateMillis = now;
             send(new byte[]{
@@ -219,7 +222,7 @@ public class SerialUpdater {
         boolean hadPenalty = true; // initialize the penalty clock
         long lastUpdateMillis = 0;
 
-        public boolean update() {
+        public boolean sendPenaltyClock() {
             long now = System.currentTimeMillis();
             if (!hadPenalty || (now - lastUpdateMillis < 500)) {
                 // only update the clock if the state could have changed
@@ -280,9 +283,10 @@ public class SerialUpdater {
 
     long lastSend = 0;
     byte[] lastMsg = {};
+    boolean logSend = true;
 
     private void send(byte[] msg) {
-        if (!Arrays.equals(lastMsg, msg)) {
+//        if (logSend && !Arrays.equals(lastMsg, msg)) {
             lastMsg = msg;
             long now = System.currentTimeMillis();
             long elapsed = now - lastSend;
@@ -292,7 +296,7 @@ public class SerialUpdater {
                 System.out.printf("%02x ", aMsg);
             }
             System.out.print("\n");
-        }
+//        }
         if (serialPort != null) {
             OutputStream os;
             try {

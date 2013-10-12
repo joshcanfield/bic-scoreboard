@@ -45,7 +45,9 @@ public class ScoreBoard {
 
                         if (millis != 0 && gameClock.getMillis() == 0) {
                             fire(EventType.end_of_period);
+                            advancePeriod();
                         }
+
                     }
                 }, 1000, 1000 / 60, TimeUnit.MILLISECONDS
         );
@@ -73,7 +75,7 @@ public class ScoreBoard {
     }
 
     public void setPeriod(int period) {
-        this.period = period%10;
+        this.period = period % 10;
     }
 
     public void setHomePenalty(int index, Penalty penalty) {
