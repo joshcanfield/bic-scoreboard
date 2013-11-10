@@ -76,13 +76,13 @@ public class HockeyGame {
         // Do we need to put some penalties on the board?
         if (homePenalties.size() > 0) {
             while (!availableHomePenaltyIndex.isEmpty()) {
-                int index = availableHomePenaltyIndex.element();
+                int index = availableHomePenaltyIndex.remove();
 
                 for (Penalty penalty : homePenalties) {
                     if (scoreBoard.getHomePenalty(0) == penalty || scoreBoard.getHomePenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime(millis);
+                    penalty.setStartTime((millis/1000)*1000);
                     scoreBoard.setHomePenalty(index, penalty);
                 }
             }
@@ -96,7 +96,7 @@ public class HockeyGame {
                     if (scoreBoard.getAwayPenalty(0) == penalty || scoreBoard.getAwayPenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime(millis);
+                    penalty.setStartTime((millis/1000)*1000);
                     scoreBoard.setAwayPenalty(index, penalty);
                 }
             }
@@ -104,8 +104,7 @@ public class HockeyGame {
     }
 
     private boolean isExpired(Penalty penalty) {
-        int remainingMillis = scoreBoard.getGameClock().getMillis();
-        return remainingMillis < penalty.getStartTime() - penalty.getTime();
+        return scoreBoard.getPenaltyRemainingMillis(penalty) == 0;
     }
 
     public ScoreBoard getScoreBoard() {

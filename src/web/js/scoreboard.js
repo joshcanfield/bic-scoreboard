@@ -24,6 +24,36 @@ function formatClock() {
     return pad(Scoreboard.getMinutes(), 2) + ":" + pad(Scoreboard.getSeconds(), 2);
 }
 
+function getMinutes(millis) {
+    return Math.floor((millis + 999) / (60 * 1000));
+}
+function getSeconds(millis) {
+    return Math.floor((millis + 999) / 1000 % 60);
+}
+function formatTime(remaining) {
+    return getMinutes(remaining) + ':' + pad(getSeconds(remaining), 2);
+}
+function formatPenalties(penalties, data) {
+    var table = '';
+    for (var i = 0; i < penalties.length; ++i) {
+        var p = penalties[i];
+        var remaining = p.time;
+        if ( p.startTime > 0 ) {
+            var startTime = p.startTime + ((data.period - p.period) * 20 * 60 * 1000);
+            remaining = p.time - (startTime - data.time);
+        }
+
+        table += '<tr>' +
+            '<td>' + p.period + '</td>' +
+            '<td>' + p.playerNumber + '</td>' +
+            '<td>' + formatTime(p.time) + '</td>' +
+            '<td>' + formatTime(p.offIceTime) + '</td>' +
+            '<td>' + formatTime(p.startTime) + '</td>' +
+            '<td>' + formatTime(remaining) + '</td>' +
+            '</tr>';
+    }
+    return table;
+}
 Scoreboard = {
     time: 0,
     home: {},
@@ -34,6 +64,9 @@ Scoreboard = {
         Scoreboard.period = data.period;
         Scoreboard.home = data.home;
         Scoreboard.away = data.away;
+
+        $('#home').find('tbody.list').html(formatPenalties(data.home.penalties, data));
+        $('#away').find('tbody.list').html(formatPenalties(data.away.penalties, data));
 
         $("#clock").html(formatClock());
         $("#period").html(Scoreboard.period);
@@ -163,10 +196,10 @@ Scoreboard = {
             })
     },
     getMinutes: function () {
-        return Math.floor((Scoreboard.time + 999) / (60 * 1000));
+        return getMinutes(Scoreboard.time);
     },
     getSeconds: function () {
-        return Math.floor((Scoreboard.time + 999) / 1000 % 60);
+        return getSeconds(Scoreboard.time);
     }
 };
 
@@ -250,7 +283,7 @@ $(document).ready(function () {
             }
 
             if (error) return;
-
+            penalty.period = Scoreboard.period;
             var team = dialog.data('team');
             Scoreboard.addPenalty(team, penalty);
             dialog.modal('hide');

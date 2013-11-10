@@ -9,9 +9,19 @@ public class Penalty {
     // how long is the penalty
     private int time;
 
+    private int period;
+
     private int offIceTime;
 
     private int startTime;
+
+    public int getPeriod() {
+        return period;
+    }
+
+    public void setPeriod(int period) {
+        this.period = period;
+    }
 
     public int getPlayerNumber() {
         return playerNumber;

@@ -106,6 +106,19 @@ public class ScoreBoard {
         return penalties[AWAY][index];
     }
 
+    public int getPenaltyRemainingMillis(Penalty penalty) {
+        int clockMillis = getGameClock().getMillis();
+        int startClockMillis = penalty.getStartTime();
+
+        startClockMillis += (getPeriod() - penalty.getPeriod()) * 20 * 60 * 1000; // assumes 20 minute period :/
+
+        int elapsed = startClockMillis - clockMillis;
+
+        int i = penalty.getTime() - elapsed;
+
+        return i > 0 ? i : 0;
+    }
+
     public void pause() {
         gameClock.stop();
     }
@@ -165,23 +178,6 @@ public class ScoreBoard {
 
         public EventType getType() {
             return type;
-        }
-    }
-
-    public static class PenaltyExpiredEvent extends Event {
-        Penalty penalty;
-
-        public PenaltyExpiredEvent(Penalty penalty) {
-            super(EventType.penalty_expired);
-            this.penalty = penalty;
-        }
-
-        public Penalty getPenalty() {
-            return penalty;
-        }
-
-        public void setPenalty(Penalty penalty) {
-            this.penalty = penalty;
         }
     }
 }

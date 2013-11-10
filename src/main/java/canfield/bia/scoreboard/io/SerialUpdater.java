@@ -274,9 +274,7 @@ public class SerialUpdater {
                     b[index++] = (byte) 0xFF;
                     b[index++] = (byte) 0xFF;
                 } else {
-                    int elapsed = penalty.getStartTime() - gameMillis;
-                    int remaining = penalty.getTime() - elapsed;
-                    if (remaining < 0) remaining = 0;
+                    int remaining = scoreBoard.getPenaltyRemainingMillis(penalty);
 
                     byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
                     b[index++] = minutes == 0 ? (byte) 0xFF : minutes;

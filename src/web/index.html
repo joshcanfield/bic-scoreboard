@@ -22,17 +22,25 @@
                 <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
                 <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
             </div>
+
             <div class="penalties">
-                <h3>Penalty</h3>
+                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                   data-team="home">Penalty</a>
+
                 <table class="table table-condensed">
                     <tr>
-                        <th>Player</th>
+                        <th>Period</th>
+                        <th>#</th>
+                        <th>Min</th>
+                        <th>Off Ice</th>
+                        <th>Start</th>
                         <th>Remaining</th>
                     </tr>
+                    <tbody class="list">
+
+                    </tbody>
                     <tr>
-                        <td colspan="3">
-                            <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="home">add</a>
-                        </td>
+                        <td colspan="3"></td>
                     </tr>
                 </table>
             </div>
@@ -67,6 +75,7 @@
 
                 <table class="table table-condensed">
                     <tr>
+                        <th>Period</th>
                         <th>#</th>
                         <th>Min</th>
                         <th>Off Ice</th>
