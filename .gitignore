@@ -18,6 +18,10 @@ atlassian-ide-plugin.xml
 logs/
 target/
 
+#Gradle
+build/
+.gradle/
+
 #vi
 *.swp
 
