@@ -1,11 +1,12 @@
 package canfield.bia.hockey;
 
-import canfield.bia.scoreboard.Clock;
 import canfield.bia.scoreboard.ScoreBoard;
 import canfield.bia.scoreboard.io.SerialUpdater;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Penalties
@@ -22,8 +23,8 @@ public class HockeyGame {
         home, away
     }
 
-    private List<Penalty> homePenalties = new LinkedList<Penalty>();
-    private List<Penalty> awayPenalties = new LinkedList<Penalty>();
+    private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
+    private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
 
     private final SerialUpdater updater;
 
@@ -36,7 +37,7 @@ public class HockeyGame {
                     @Override
                     public void handle(ScoreBoard.Event event) {
                         switch (event.getType()) {
-                            case penalty_expired:
+                            case tick:
                                 updatePenalties();
                         }
                     }
@@ -45,35 +46,66 @@ public class HockeyGame {
     }
 
     private void updatePenalties() {
-        Clock gameClock = scoreBoard.getGameClock();
-        if (homePenalties.size() > 0) {
-            for (Penalty penalty : homePenalties) {
-                if (isExpired(penalty))
+        Queue<Integer> availableHomePenaltyIndex = new ArrayDeque<Integer>();
+        Queue<Integer> availableAwayPenaltyIndex = new ArrayDeque<Integer>();
+        // clear expired penalties from the scoreboard
+        for (int i = 0; i < 2; ++i) {
+            Penalty p = scoreBoard.getHomePenalty(i);
 
-                    if (penalty.getStartTime() > gameClock.getMillis()) {
-//                    int millis = penalty.getStartTime() - gameClock.getMillis();
-//                    scoreBoard.penalty(penalty.getPlayerNumber(), millis);
-                    }
+            if (p != null && isExpired(p)) {
+                homePenalties.remove(p);
+                scoreBoard.setHomePenalty(i, null);
+                p = null;
+            }
+            if (p == null) {
+                availableHomePenaltyIndex.add(i);
             }
 
-        } else {
-            scoreBoard.setHomePenalty(0, null);
-            scoreBoard.setHomePenalty(1, null);
+            p = scoreBoard.getAwayPenalty(i);
+            if (p != null && isExpired(p)) {
+                awayPenalties.remove(p);
+                scoreBoard.setAwayPenalty(i, null);
+                p = null;
+            }
+            if (p == null) {
+                availableAwayPenaltyIndex.add(i);
+            }
+        }
+        int millis = getScoreBoard().getGameClock().getMillis();
+
+        // Do we need to put some penalties on the board?
+        if (homePenalties.size() > 0) {
+            while (!availableHomePenaltyIndex.isEmpty()) {
+                int index = availableHomePenaltyIndex.element();
+
+                for (Penalty penalty : homePenalties) {
+                    if (scoreBoard.getHomePenalty(0) == penalty || scoreBoard.getHomePenalty(1) == penalty) {
+                        continue; // already on the board
+                    }
+                    penalty.setStartTime(millis);
+                    scoreBoard.setHomePenalty(index, penalty);
+                }
+            }
         }
 
         if (awayPenalties.size() > 0) {
-            // remove expired penalties
-            // fill the board with penalties
+            while (!availableAwayPenaltyIndex.isEmpty()) {
+                int index = availableAwayPenaltyIndex.remove();
 
-        } else {
-            scoreBoard.setAwayPenalty(0, null);
-            scoreBoard.setAwayPenalty(1, null);
+                for (Penalty penalty : awayPenalties) {
+                    if (scoreBoard.getAwayPenalty(0) == penalty || scoreBoard.getAwayPenalty(1) == penalty) {
+                        continue; // already on the board
+                    }
+                    penalty.setStartTime(millis);
+                    scoreBoard.setAwayPenalty(index, penalty);
+                }
+            }
         }
     }
 
     private boolean isExpired(Penalty penalty) {
-        int gameMillis = scoreBoard.getGameClock().getMillis();
-        return (penalty.getStartTime() + penalty.getTime()) > gameMillis;
+        int remainingMillis = scoreBoard.getGameClock().getMillis();
+        return remainingMillis < penalty.getStartTime() - penalty.getTime();
     }
 
     public ScoreBoard getScoreBoard() {
@@ -90,6 +122,7 @@ public class HockeyGame {
 
     public void addHomePenalty(Penalty penalty) {
         homePenalties.add(penalty);
+        updatePenalties();
     }
 
     public List<Penalty> getAwayPenalties() {
@@ -98,6 +131,7 @@ public class HockeyGame {
 
     public void addAwayPenalty(Penalty penalty) {
         awayPenalties.add(penalty);
+        updatePenalties();
     }
 
     public SerialUpdater getUpdater() {

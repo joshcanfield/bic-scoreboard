@@ -18,6 +18,6 @@
         <appender-ref ref="FILE"/>
     </root>
 
-    <logger name="canfield.bia" level="DEBUG"/>
+    <logger name="canfield.bia" level="trace"/>
 
 </configuration>

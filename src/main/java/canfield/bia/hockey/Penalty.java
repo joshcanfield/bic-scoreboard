@@ -9,9 +9,9 @@ public class Penalty {
     // how long is the penalty
     private int time;
 
-    private long offIceTime;
+    private int offIceTime;
 
-    private long startTime;
+    private int startTime;
 
     public int getPlayerNumber() {
         return playerNumber;
@@ -37,19 +37,19 @@ public class Penalty {
         this.time = time;
     }
 
-    public long getOffIceTime() {
+    public int getOffIceTime() {
         return offIceTime;
     }
 
-    public void setOffIceTime(long offIceTime) {
+    public void setOffIceTime(int offIceTime) {
         this.offIceTime = offIceTime;
     }
 
-    public long getStartTime() {
+    public int getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(long startTime) {
+    public void setStartTime(int startTime) {
         this.startTime = startTime;
     }
 }

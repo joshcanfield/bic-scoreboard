@@ -1,6 +1,8 @@
 package canfield.bia.scoreboard.io;
 
+import canfield.bia.hockey.Penalty;
 import canfield.bia.scoreboard.Clock;
+import canfield.bia.scoreboard.GameClock;
 import canfield.bia.scoreboard.ScoreBoard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,14 +14,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Enumeration;
 
-/**
- * TODO: Sending penalties
- */
 public class SerialUpdater {
     private Logger log = LoggerFactory.getLogger(SerialUpdater.class);
 
     public static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
-    public static final int seconds = 1000;
+    public static final int SECONDS = 1000;
 
     /**
      * This is the scoreboard data that we're sending down the serial line
@@ -51,7 +50,7 @@ public class SerialUpdater {
                 long now = System.currentTimeMillis();
                 switch (eventType.getType()) {
                     case tick:
-                        if (buzzer_started != null && now - buzzer_started < 3 * seconds) {
+                        if (buzzer_started != null && now - buzzer_started < 3 * SECONDS) {
                             // we don't update for 3 seconds while the buzzer is going off...
                             break;
                         }
@@ -234,45 +233,62 @@ public class SerialUpdater {
      * </pre>
      */
     public class PenaltyClockCmd {
-        boolean hadPenalty = true; // initialize the penalty clock
+        boolean hadPenalty = true; // initialize true so we send the first message to the penalty clock
         long lastUpdateMillis = 0;
 
         public boolean sendPenaltyClock() {
             long now = System.currentTimeMillis();
-            if (!hadPenalty || (now - lastUpdateMillis < 500)) {
-                // only update the clock if the state could have changed
-                return false;
-            }
-            hadPenalty = false;
-            lastUpdateMillis = now;
-            ScoreBoard.Penalty[] penalties = new ScoreBoard.Penalty[]{
+
+            Penalty[] penalties = new Penalty[]{
                     scoreBoard.getHomePenalty(0),
                     scoreBoard.getHomePenalty(1),
                     scoreBoard.getAwayPenalty(0),
                     scoreBoard.getAwayPenalty(1)
             };
 
+            boolean hasPenalty = false;
+            for (Penalty penalty : penalties) {
+                if (penalty != null) {
+                    hasPenalty = true;
+                    break;
+                }
+            }
+
+            // If we don't have a penalty, and we didn't last time don't bother updating.
+            if ((!hasPenalty && !hadPenalty) || (now - lastUpdateMillis < 500)) {
+                // only update the clock if the state could have changed
+                return false;
+            }
+
+            hadPenalty = hasPenalty;
+            lastUpdateMillis = now;
+
             int index = 0;
             byte[] b = new byte[26];
             b[index++] = 0x2E;
             b[index++] = 0x7A;
-            for (ScoreBoard.Penalty penalty : penalties) {
+            int gameMillis = scoreBoard.getGameClock().getMillis();
+            for (Penalty penalty : penalties) {
                 if (penalty == null) {
                     b[index++] = (byte) 0xFF;
                     b[index++] = (byte) 0xFF;
                     b[index++] = (byte) 0xFF;
                 } else {
-                    hadPenalty = true;
-                    final Clock clock = penalty.getClock();
-                    b[index++] = (byte) (clock.getMinutes() & 0xFF);
-                    b[index++] = digit(10, clock.getSeconds(), ZERO_VALUE_EMPTY);
-                    b[index++] = digit(1, clock.getSeconds());
+                    int elapsed = penalty.getStartTime() - gameMillis;
+                    int remaining = penalty.getTime() - elapsed;
+                    if (remaining < 0) remaining = 0;
+
+                    byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
+                    b[index++] = minutes == 0 ? (byte) 0xFF : minutes;
+                    int seconds = GameClock.getSeconds(remaining);
+                    b[index++] = digit(10, seconds);
+                    b[index++] = digit(1, seconds);
                 }
             }
             b[index++] = (byte) 0xFF;
             b[index++] = 0x2E;
             b[index++] = 0x7E;
-            for (ScoreBoard.Penalty penalty : penalties) {
+            for (Penalty penalty : penalties) {
                 if (penalty == null) {
                     b[index++] = (byte) 0xFF;
                     b[index++] = (byte) 0xFF;

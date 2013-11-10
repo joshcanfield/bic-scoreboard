@@ -33,13 +33,13 @@ public class GameResource {
 
         HashMap<String, Object> home = new HashMap<String, Object>();
         home.put("score", scoreBoard.getHomeScore());
-        home.put("penalties", new ArrayList());
+        home.put("penalties", game.getHomePenalties());
 
         state.put("home", home);
 
         HashMap<String, Object> away = new HashMap<String, Object>();
         away.put("score", scoreBoard.getAwayScore());
-        away.put("penalties", new ArrayList());
+        away.put("penalties", game.getAwayPenalties());
         state.put("away", away);
 
         return Response.ok(state).build();
@@ -117,7 +117,7 @@ public class GameResource {
     @POST
     @Path("/{team}/penalty")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response addGoal(
+    public Response addPenalty(
             @PathParam("team") Team team,
             Penalty penalty
     ) {

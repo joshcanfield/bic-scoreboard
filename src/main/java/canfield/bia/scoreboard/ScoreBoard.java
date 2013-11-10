@@ -1,5 +1,7 @@
 package canfield.bia.scoreboard;
 
+import canfield.bia.hockey.Penalty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -27,11 +29,13 @@ public class ScoreBoard {
     private int homeScore;
     private int awayScore;
 
+    private Penalty[][] penalties = new Penalty[][]{
+            {null, null},
+            {null, null}
+    };
 
     private Event tickEvent = new Event(EventType.tick);
     private Event endOfPeriodEvent = new Event(EventType.end_of_period);
-
-    private Penalty[][] penalties = new Penalty[2][];
 
     private List<EventListener> listeners = new ArrayList<EventListener>();
 
@@ -46,11 +50,6 @@ public class ScoreBoard {
                         int millis = gameClock.getMillis();
                         gameClock.update();
                         fire(tickEvent);
-
-                        // expire penalty
-//                        if (homePenaltyList[0] != null && homePenaltyList[0].getClock().getMillis() == 0) {
-//                            fire(new PenaltyExpiredEvent(homePenaltyList[0]));
-//                        }
 
                         if (millis != 0 && gameClock.getMillis() == 0) {
                             fire(endOfPeriodEvent);
@@ -88,19 +87,23 @@ public class ScoreBoard {
     }
 
     public void setHomePenalty(int index, Penalty penalty) {
-//        homePenaltyList[index] = penalty;
+        if (index > 1) return;
+        penalties[HOME][index] = penalty;
     }
 
     public Penalty getHomePenalty(int index) {
-        return null; //homePenaltyList[index];
+        if (index > 1) return null;
+        return penalties[HOME][index];
     }
 
     public void setAwayPenalty(int index, Penalty penalty) {
-        //awayPenaltyList[index] = penalty;
+        if (index > 1) return;
+        penalties[AWAY][index] = penalty;
     }
 
     public Penalty getAwayPenalty(int index) {
-        return null; //awayPenaltyList[index];
+        if (index > 1) return null;
+        return penalties[AWAY][index];
     }
 
     public void pause() {
@@ -142,51 +145,6 @@ public class ScoreBoard {
 
     public void addListener(EventListener listener) {
         listeners.add(listener);
-    }
-
-
-    public enum PenaltyType {
-        Major, // must run full time, not cleared with score
-        Minor // clears with an opposing team score
-    }
-
-    public Penalty penalty(int playerNumber, int timeMillis) {
-        return new Penalty(playerNumber, timeMillis);
-    }
-
-    /**
-     * Penalties -
-     * two players may have concurrent running penalties
-     * - other penalties are not running
-     * one player may have two penalties, they run consecutively
-     * on an opposing team goal the minor penalty with the lowest time remaining is cleared
-     * a penalty may be assessed to one player but sat by another
-     */
-    public class Penalty {
-        private int playerNumber;
-        private Clock clock;
-
-        public Penalty(int playerNumber, int timeMillis) {
-            this.playerNumber = playerNumber;
-            this.clock = gameClock.child(timeMillis);
-        }
-
-
-        public int getPlayerNumber() {
-            return playerNumber;
-        }
-
-        public void setPlayerNumber(int playerNumber) {
-            this.playerNumber = playerNumber;
-        }
-
-        public Clock getClock() {
-            return clock;
-        }
-
-        public void setClock(Clock clock) {
-            this.clock = clock;
-        }
     }
 
 

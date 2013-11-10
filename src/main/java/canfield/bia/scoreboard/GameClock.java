@@ -37,7 +37,11 @@ public class GameClock implements Clock {
 
     @Override
     public int getMinutes() {
-        return (this.getMillis() + 999) / (60 * 1000);
+        return getMinutes(this.getMillis());
+    }
+
+    public static int getMinutes(int millis) {
+        return (millis + 999) / (60 * 1000);
     }
 
     @Override
@@ -48,7 +52,11 @@ public class GameClock implements Clock {
 
     @Override
     public int getSeconds() {
-        return (this.getMillis() + 999) / 1000 % 60;
+        return getSeconds(this.getMillis());
+    }
+
+    public static int getSeconds(int millis) {
+        return (millis + 999) / 1000 % 60;
     }
 
     @Override
