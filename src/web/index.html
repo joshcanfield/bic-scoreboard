@@ -19,8 +19,8 @@
 
             <div class="score">
                 <span id="home-score" class="score"></span>
-                <button data-team="home" class="score-up btn btn-primary">+</button>
-                <button data-team="home" class="score-down btn btn-danger">-</button>
+                <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
+                <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
             </div>
             <div class="penalties">
                 <h3>Penalty</h3>
@@ -31,7 +31,7 @@
                     </tr>
                     <tr>
                         <td colspan="3">
-                            <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="Away">add</a>
+                            <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="home">add</a>
                         </td>
                     </tr>
                 </table>
@@ -57,32 +57,27 @@
 
             <div class="score">
                 <span id="away-score" class="score"></span>
-                <button data-team="away" class="score-up btn btn-primary">+</button>
-                <button data-team="away" class="score-down btn btn-danger">-</button>
+                <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
+                <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
             </div>
 
             <div class="penalties">
-                <h3>Penalty</h3>
+                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                   data-team="away">Penalty</a>
+
                 <table class="table table-condensed">
                     <tr>
-                        <th>Player</th>
+                        <th>#</th>
+                        <th>Min</th>
+                        <th>Off Ice</th>
+                        <th>Start</th>
                         <th>Remaining</th>
                     </tr>
+                    <tbody class="list">
+
+                    </tbody>
                     <tr>
-                        <td>#10</td>
-                        <td>3:00 <a>clear</a></td>
-                    </tr>
-                    <tr>
-                        <td>#10</td>
-                        <td>3:00 <a>clear</a></td>
-                    </tr>
-                    <tr>
-                        <td>#10</td>
-                        <td>3:00 <a>clear</a></td>
-                    </tr>
-                    <tr>
-                        <td colspan="3"><a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
-                                           data-team="Away">add</a></td>
+                        <td colspan="3"></td>
                     </tr>
                 </table>
             </div>
@@ -101,33 +96,42 @@
             <div class="modal-body">
                 <form class="form-horizontal">
                     <div class="penalty-player form-group">
-                        <label for="penalty-player" class="col-lg-6 control-label">Player #</label>
+                        <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
 
                         <div class="col-lg-3">
-                            <input id="penalty-player" class="form-control input-sm" type="text" maxlength="2"
+                            <input id="add-penalty-player" class="form-control input-sm" type="text" maxlength="2"
+                                   size="1"/>
+                        </div>
+                    </div>
+                    <div class="penalty-serving form-group">
+                        <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
+
+                        <div class="col-lg-3">
+                            <input id="add-penalty-serving" class="form-control input-sm" type="text" maxlength="2"
                                    size="1"/>
                         </div>
                     </div>
                     <div class="penalty-time form-group">
-                        <label for="penalty-time" class="col-lg-6 control-label">Time</label>
+                        <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
 
                         <div class="col-lg-3">
-                            <input id="penalty-time" class="form-control input-sm" value="3:00" list="penalty-times"
-                                   size="1"/>
+                            <input id="add-penalty-time" class="form-control input-sm" value="3:00"
+                                   type="text" size="1"/>
+                        </div>
+                    </div>
+                    <div class="penalty-clock form-group">
+                        <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
+
+                        <div class="col-lg-3">
+                            <input id="add-penalty-off_ice" class="form-control input-sm" />
                         </div>
                     </div>
                 </form>
-                <datalist id="penalty-times">
-                    <option value="2:00">
-                    <option value="3:00">
-                    <option value="5:00">
-                    <option value="7:00">
-                    <option value="10:00">
-                </datalist>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Add</button>
+                <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
             </div>
         </div>
         <!-- /.modal-content -->
@@ -137,16 +141,7 @@
 <!-- /.modal -->
 
 <script type="text/javascript">
-    var dialog = $('#add-penalty');
-    // before display
-    dialog.on('show.bs.modal', function (e) {
-        var team = e.relatedTarget.dataset.team;
-        $(this).find(".modal-title").html(team + " Penalty");
-    });
-    // after displayed
-    dialog.on('shown.bs.modal', function (e) {
-        $("#penalty-player")[0].focus();
-    });
+
 </script>
 </body>
 </html>

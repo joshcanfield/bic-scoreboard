@@ -2,19 +2,22 @@ package canfield.bia.scoreboard.io;
 
 import canfield.bia.scoreboard.Clock;
 import canfield.bia.scoreboard.ScoreBoard;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import purejavacomm.CommPortIdentifier;
 import purejavacomm.PortInUseException;
 import purejavacomm.SerialPort;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Arrays;
 import java.util.Enumeration;
 
 /**
  * TODO: Sending penalties
  */
 public class SerialUpdater {
+    private Logger log = LoggerFactory.getLogger(SerialUpdater.class);
+
     public static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
     public static final int seconds = 1000;
 
@@ -22,7 +25,6 @@ public class SerialUpdater {
      * This is the scoreboard data that we're sending down the serial line
      */
     private ScoreBoard scoreBoard;
-
 
     private String portName;
     private SerialPort serialPort;
@@ -44,9 +46,10 @@ public class SerialUpdater {
 
         scoreBoard.addListener(new ScoreBoard.EventListener() {
             @Override
-            public void handle(ScoreBoard.EventType eventType) {
+            public void handle(ScoreBoard.Event eventType) {
+
                 long now = System.currentTimeMillis();
-                switch (eventType) {
+                switch (eventType.getType()) {
                     case tick:
                         if (buzzer_started != null && now - buzzer_started < 3 * seconds) {
                             // we don't update for 3 seconds while the buzzer is going off...
@@ -73,6 +76,8 @@ public class SerialUpdater {
                         break;
                 }
             }
+
+
         });
     }
 
@@ -91,19 +96,29 @@ public class SerialUpdater {
         }
     }
 
+    long lastOpenAttempt = 0;
+
     private void openPort() {
+        long now = System.currentTimeMillis();
+        if (now - lastOpenAttempt < 2 * 1000) {
+            return;
+        }
+        lastOpenAttempt = now;
+        log.trace("Attempt to open port {}", portName);
         final CommPortIdentifier portId = getPortId(portName);
         if (portId == null) {
-            throw new RuntimeException(String.format("Unable to open serial port '%s'", portName));
+            return;
         }
 
         final SerialPort open;
         try {
             open = (SerialPort) portId.open("BIA Scoreboard", 1000);
         } catch (PortInUseException e) {
+            log.warn("port already in use! {}", portName, e);
             serialPort = null;
             return;
         }
+        log.debug("Port {} opened", portName);
 
         configure(open);
         serialPort = open;
@@ -281,43 +296,50 @@ public class SerialUpdater {
         return digit(offset, value, (byte) 0);
     }
 
-    long lastSend = 0;
-    byte[] lastMsg = {};
-    boolean logSend = true;
-
     private void send(byte[] msg) {
-//        if (logSend && !Arrays.equals(lastMsg, msg)) {
-            lastMsg = msg;
-            long now = System.currentTimeMillis();
-            long elapsed = now - lastSend;
-            lastSend = now;
-            System.out.printf("%04d: ", elapsed);
-            for (byte aMsg : msg) {
-                System.out.printf("%02x ", aMsg);
-            }
-            System.out.print("\n");
-//        }
+        log(msg);
+        if (serialPort == null) {
+            openPort();
+        }
+
         if (serialPort != null) {
             OutputStream os;
             try {
                 os = serialPort.getOutputStream();
                 os.write(msg);
             } catch (IOException e) {
-                System.err.printf("Failed to write to serial port! %s", portName);
+                log.warn("Failed to write to serial port! {} - try to reconnect", portName);
+                serialPort = null;
             }
         }
     }
 
+
+    long lastSend = 0;
+    byte[] lastMsg = {};
+
+    private void log(byte[] msg) {
+        if (log.isTraceEnabled()) {
+            lastMsg = msg;
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastSend;
+            lastSend = now;
+            StringBuilder sb = new StringBuilder();
+            for (byte aMsg : msg) {
+                sb.append(String.format("%02x ", aMsg));
+            }
+            log.trace("{}: {}", elapsed, sb.toString());
+        }
+    }
+
     private static CommPortIdentifier getPortId(String portName) {
-        CommPortIdentifier portid = null;
         Enumeration e = CommPortIdentifier.getPortIdentifiers();
         while (e.hasMoreElements()) {
-            portid = (CommPortIdentifier) e.nextElement();
+            CommPortIdentifier portid = (CommPortIdentifier) e.nextElement();
             if (portid.getName().equals(portName)) {
-                System.out.println("Found port");
-                break;
+                return portid;
             }
         }
-        return portid;
+        return null;
     }
 }

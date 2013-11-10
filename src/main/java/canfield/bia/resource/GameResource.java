@@ -1,6 +1,7 @@
 package canfield.bia.resource;
 
 import canfield.bia.hockey.HockeyGame;
+import canfield.bia.hockey.Penalty;
 import canfield.bia.scoreboard.Clock;
 import canfield.bia.scoreboard.ScoreBoard;
 
@@ -9,6 +10,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static canfield.bia.hockey.HockeyGame.Team;
+import static canfield.bia.resource.GameApplication.getGame;
 
 /**
  *
@@ -20,7 +24,7 @@ public class GameResource {
     @GET
     @Path("/")
     public Response get() {
-        HockeyGame game = GameApplication.getGame();
+        HockeyGame game = getGame();
         ScoreBoard scoreBoard = game.getScoreBoard();
         HashMap<String, Object> state = new HashMap<String, Object>();
         state.put("time", scoreBoard.getGameClock().getMillis());
@@ -30,6 +34,7 @@ public class GameResource {
         HashMap<String, Object> home = new HashMap<String, Object>();
         home.put("score", scoreBoard.getHomeScore());
         home.put("penalties", new ArrayList());
+
         state.put("home", home);
 
         HashMap<String, Object> away = new HashMap<String, Object>();
@@ -45,7 +50,7 @@ public class GameResource {
     public Response update(
             HashMap<String, Object> data
     ) {
-        HockeyGame game = GameApplication.getGame();
+        HockeyGame game = getGame();
         ScoreBoard scoreBoard = game.getScoreBoard();
         if (data.containsKey("period")) {
             Object period = data.get("period");
@@ -60,7 +65,7 @@ public class GameResource {
     public Response setClock(
             HashMap<String, Object> clock
     ) {
-        HockeyGame game = GameApplication.getGame();
+        HockeyGame game = getGame();
 
         if (clock.containsKey("running")) {
             Boolean running = (Boolean) clock.get("running");
@@ -89,28 +94,53 @@ public class GameResource {
     @Path("/{team}/goal")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response addGoal(
-            @PathParam("team") String team,
+            @PathParam("team") Team team,
             HashMap<String, Object> players
     ) {
-        HockeyGame game = GameApplication.getGame();
+        HockeyGame game = getGame();
         ScoreBoard s = game.getScoreBoard();
-
-        if ("home".equals(team)) {
-            int homeScore = s.getHomeScore();
-            s.setHomeScore(homeScore + 1);
-        } else if ("away".equals(team)) {
-            int awayScore = s.getAwayScore();
-            s.setAwayScore(awayScore + 1);
-        } else {
-            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
+        switch (team) {
+            case home:
+                int homeScore = s.getHomeScore();
+                s.setHomeScore(homeScore + 1);
+                break;
+            case away:
+                int awayScore = s.getAwayScore();
+                s.setAwayScore(awayScore + 1);
+                break;
+            default:
+                return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
         }
         return Response.ok().build();
+    }
+
+    @POST
+    @Path("/{team}/penalty")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response addGoal(
+            @PathParam("team") Team team,
+            Penalty penalty
+    ) {
+        HockeyGame game = getGame();
+
+        switch (team) {
+            case home:
+                game.addHomePenalty(penalty);
+                break;
+            case away:
+                game.addAwayPenalty(penalty);
+                break;
+            default:
+                return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        return Response.ok(penalty).build();
     }
 
     @DELETE
     @Path("/{team}/goal")
     public Response undoGoal(@PathParam("team") String team) {
-        HockeyGame game = GameApplication.getGame();
+        HockeyGame game = getGame();
         ScoreBoard s = game.getScoreBoard();
         if ("home".equals(team)) {
             int score = s.getHomeScore();

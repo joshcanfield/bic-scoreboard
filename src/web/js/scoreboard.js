@@ -14,6 +14,15 @@ function parseClock(clock) {
     if (isNaN(m) || isNaN(s)) return false;
     return {minutes: m, seconds: s}
 }
+function parseClockMillis(clock) {
+    var parts = parseClock(clock);
+    if (parts === false) return false;
+    return parts.minutes * 60 * 1000 + parts.seconds * 1000;
+}
+
+function formatClock() {
+    return pad(Scoreboard.getMinutes(), 2) + ":" + pad(Scoreboard.getSeconds(), 2);
+}
 
 Scoreboard = {
     time: 0,
@@ -26,7 +35,7 @@ Scoreboard = {
         Scoreboard.home = data.home;
         Scoreboard.away = data.away;
 
-        $("#clock").html(pad(Scoreboard.getMinutes(), 2) + ":" + pad(Scoreboard.getSeconds(), 2));
+        $("#clock").html(formatClock());
         $("#period").html(Scoreboard.period);
 
         $("#clock-pause").toggle(Scoreboard.running);
@@ -141,6 +150,18 @@ Scoreboard = {
 
             })
     },
+    addPenalty: function (team, penalty) {
+
+        $.ajax({
+            type: "POST",
+            url: "/api/game/" + team + "/penalty",
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify(penalty)
+        }).done(function (data) {
+
+            })
+    },
     getMinutes: function () {
         return Math.floor((Scoreboard.time + 999) / (60 * 1000));
     },
@@ -196,7 +217,63 @@ $(document).ready(function () {
             emptytext: '00:00'
 
         });
-        update()
+        update();
+
+        var dialog = $('#add-penalty');
+        $("#add-penalty-add").click(function () {
+            var penalty = {};
+            var playerField = $('#add-penalty-player');
+            var timeField = $('#add-penalty-time');
+
+            var error = false;
+            dialog.find(".modal-body .form-group").removeClass('has-error');
+
+            penalty.playerNumber = playerField.val();
+            if (!penalty.playerNumber) {
+                playerField.closest('.form-group').addClass('has-error');
+                error = true;
+            }
+
+            penalty.time = parseClockMillis(timeField.val());
+            if (!penalty.time) {
+                timeField.closest('.form-group').addClass('has-error');
+                error = true;
+            }
+
+            penalty.servingPlayerNumber = $('#add-penalty-serving').val();
+
+            var offIceField = $('#add-penalty-off_ice');
+            penalty.offIceTime = parseClockMillis(offIceField.val());
+            if (!penalty.offIceTime) {
+                offIceField.closest('.form-group').addClass('has-error');
+                error = true;
+            }
+
+            if (error) return;
+
+            var team = dialog.data('team');
+            Scoreboard.addPenalty(team, penalty);
+            dialog.modal('hide');
+            return false;
+        });
+
+        // before display
+        dialog.on('show.bs.modal', function (e) {
+            var team = e.relatedTarget.dataset.team;
+            dialog.data('team', team);
+
+            $(this).find(".modal-title").html(team + " Penalty");
+            // update clock
+            $('#add-penalty-off_ice').val(formatClock());
+
+            // remove errors
+            $(this).find(".modal-body .form-group").removeClass('has-error');
+        });
+
+        // after displayed
+        dialog.on('shown.bs.modal', function (e) {
+            $("#add-penalty-player")[0].focus();
+        });
     }
 )
 ;

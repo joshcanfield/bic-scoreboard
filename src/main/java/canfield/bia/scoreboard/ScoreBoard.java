@@ -20,14 +20,18 @@ import java.util.concurrent.TimeUnit;
  * CLOCK_STARTED
  */
 public class ScoreBoard {
-
+    private static final int HOME = 0;
+    private static final int AWAY = 1;
     private GameClock gameClock = new GameClock(20, 0);
     private int period = 1;
     private int homeScore;
     private int awayScore;
 
-    private Penalty[] homePenaltyList = new Penalty[2];
-    private Penalty[] awayPenaltyList = new Penalty[2];
+
+    private Event tickEvent = new Event(EventType.tick);
+    private Event endOfPeriodEvent = new Event(EventType.end_of_period);
+
+    private Penalty[][] penalties = new Penalty[2][];
 
     private List<EventListener> listeners = new ArrayList<EventListener>();
 
@@ -41,10 +45,15 @@ public class ScoreBoard {
 
                         int millis = gameClock.getMillis();
                         gameClock.update();
-                        fire(EventType.tick);
+                        fire(tickEvent);
+
+                        // expire penalty
+//                        if (homePenaltyList[0] != null && homePenaltyList[0].getClock().getMillis() == 0) {
+//                            fire(new PenaltyExpiredEvent(homePenaltyList[0]));
+//                        }
 
                         if (millis != 0 && gameClock.getMillis() == 0) {
-                            fire(EventType.end_of_period);
+                            fire(endOfPeriodEvent);
                             advancePeriod();
                         }
 
@@ -79,19 +88,19 @@ public class ScoreBoard {
     }
 
     public void setHomePenalty(int index, Penalty penalty) {
-        homePenaltyList[index] = penalty;
+//        homePenaltyList[index] = penalty;
     }
 
     public Penalty getHomePenalty(int index) {
-        return homePenaltyList[index];
+        return null; //homePenaltyList[index];
     }
 
     public void setAwayPenalty(int index, Penalty penalty) {
-        awayPenaltyList[index] = penalty;
+        //awayPenaltyList[index] = penalty;
     }
 
     public Penalty getAwayPenalty(int index) {
-        return awayPenaltyList[index];
+        return null; //awayPenaltyList[index];
     }
 
     public void pause() {
@@ -125,7 +134,7 @@ public class ScoreBoard {
     }
 
 
-    private void fire(EventType eventType) {
+    private void fire(Event eventType) {
         for (EventListener listener : listeners) {
             listener.handle(eventType);
         }
@@ -139,6 +148,10 @@ public class ScoreBoard {
     public enum PenaltyType {
         Major, // must run full time, not cleared with score
         Minor // clears with an opposing team score
+    }
+
+    public Penalty penalty(int playerNumber, int timeMillis) {
+        return new Penalty(playerNumber, timeMillis);
     }
 
     /**
@@ -157,6 +170,7 @@ public class ScoreBoard {
             this.playerNumber = playerNumber;
             this.clock = gameClock.child(timeMillis);
         }
+
 
         public int getPlayerNumber() {
             return playerNumber;
@@ -177,10 +191,39 @@ public class ScoreBoard {
 
 
     static public enum EventType {
-        tick, end_of_period, clock_expired
+        tick, end_of_period, penalty_expired, clock_expired
     }
 
     public interface EventListener {
-        void handle(EventType eventType);
+        void handle(Event eventType);
+    }
+
+    public static class Event {
+        EventType type;
+
+        public Event(EventType type) {
+            this.type = type;
+        }
+
+        public EventType getType() {
+            return type;
+        }
+    }
+
+    public static class PenaltyExpiredEvent extends Event {
+        Penalty penalty;
+
+        public PenaltyExpiredEvent(Penalty penalty) {
+            super(EventType.penalty_expired);
+            this.penalty = penalty;
+        }
+
+        public Penalty getPenalty() {
+            return penalty;
+        }
+
+        public void setPenalty(Penalty penalty) {
+            this.penalty = penalty;
+        }
     }
 }
