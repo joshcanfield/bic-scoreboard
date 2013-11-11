@@ -46,7 +46,7 @@ public class SerialUpdater {
         scoreBoard.addListener(new ScoreBoard.EventListener() {
             @Override
             public void handle(ScoreBoard.Event eventType) {
-
+                Clock gameClock = scoreBoard.getGameClock();
                 long now = System.currentTimeMillis();
                 switch (eventType.getType()) {
                     case tick:
@@ -54,12 +54,8 @@ public class SerialUpdater {
                             // we don't update for 3 seconds while the buzzer is going off...
                             break;
                         }
-                        Clock gameClock = scoreBoard.getGameClock();
                         int millis = gameClock.getMillis();
-                        if (buzzer_started != null) {
-                            // clear the buzzer
-                            clockAndScoreCmd.sendGameClock(gameClock, true);
-                        } else if (millis > 59 * 1000) {
+                        if (millis > 59 * 1000) {
                             clockAndScoreCmd.sendGameClock(gameClock);
                         } else {
                             // if the game clock is less than a minute we push changes faster
@@ -72,6 +68,7 @@ public class SerialUpdater {
                         break;
                     case end_of_period:
                         buzzer_started = now;
+                        clockAndScoreCmd.sendGameClock(gameClock, true);
                         break;
                 }
             }
@@ -277,7 +274,7 @@ public class SerialUpdater {
                     int remaining = scoreBoard.getPenaltyRemainingMillis(penalty);
 
                     byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
-                    b[index++] = minutes == 0 ? (byte) 0xFF : minutes;
+                    b[index++] = digit(1, minutes);/// == 0 ? (byte) 0xFF : minutes;
                     int seconds = GameClock.getSeconds(remaining);
                     b[index++] = digit(10, seconds);
                     b[index++] = digit(1, seconds);
@@ -296,7 +293,10 @@ public class SerialUpdater {
                     b[index++] = digit(1, player);
                 }
             }
+            b[index] = (byte) 0xFF;
+
             send(b);
+
             return true;
         }
     }
