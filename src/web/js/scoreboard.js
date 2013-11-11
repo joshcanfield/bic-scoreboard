@@ -33,12 +33,12 @@ function getSeconds(millis) {
 function formatTime(remaining) {
     return getMinutes(remaining) + ':' + pad(getSeconds(remaining), 2);
 }
-function formatPenalties(penalties, data) {
+function formatPenalties(team, penalties, data) {
     var table = '';
     for (var i = 0; i < penalties.length; ++i) {
         var p = penalties[i];
         var remaining = p.time;
-        if ( p.startTime > 0 ) {
+        if (p.startTime > 0) {
             var startTime = p.startTime + ((data.period - p.period) * 20 * 60 * 1000);
             remaining = p.time - (startTime - data.time);
         }
@@ -50,9 +50,15 @@ function formatPenalties(penalties, data) {
             '<td>' + formatTime(p.offIceTime) + '</td>' +
             '<td>' + formatTime(p.startTime) + '</td>' +
             '<td>' + formatTime(remaining) + '</td>' +
+            '<td><a href="#" data-team="' + team + '" data-pid="' + p.id + '" onclick="deletePenalty(this); return false;">x</a></td>' +
             '</tr>';
     }
     return table;
+}
+function deletePenalty(link) {
+    var team = $(link).data('team');
+    var pid = $(link).data('pid');
+    Scoreboard.deletePenalty(team, pid);
 }
 Scoreboard = {
     time: 0,
@@ -65,8 +71,8 @@ Scoreboard = {
         Scoreboard.home = data.home;
         Scoreboard.away = data.away;
 
-        $('#home').find('tbody.list').html(formatPenalties(data.home.penalties, data));
-        $('#away').find('tbody.list').html(formatPenalties(data.away.penalties, data));
+        $('#home').find('tbody.list').html(formatPenalties('home', data.home.penalties, data));
+        $('#away').find('tbody.list').html(formatPenalties('away', data.away.penalties, data));
 
         $("#clock").html(formatClock());
         $("#period").html(Scoreboard.period);
@@ -194,6 +200,17 @@ Scoreboard = {
         }).done(function (data) {
 
             })
+    },
+
+    deletePenalty: function (team, id) {
+        $.ajax({
+            type: "DELETE",
+            url: "/api/game/" + team + "/penalty/" + id,
+            contentType: "application/json"
+        }).done(function (data) {
+
+            });
+        return false;
     },
     getMinutes: function () {
         return getMinutes(Scoreboard.time);

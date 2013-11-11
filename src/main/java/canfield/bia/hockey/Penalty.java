@@ -1,9 +1,15 @@
 package canfield.bia.hockey;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  *
  */
 public class Penalty {
+    private static AtomicInteger idSource = new AtomicInteger();
+
+    private Integer id = idSource.incrementAndGet();
+
     private int playerNumber;
     private int servingPlayerNumber;
     // how long is the penalty
@@ -61,5 +67,9 @@ public class Penalty {
 
     public void setStartTime(int startTime) {
         this.startTime = startTime;
+    }
+
+    public Integer getId() {
+        return id;
     }
 }

@@ -8,8 +8,8 @@ import canfield.bia.scoreboard.ScoreBoard;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import static canfield.bia.hockey.HockeyGame.Team;
 import static canfield.bia.resource.GameApplication.getGame;
@@ -135,6 +135,40 @@ public class GameResource {
         }
 
         return Response.ok(penalty).build();
+    }
+
+    @DELETE
+    @Path("/{team}/penalty/{penaltyId}")
+    public Response deletePenalty(
+            @PathParam("team") Team team,
+            @PathParam("penaltyId") Integer penaltyId
+    ) {
+        HockeyGame game = getGame();
+        List<Penalty> penalties = null;
+        switch (team) {
+            case home:
+                penalties = game.getHomePenalties();
+                break;
+            case away:
+                penalties = game.getAwayPenalties();
+                break;
+        }
+
+        if (penalties != null) {
+            int index = -1;
+            for (int i = 0; i < penalties.size(); i++) {
+                Penalty penalty = penalties.get(i);
+                if (penalty.getId().equals(penaltyId)) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index >= 0) {
+                penalties.remove(index);
+            }
+        }
+
+        return Response.ok().build();
     }
 
     @DELETE
