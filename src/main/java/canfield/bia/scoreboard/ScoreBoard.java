@@ -36,6 +36,7 @@ public class ScoreBoard {
 
     private Event tickEvent = new Event(EventType.tick);
     private Event endOfPeriodEvent = new Event(EventType.end_of_period);
+    private Event buzzer = new Event(EventType.buzzer);
 
     private List<EventListener> listeners = new ArrayList<EventListener>();
 
@@ -53,6 +54,7 @@ public class ScoreBoard {
 
                         if (millis != 0 && gameClock.getMillis() == 0) {
                             fire(endOfPeriodEvent);
+                            // TODO advance after millis
                             advancePeriod();
                         }
 
@@ -67,6 +69,10 @@ public class ScoreBoard {
             return;
         }
         gameClock = new GameClock(minutes, seconds);
+    }
+
+    public void ringBuzzer() {
+        fire(buzzer);
     }
 
     /**
@@ -162,7 +168,7 @@ public class ScoreBoard {
 
 
     static public enum EventType {
-        tick, end_of_period, penalty_expired, clock_expired
+        tick, end_of_period, penalty_expired, clock_expired, buzzer
     }
 
     public interface EventListener {

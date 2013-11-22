@@ -155,19 +155,13 @@ public class GameResource {
         }
 
         if (penalties != null) {
-            int index = -1;
-            for (int i = 0; i < penalties.size(); i++) {
-                Penalty penalty = penalties.get(i);
+            for (Penalty penalty : penalties) {
                 if (penalty.getId().equals(penaltyId)) {
-                    index = i;
+                    game.deletePenalty(team, penalty);
                     break;
                 }
             }
-            if (index >= 0) {
-                penalties.remove(index);
-            }
         }
-
         return Response.ok().build();
     }
 
@@ -187,6 +181,14 @@ public class GameResource {
         } else {
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
         }
+
+        return Response.ok().build();
+    }
+
+    @POST
+    @Path("/buzzer")
+    public Response buzzer() {
+        getGame().getScoreBoard().ringBuzzer();
         return Response.ok().build();
     }
 

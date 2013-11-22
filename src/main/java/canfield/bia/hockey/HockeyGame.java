@@ -45,7 +45,29 @@ public class HockeyGame {
         );
     }
 
-    private void updatePenalties() {
+    public void deletePenalty(Team team, Penalty penalty) {
+        switch (team) {
+            case home:
+                for (int i = 0; i < 2; ++i) {
+                    if (penalty.equals(scoreBoard.getHomePenalty(i))) {
+                        scoreBoard.setHomePenalty(i, null);
+                    }
+                }
+                homePenalties.remove(penalty);
+                break;
+            case away:
+                for (int i = 0; i < 2; ++i) {
+                    if (penalty.equals(scoreBoard.getAwayPenalty(i))) {
+                        scoreBoard.setAwayPenalty(i, null);
+                    }
+                }
+                awayPenalties.remove(penalty);
+                break;
+        }
+
+    }
+
+    public void updatePenalties() {
         Queue<Integer> availableHomePenaltyIndex = new ArrayDeque<Integer>();
         Queue<Integer> availableAwayPenaltyIndex = new ArrayDeque<Integer>();
         // clear expired penalties from the scoreboard
@@ -82,8 +104,9 @@ public class HockeyGame {
                     if (scoreBoard.getHomePenalty(0) == penalty || scoreBoard.getHomePenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime((millis/1000)*1000);
+                    penalty.setStartTime(roundToSecond(millis));
                     scoreBoard.setHomePenalty(index, penalty);
+                    break;
                 }
             }
         }
@@ -96,11 +119,16 @@ public class HockeyGame {
                     if (scoreBoard.getAwayPenalty(0) == penalty || scoreBoard.getAwayPenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime((millis/1000)*1000);
+                    penalty.setStartTime(roundToSecond(millis));
                     scoreBoard.setAwayPenalty(index, penalty);
+                    break;
                 }
             }
         }
+    }
+
+    private int roundToSecond(int millis) {
+        return ((millis + 999) / 1000) * 1000;
     }
 
     private boolean isExpired(Penalty penalty) {

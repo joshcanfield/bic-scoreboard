@@ -50,7 +50,8 @@ public class SerialUpdater {
                 long now = System.currentTimeMillis();
                 switch (eventType.getType()) {
                     case tick:
-                        if (buzzer_started != null && now - buzzer_started < 3 * SECONDS) {
+
+                        if (buzzer_started != null && now - buzzer_started < 2.5 * SECONDS) {
                             // we don't update for 3 seconds while the buzzer is going off...
                             break;
                         }
@@ -70,6 +71,10 @@ public class SerialUpdater {
                         buzzer_started = now;
                         clockAndScoreCmd.sendGameClock(gameClock, true);
                         break;
+                    case buzzer:
+                        clockAndScoreCmd.sendGameClock(gameClock, true);
+                        break;
+
                 }
             }
 

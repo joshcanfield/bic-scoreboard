@@ -4,12 +4,19 @@ function pad(d, w) {
 }
 
 function parseClock(clock) {
-    var parts = clock.split(':', 2);
-    if (parts.length != 2) {
-        return false;
+    // 20:00
+    clock = clock.replace(':', '');
+    // 2000
+
+    var m;
+    var s;
+    if ( clock.length > 2 ) {
+        s = parseInt(clock.substr(-2));
+        m = parseInt(clock.substr(-clock.length, clock.length - 2));
+    } else {
+        s = parseInt(clock.substr(-clock.length));
+        m = 0;
     }
-    var m = parseInt(parts[0]);
-    var s = parseInt(parts[1]);
 
     if (isNaN(m) || isNaN(s)) return false;
     return {minutes: m, seconds: s}
@@ -201,7 +208,6 @@ Scoreboard = {
 
             })
     },
-
     deletePenalty: function (team, id) {
         $.ajax({
             type: "DELETE",
@@ -211,6 +217,15 @@ Scoreboard = {
 
             });
         return false;
+    },
+    buzzer: function() {
+        $.ajax({
+            type: "POST",
+            url: "/api/game/buzzer",
+            contentType: "application/json"
+        }).done(function (data) {
+
+            })
     },
     getMinutes: function () {
         return getMinutes(Scoreboard.time);
@@ -232,6 +247,7 @@ function update() {
 }
 
 $(document).ready(function () {
+        $('#buzzer').click(Scoreboard.buzzer);
         $("#clock-start").click(Scoreboard.startClock);
         $("#clock-pause").click(Scoreboard.pauseClock);
 //        $("#clock").click(Scoreboard.setClock);

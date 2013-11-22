@@ -2,8 +2,6 @@ package canfield.bia.scoreboard;
 
 /**
  * The GameClock produces child clocks that share isRunning?
- * <p/>
- * TODO: Clock events: TICK, EXPIRED
  */
 public class GameClock implements Clock {
     private int clockStartMillis; // 20 minute clock, used when reset
