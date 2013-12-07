@@ -1,4 +1,4 @@
-package canfield.bia.scoreboard
+package canfield.bia.hockey.scoreboard
 
 import org.testng.annotations.Test
 

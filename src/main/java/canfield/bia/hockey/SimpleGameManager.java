@@ -1,23 +1,22 @@
 package canfield.bia.hockey;
 
-import canfield.bia.scoreboard.ScoreBoard;
-import canfield.bia.scoreboard.io.SerialUpdater;
+import canfield.bia.hockey.scoreboard.ScoreBoard;
+import canfield.bia.hockey.scoreboard.io.SerialUpdater;
 
+import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static canfield.bia.hockey.SimpleGameManager.Team.home;
+
 /**
- * Penalties
- * - sorted in the order they were received.
- * - grouped by player number (2 2 minute penalties show as 4 minutes on the scoreboard)
- * - player serving penalty number shows on scoreboard?
- * - coincidental penalties don't stop for a goal
- * - doesn't show on the clock?
+ * SimpleGameManager keeps track of more penalties than will fit on the
  */
-public class HockeyGame {
+public class SimpleGameManager {
     private ScoreBoard scoreBoard;
+    private SerialUpdater serialUpdater;
 
     public enum Team {
         home, away
@@ -26,11 +25,10 @@ public class HockeyGame {
     private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
     private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
 
-    private final SerialUpdater updater;
-
-    public HockeyGame() {
-        scoreBoard = new ScoreBoard();
-        updater = new SerialUpdater(scoreBoard, "tty.usbserial");
+    @Inject
+    public SimpleGameManager(ScoreBoard scoreBoard, SerialUpdater serialUpdater) {
+        this.scoreBoard = scoreBoard;
+        this.serialUpdater = serialUpdater;
 
         scoreBoard.addListener(
                 new ScoreBoard.EventListener() {
@@ -43,6 +41,53 @@ public class HockeyGame {
                     }
                 }
         );
+    }
+
+    public int getPeriod() {
+        return scoreBoard.getPeriod();
+    }
+
+    public void setPeriod(Integer period) {
+        scoreBoard.setPeriod(period);
+    }
+
+    public long getTime() {
+        return scoreBoard.getGameClock().getMillis();
+    }
+
+    public boolean isClockRunning() {
+        return scoreBoard.getGameClock().isRunning();
+    }
+
+    public void startClock() {
+        scoreBoard.getGameClock().start();
+    }
+
+    public void stopClock() {
+        scoreBoard.getGameClock().stop();
+    }
+
+    public void setTime(Integer millis) {
+        scoreBoard.getGameClock().setMillis(millis);
+    }
+
+    public int getScore(Team team) {
+        if (team == home) {
+            return scoreBoard.getHomeScore();
+        } else {
+            return scoreBoard.getAwayScore();
+        }
+    }
+
+    public void setScore(Team team, int score) {
+        switch (team) {
+            case home:
+                scoreBoard.setHomeScore(score);
+                break;
+            case away:
+                scoreBoard.setAwayScore(score);
+                break;
+        }
     }
 
     public void deletePenalty(Team team, Penalty penalty) {
@@ -139,29 +184,32 @@ public class HockeyGame {
         return scoreBoard;
     }
 
-    public void setScoreBoard(ScoreBoard scoreBoard) {
-        this.scoreBoard = scoreBoard;
+    public List<Penalty> getPenalties(Team team) {
+        return team == home ? homePenalties : awayPenalties;
     }
 
-    public List<Penalty> getHomePenalties() {
-        return homePenalties;
-    }
-
-    public void addHomePenalty(Penalty penalty) {
-        homePenalties.add(penalty);
+    public void addPenalty(Team team, Penalty penalty) {
+        switch (team) {
+            case home:
+                homePenalties.add(penalty);
+                break;
+            case away:
+                awayPenalties.add(penalty);
+                break;
+        }
         updatePenalties();
     }
 
-    public List<Penalty> getAwayPenalties() {
-        return awayPenalties;
+    public void playBuzzer(int millis) {
+        scoreBoard.ringBuzzer(millis);
     }
 
-    public void addAwayPenalty(Penalty penalty) {
-        awayPenalties.add(penalty);
-        updatePenalties();
+    public void stopUpdates() {
+        serialUpdater.stop();
     }
 
-    public SerialUpdater getUpdater() {
-        return updater;
+    public void startUpdates() {
+        serialUpdater.start();
     }
+
 }

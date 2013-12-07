@@ -1,4 +1,4 @@
-package canfield.bia.scoreboard;
+package canfield.bia.hockey.scoreboard;
 
 /**
  * The GameClock produces child clocks that share isRunning?
@@ -31,6 +31,11 @@ public class GameClock implements Clock {
     @Override
     public int getMillis() {
         return timeRemainingMillis;
+    }
+
+    @Override
+    public void setMillis(int millis) {
+        timeRemainingMillis = millis;
     }
 
     @Override
@@ -73,10 +78,6 @@ public class GameClock implements Clock {
     public void stop() {
         update();
         isRunning = false;
-    }
-
-    public Clock child(int timeMillis) {
-        return new PenaltyClock(this, timeMillis);
     }
 
     public void update() {

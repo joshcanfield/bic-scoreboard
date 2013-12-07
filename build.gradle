@@ -3,6 +3,7 @@ description = "Bremerton Ice Arena ScoreBoard"
 apply plugin: "java"
 apply plugin: "idea"
 apply plugin: 'groovy'
+apply plugin: 'java-library-distribution'
 
 sourceCompatibility = "1.6"
 targetCompatibility = "1.6"
@@ -42,6 +43,9 @@ sourceSets {
 }
 
 dependencies {
+    compile "com.squareup.dagger:dagger:1.1.0"
+    compile "com.squareup.dagger:dagger-compiler:1.1.0"
+
     compile "com.sparetimelabs:purejavacomm:0.0.17"
     compile "joda-time:joda-time:2.1"
     compile 'ch.qos.logback:logback-classic:1.0.13'
@@ -59,6 +63,12 @@ dependencies {
     testCompile "org.codehaus.groovy:groovy-all:2.0.5"
 
     testCompile "org.testng:testng:6.1.1"
+}
+
+distributions {
+    main {
+        baseName = 'scoreboard'
+    }
 }
 
 test {

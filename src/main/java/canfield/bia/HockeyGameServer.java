@@ -1,6 +1,8 @@
 package canfield.bia;
 
-import canfield.bia.resource.GameApplication;
+import canfield.bia.hockey.SimpleGameModule;
+import canfield.bia.rest.GameApplication;
+import dagger.ObjectGraph;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.DefaultHandler;
@@ -13,13 +15,16 @@ import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+
 
 /**
  *
  */
 public class HockeyGameServer {
-    private static Server server = null;
     private static Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
+
+    private static Server server = null;
 
     public static void main(String[] args) {
         if (args.length == 0 || args[0].equals("start")) {
@@ -27,6 +32,9 @@ public class HockeyGameServer {
         } else {
             stop();
         }
+    }
+
+    public HockeyGameServer() {
     }
 
     private static void stop() {
@@ -44,6 +52,11 @@ public class HockeyGameServer {
         if (server != null) {
             return;
         }
+
+        startServer();
+    }
+
+    private static void startServer() {
         server = new Server();
         final SelectChannelConnector connector = new SelectChannelConnector();
         connector.setPort(8080);
@@ -65,6 +78,7 @@ public class HockeyGameServer {
 
         try {
             server.start();
+            log.info("Server waiting for requests...");
             server.join();
         } catch (Exception e) {
             throw new RuntimeException("Failed to start service.", e);

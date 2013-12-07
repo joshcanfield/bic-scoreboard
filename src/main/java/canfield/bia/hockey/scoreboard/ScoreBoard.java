@@ -1,4 +1,4 @@
-package canfield.bia.scoreboard;
+package canfield.bia.hockey.scoreboard;
 
 import canfield.bia.hockey.Penalty;
 
@@ -9,17 +9,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Container of the state of the scoreboard.
- * <p/>
- * TODO: Support undo - if you add a point and it clears a penalty we need to be able to fix that!
- * TODO: Scoreboard Events:
- * AWAY_SCORE,
- * HOME_SCORE,
- * ADD_PENALTY,
- * CLEAR_PENALTY,
- * PERIOD_CHANGE,
- * CLOCK_STOPPED,
- * CLOCK_STARTED
+ * Scoreboard owns the state of the scoreboard.
  */
 public class ScoreBoard {
     private static final int HOME = 0;
@@ -29,6 +19,7 @@ public class ScoreBoard {
     private int homeScore;
     private int awayScore;
 
+    // Empty penalties
     private Penalty[][] penalties = new Penalty[][]{
             {null, null},
             {null, null}
@@ -36,7 +27,6 @@ public class ScoreBoard {
 
     private Event tickEvent = new Event(EventType.tick);
     private Event endOfPeriodEvent = new Event(EventType.end_of_period);
-    private Event buzzer = new Event(EventType.buzzer);
 
     private List<EventListener> listeners = new ArrayList<EventListener>();
 
@@ -71,8 +61,8 @@ public class ScoreBoard {
         gameClock = new GameClock(minutes, seconds);
     }
 
-    public void ringBuzzer() {
-        fire(buzzer);
+    public void ringBuzzer(int millis) {
+        fire(new BuzzerEvent(millis));
     }
 
     /**
@@ -184,6 +174,23 @@ public class ScoreBoard {
 
         public EventType getType() {
             return type;
+        }
+    }
+
+    public static class BuzzerEvent extends Event {
+        int lengthMillis;
+
+        public BuzzerEvent(int lengthMillis) {
+            super(EventType.buzzer);
+            this.lengthMillis = lengthMillis;
+        }
+
+        public int getLengthMillis() {
+            return lengthMillis;
+        }
+
+        public void setLengthMillis(int lengthMillis) {
+            this.lengthMillis = lengthMillis;
         }
     }
 }

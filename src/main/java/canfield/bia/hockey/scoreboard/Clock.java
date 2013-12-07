@@ -1,4 +1,4 @@
-package canfield.bia.scoreboard;
+package canfield.bia.hockey.scoreboard;
 
 /**
  *
@@ -20,4 +20,6 @@ public interface Clock {
     void setSeconds(int seconds);
 
     boolean isRunning();
+
+    void setMillis(int millis);
 }

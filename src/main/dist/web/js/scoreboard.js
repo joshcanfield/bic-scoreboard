@@ -120,8 +120,8 @@ Scoreboard = {
     setClock: function (params) {
         var d = new $.Deferred;
 
-        var clock = parseClock(params.value);
-        if (clock === false) {
+        var clockMillis = parseClockMillis(params.value);
+        if (clockMillis === false) {
             return d.reject('Invalid time. Example 20:00'); //returning error via deferred object
         }
 
@@ -129,7 +129,7 @@ Scoreboard = {
             type: "POST",
             url: "/api/game/clock",
             contentType: "application/json",
-            data: JSON.stringify(clock)
+            data: JSON.stringify({time:clockMillis})
         }).done(function () {
                 d.resolve();
             }).fail(function () {

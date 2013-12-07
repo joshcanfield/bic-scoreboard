@@ -1,4 +1,4 @@
-package canfield.bia.scoreboard.io
+package canfield.bia.hockey.scoreboard.io
 
 import org.testng.annotations.DataProvider
 import org.testng.annotations.Test

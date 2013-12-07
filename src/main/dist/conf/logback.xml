@@ -19,5 +19,8 @@
     </root>
 
     <logger name="canfield.bia" level="INFO"/>
+    <!-- enable to locate port name
+    <logger name="canfield.bia.scoreboard.io.SerialUpdater" level="TRACE"/>
+    -->
 
 </configuration>

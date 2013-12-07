@@ -1,9 +1,9 @@
-package canfield.bia.scoreboard.io;
+package canfield.bia.hockey.scoreboard.io;
 
 import canfield.bia.hockey.Penalty;
-import canfield.bia.scoreboard.Clock;
-import canfield.bia.scoreboard.GameClock;
-import canfield.bia.scoreboard.ScoreBoard;
+import canfield.bia.hockey.scoreboard.Clock;
+import canfield.bia.hockey.scoreboard.GameClock;
+import canfield.bia.hockey.scoreboard.ScoreBoard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import purejavacomm.CommPortIdentifier;
@@ -15,10 +15,9 @@ import java.io.OutputStream;
 import java.util.Enumeration;
 
 public class SerialUpdater {
-    private Logger log = LoggerFactory.getLogger(SerialUpdater.class);
+    private static Logger log = LoggerFactory.getLogger(SerialUpdater.class);
 
     public static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
-    public static final int SECONDS = 1000;
 
     /**
      * This is the scoreboard data that we're sending down the serial line
@@ -30,7 +29,7 @@ public class SerialUpdater {
 
     private final PenaltyClockCmd penaltyClockCmd;
     private final SerialUpdater.ClockAndScoreCmd clockAndScoreCmd;
-    private Long buzzer_started;
+    private long buzzer_stops = 0;
 
     public SerialUpdater(ScoreBoard scoreBoard, String portName) {
         this.scoreBoard = scoreBoard;
@@ -45,19 +44,15 @@ public class SerialUpdater {
 
         scoreBoard.addListener(new ScoreBoard.EventListener() {
             @Override
-            public void handle(ScoreBoard.Event eventType) {
+            public void handle(ScoreBoard.Event event) {
                 Clock gameClock = scoreBoard.getGameClock();
                 long now = System.currentTimeMillis();
-                switch (eventType.getType()) {
+                switch (event.getType()) {
                     case tick:
-
-                        if (buzzer_started != null && now - buzzer_started < 2.5 * SECONDS) {
-                            // we don't update for 3 seconds while the buzzer is going off...
-                            break;
-                        }
                         int millis = gameClock.getMillis();
+
                         if (millis > 59 * 1000) {
-                            clockAndScoreCmd.sendGameClock(gameClock);
+                            clockAndScoreCmd.sendGameClock(gameClock, buzzer_stops > now);
                         } else {
                             // if the game clock is less than a minute we push changes faster
                             clockAndScoreCmd.sendLastMinuteGameClock(gameClock);
@@ -65,16 +60,18 @@ public class SerialUpdater {
 
                         penaltyClockCmd.sendPenaltyClock();
 
-                        buzzer_started = null;
                         break;
                     case end_of_period:
-                        buzzer_started = now;
-                        clockAndScoreCmd.sendGameClock(gameClock, true);
+                        buzzer_stops = now + 2500;
                         break;
                     case buzzer:
-                        clockAndScoreCmd.sendGameClock(gameClock, true);
+                        // can't send the buzzer in the last minute
+                        int lengthMillis = ((ScoreBoard.BuzzerEvent) event).getLengthMillis();
+                        if (gameClock.getMillis() - lengthMillis > 0) {
+                            // We can ring the buzzer
+                            buzzer_stops = now + lengthMillis;
+                        }
                         break;
-
                 }
             }
 
@@ -156,9 +153,9 @@ public class SerialUpdater {
         int lastAwayScore = 0;
         private long lastGameClockUpdateMillis;
 
-        private void sendGameClock(Clock gameClock, boolean cancelBuzzer) {
+        private void sendGameClock(Clock gameClock, boolean buzzer) {
             long now = System.currentTimeMillis();
-            if (!cancelBuzzer && (now - lastGameClockUpdateMillis) < GAME_CLOCK_UPDATE_INTERVAL_MILLIS) return;
+            if (now - lastGameClockUpdateMillis < GAME_CLOCK_UPDATE_INTERVAL_MILLIS) return;
 
             lastGameClockUpdateMillis = now;
             send(new byte[]{
@@ -173,13 +170,9 @@ public class SerialUpdater {
                     digit(10, gameClock.getSeconds()),
                     digit(1, gameClock.getSeconds()),
                     digit(1, scoreBoard.getPeriod()),
-                    cancelBuzzer ? digit(1, 5) : 0,
+                    buzzer ? digit(1, 5) : 0,
                     0
             });
-        }
-
-        private void sendGameClock(Clock gameClock) {
-            sendGameClock(gameClock, false);
         }
 
         private void sendLastMinuteGameClock(Clock gameClock) {
@@ -269,7 +262,6 @@ public class SerialUpdater {
             byte[] b = new byte[26];
             b[index++] = 0x2E;
             b[index++] = 0x7A;
-            int gameMillis = scoreBoard.getGameClock().getMillis();
             for (Penalty penalty : penalties) {
                 if (penalty == null) {
                     b[index++] = (byte) 0xFF;
@@ -279,7 +271,7 @@ public class SerialUpdater {
                     int remaining = scoreBoard.getPenaltyRemainingMillis(penalty);
 
                     byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
-                    b[index++] = digit(1, minutes);/// == 0 ? (byte) 0xFF : minutes;
+                    b[index++] = digit(1, minutes); // == 0 ? (byte) 0xFF : minutes;
                     int seconds = GameClock.getSeconds(remaining);
                     b[index++] = digit(10, seconds);
                     b[index++] = digit(1, seconds);
@@ -355,10 +347,13 @@ public class SerialUpdater {
         Enumeration e = CommPortIdentifier.getPortIdentifiers();
         while (e.hasMoreElements()) {
             CommPortIdentifier portid = (CommPortIdentifier) e.nextElement();
+            log.trace("Found port: {}", portid.getName());
             if (portid.getName().equals(portName)) {
+                log.trace("Using {}", portid.getName());
                 return portid;
             }
         }
+        log.trace("Unable to locate {}", portName);
         return null;
     }
 }
