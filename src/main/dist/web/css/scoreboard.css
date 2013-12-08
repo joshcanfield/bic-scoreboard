@@ -54,3 +54,7 @@ h2 {
     display: block;
     font-family: monospace;
 }
+
+#new-game {
+    float: right;
+}

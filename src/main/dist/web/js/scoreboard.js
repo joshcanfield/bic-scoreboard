@@ -10,7 +10,7 @@ function parseClock(clock) {
 
     var m;
     var s;
-    if ( clock.length > 2 ) {
+    if (clock.length > 2) {
         s = parseInt(clock.substr(-2));
         m = parseInt(clock.substr(-clock.length, clock.length - 2));
     } else {
@@ -62,15 +62,50 @@ function formatPenalties(team, penalties, data) {
     }
     return table;
 }
+
 function deletePenalty(link) {
     var team = $(link).data('team');
     var pid = $(link).data('pid');
     Scoreboard.deletePenalty(team, pid);
 }
+
+function doMethod(method, endpoint, value) {
+    var options = {
+        type: method,
+        url: "/api/game/" + endpoint,
+        contentType: "application/json"
+    };
+    if (value) {
+        options.dataType = "json";
+        options.data = JSON.stringify(value);
+    }
+    return $.ajax(options)
+}
+
+function updateGame(value) {
+    return doMethod("PUT", "", value);
+}
+
+function doPost(endpoint, value) {
+    return doMethod("POST", endpoint, value);
+}
+
+function doDelete(endpoint) {
+    $.ajax({
+        type: "DELETE",
+        url: "/api/game/" + endpoint
+    })
+}
 Scoreboard = {
     time: 0,
     home: {},
     away: {},
+    newGame: function () {
+        doPost("", {
+
+        });
+    },
+
     update: function (data) {
         Scoreboard.time = data.time;
         Scoreboard.running = data.running;
@@ -91,30 +126,10 @@ Scoreboard = {
         $("#away-score").html(data.away.score);
     },
     startClock: function () {
-        $.ajax({
-            type: "POST",
-            url: "/api/game/clock",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify({
-                "running": true
-            })
-        }).done(function (data) {
-
-            })
+        updateGame({"running": true});
     },
     pauseClock: function () {
-        $.ajax({
-            type: "POST",
-            url: "/api/game/clock",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify({
-                "running": false
-            })
-        }).done(function (data) {
-
-            })
+        updateGame({"running": false});
     },
     // this is x-edit aware (http://vitalets.github.io/x-editable/docs.html)
     setClock: function (params) {
@@ -125,107 +140,33 @@ Scoreboard = {
             return d.reject('Invalid time. Example 20:00'); //returning error via deferred object
         }
 
-        $.ajax({
-            type: "POST",
-            url: "/api/game/clock",
-            contentType: "application/json",
-            data: JSON.stringify({time:clockMillis})
-        }).done(function () {
+        updateGame({time: clockMillis})
+            .done(function () {
                 d.resolve();
-            }).fail(function () {
+            })
+            .fail(function () {
                 return d.reject('failed to updated the time'); //returning error via deferred object
             });
         return d.promise();
     },
     setPeriod: function (p) {
-        console.log("Setting period to " + p);
-        $.ajax({
-            type: "POST",
-            url: "/api/game/",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify({
-                "period": p
-            })
-        }).done(function (data) {
-
-            })
+        updateGame({ "period": p });
     },
-
-    addHomeScore: function () {
-        $.ajax({
-            type: "POST",
-            url: "/api/game/home/goal",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify({
-                "player": 10,
-                "assist": 15
-            })
-        }).done(function (data) {
-
-            })
+    addScore: function (team) {
+        doPost(team + "/goal", { "player": 10, "assist": 15 });
     },
-    subHomeScore: function () {
-        $.ajax({
-            type: "DELETE",
-            url: "/api/game/home/goal"
-        }).done(function (data) {
-
-            })
-    },
-    addAwayScore: function () {
-        $.ajax({
-            type: "POST",
-            url: "/api/game/away/goal",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify({
-                "player": 10,
-                "assist": 15
-            })
-        }).done(function (data) {
-
-            })
-    },
-    subAwayScore: function () {
-        $.ajax({
-            type: "DELETE",
-            url: "/api/game/away/goal"
-        }).done(function (data) {
-
-            })
+    subScore: function (team) {
+        doDelete(team + "/goal");
     },
     addPenalty: function (team, penalty) {
-
-        $.ajax({
-            type: "POST",
-            url: "/api/game/" + team + "/penalty",
-            contentType: "application/json",
-            dataType: "json",
-            data: JSON.stringify(penalty)
-        }).done(function (data) {
-
-            })
+        doPost(team + "/penalty", penalty);
     },
     deletePenalty: function (team, id) {
-        $.ajax({
-            type: "DELETE",
-            url: "/api/game/" + team + "/penalty/" + id,
-            contentType: "application/json"
-        }).done(function (data) {
-
-            });
+        doDelete(team + "/penalty/" + id);
         return false;
     },
-    buzzer: function() {
-        $.ajax({
-            type: "POST",
-            url: "/api/game/buzzer",
-            contentType: "application/json"
-        }).done(function (data) {
-
-            })
+    buzzer: function () {
+        doPost("buzzer");
     },
     getMinutes: function () {
         return getMinutes(Scoreboard.time);
@@ -248,6 +189,7 @@ function update() {
 
 $(document).ready(function () {
         $('#buzzer').click(Scoreboard.buzzer);
+        $('#new-game').click(Scoreboard.newGame);
         $("#clock-start").click(Scoreboard.startClock);
         $("#clock-pause").click(Scoreboard.pauseClock);
 //        $("#clock").click(Scoreboard.setClock);
@@ -262,19 +204,11 @@ $(document).ready(function () {
         });
 
         $(".score-up").click(function () {
-            if (this.dataset.team == "home") {
-                Scoreboard.addHomeScore()
-            } else {
-                Scoreboard.addAwayScore();
-            }
+            Scoreboard.addScore(this.dataset.team)
         });
 
         $(".score-down").click(function () {
-            if (this.dataset.team == "home") {
-                Scoreboard.subHomeScore()
-            } else {
-                Scoreboard.subAwayScore();
-            }
+            Scoreboard.subScore(this.dataset.team)
         });
 
         $('#clock').editable({
@@ -283,6 +217,8 @@ $(document).ready(function () {
             emptytext: '00:00'
 
         });
+
+        // update starts the polling
         update();
 
         var dialog = $('#add-penalty');
@@ -315,11 +251,13 @@ $(document).ready(function () {
                 error = true;
             }
 
-            if (error) return;
+            if (error) return false;
+
             penalty.period = Scoreboard.period;
             var team = dialog.data('team');
             Scoreboard.addPenalty(team, penalty);
             dialog.modal('hide');
+
             return false;
         });
 
@@ -337,9 +275,8 @@ $(document).ready(function () {
         });
 
         // after displayed
-        dialog.on('shown.bs.modal', function (e) {
+        dialog.on('shown.bs.modal', function () {
             $("#add-penalty-player")[0].focus();
         });
     }
-)
-;
+);

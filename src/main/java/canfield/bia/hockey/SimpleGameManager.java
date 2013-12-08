@@ -8,8 +8,7 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import static canfield.bia.hockey.SimpleGameManager.Team.home;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SimpleGameManager keeps track of more penalties than will fit on the
@@ -17,10 +16,6 @@ import static canfield.bia.hockey.SimpleGameManager.Team.home;
 public class SimpleGameManager {
     private ScoreBoard scoreBoard;
     private SerialUpdater serialUpdater;
-
-    public enum Team {
-        home, away
-    }
 
     private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
     private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
@@ -72,7 +67,7 @@ public class SimpleGameManager {
     }
 
     public int getScore(Team team) {
-        if (team == home) {
+        if (team == Team.home) {
             return scoreBoard.getHomeScore();
         } else {
             return scoreBoard.getAwayScore();
@@ -185,7 +180,7 @@ public class SimpleGameManager {
     }
 
     public List<Penalty> getPenalties(Team team) {
-        return team == home ? homePenalties : awayPenalties;
+        return team == Team.home ? homePenalties : awayPenalties;
     }
 
     public void addPenalty(Team team, Penalty penalty) {
@@ -200,8 +195,22 @@ public class SimpleGameManager {
         updatePenalties();
     }
 
+    public void reset() {
+        homePenalties.clear();
+        awayPenalties.clear();
+        setPeriod(1);
+        setScore(Team.home, 0);
+        setScore(Team.away, 0);
+        stopClock();
+        setTime((int) TimeUnit.MINUTES.toMillis(20));
+    }
+
     public void playBuzzer(int millis) {
         scoreBoard.ringBuzzer(millis);
+    }
+
+    public boolean updatesRunning() {
+        return serialUpdater.isRunning();
     }
 
     public void stopUpdates() {

@@ -2,6 +2,7 @@ package canfield.bia.rest;
 
 import canfield.bia.hockey.Penalty;
 import canfield.bia.hockey.SimpleGameManager;
+import canfield.bia.hockey.Team;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
@@ -9,10 +10,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
-
-import static canfield.bia.hockey.SimpleGameManager.Team;
-import static canfield.bia.hockey.SimpleGameManager.Team.away;
-import static canfield.bia.hockey.SimpleGameManager.Team.home;
 
 /**
  *
@@ -35,6 +32,7 @@ public class GameResource {
         state.put("time", game.getTime());
         state.put("running", game.isClockRunning());
         state.put("period", game.getPeriod());
+        state.put("scoreboardOn", game.updatesRunning());
 
         for (Team team : Team.values()) {
             final HashMap<String, Object> o = new HashMap<String, Object>();
@@ -48,6 +46,15 @@ public class GameResource {
 
     @POST
     @Path("/")
+    public Response get(
+            HashMap<String, Object> gameState
+    ) {
+        game.reset();
+        return get();
+    }
+
+    @PUT
+    @Path("/")
     public Response update(
             HashMap<String, Object> data
     ) {
@@ -55,18 +62,8 @@ public class GameResource {
             Object period = data.get("period");
             game.setPeriod((Integer) period);
         }
-        return get();
-    }
-
-    @POST
-    @Path("/clock")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response setClock(
-            HashMap<String, Object> clock
-    ) {
-
-        if (clock.containsKey("running")) {
-            Boolean running = (Boolean) clock.get("running");
+        if (data.containsKey("running")) {
+            Boolean running = (Boolean) data.get("running");
             if (running) {
                 game.startClock();
             } else {
@@ -74,12 +71,11 @@ public class GameResource {
             }
         }
 
-        if (clock.containsKey("time")) {
-            Object time = clock.get("time");
+        if (data.containsKey("time")) {
+            Object time = data.get("time");
             game.setTime((Integer) time);
         }
-
-        return Response.ok().build();
+        return get();
     }
 
     @POST
@@ -90,12 +86,12 @@ public class GameResource {
     ) {
         switch (team) {
             case home:
-                int homeScore = game.getScore(home);
-                game.setScore(home, homeScore + 1);
+                int homeScore = game.getScore(Team.home);
+                game.setScore(Team.home, homeScore + 1);
                 break;
             case away:
-                int awayScore = game.getScore(away);
-                game.setScore(away, awayScore + 1);
+                int awayScore = game.getScore(Team.away);
+                game.setScore(Team.away, awayScore + 1);
                 break;
             default:
                 return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();

@@ -30,6 +30,7 @@ public class SerialUpdater {
     private final PenaltyClockCmd penaltyClockCmd;
     private final SerialUpdater.ClockAndScoreCmd clockAndScoreCmd;
     private long buzzer_stops = 0;
+    private boolean running = false;
 
     public SerialUpdater(ScoreBoard scoreBoard, String portName) {
         this.scoreBoard = scoreBoard;
@@ -45,8 +46,10 @@ public class SerialUpdater {
         scoreBoard.addListener(new ScoreBoard.EventListener() {
             @Override
             public void handle(ScoreBoard.Event event) {
-                Clock gameClock = scoreBoard.getGameClock();
-                long now = System.currentTimeMillis();
+                if (!running) return;
+
+                final Clock gameClock = scoreBoard.getGameClock();
+                final long now = System.currentTimeMillis();
                 switch (event.getType()) {
                     case tick:
                         int millis = gameClock.getMillis();
@@ -88,15 +91,30 @@ public class SerialUpdater {
     }
 
     public void start() {
+        running = true;
         // Connect to serial port and start
-        if (serialPort == null) {
-            openPort();
-        }
+        openPort();
+    }
+
+    public void stop() {
+        running = false;
+        closePort();
+    }
+
+    private void closePort() {
+        if (serialPort == null) return;
+        serialPort.close();
+        serialPort = null;
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 
     long lastOpenAttempt = 0;
 
     private void openPort() {
+        if (serialPort != null) return;
         long now = System.currentTimeMillis();
         if (now - lastOpenAttempt < 2 * 1000) {
             return;
@@ -126,9 +144,6 @@ public class SerialUpdater {
         port.notifyOnOutputEmpty(true);
     }
 
-    public void stop() {
-
-    }
 
     /**
      * <pre>
@@ -308,10 +323,9 @@ public class SerialUpdater {
     }
 
     private void send(byte[] msg) {
+        if (!running) return;
         log(msg);
-        if (serialPort == null) {
-            openPort();
-        }
+        openPort();
 
         if (serialPort != null) {
             OutputStream os;
@@ -324,7 +338,6 @@ public class SerialUpdater {
             }
         }
     }
-
 
     long lastSend = 0;
     byte[] lastMsg = {};
