@@ -9,151 +9,144 @@
     <link href="css/external/bootstrap.min.css" rel="stylesheet" type="text/css"/>
     <link href="css/external/bootstrap-editable.css" rel="stylesheet" type="text/css"/>
     <link href="css/scoreboard.css" rel="stylesheet" type="text/css"/>
-
 </head>
 <body>
-<div class="container">
-    <div class="row">
-        <div id="home" class="col-md-4">
-            <h2>Home</h2>
+    <div class="container">
+        <div class="row">
+            <div id="home" class="col-md-4">
+                <h2>Home</h2>
 
-            <div class="score">
-                <span id="home-score" class="score"></span>
-                <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
-                <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
+                <div class="score">
+                    <span id="home-score" class="score"></span>
+                    <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
+                    <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
+                </div>
+
+                <div class="penalties">
+                    <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                       data-team="home">Penalty</a>
+
+                    <table class="table table-condensed">
+                        <tr>
+                            <th>Period</th>
+                            <th>#</th>
+                            <th>Min</th>
+                            <th>Off Ice</th>
+                            <th>Start</th>
+                            <th>Remaining</th>
+                            <th>&nbsp;</th>
+                        </tr>
+                        <tbody class="list">
+
+                        </tbody>
+                        <tr>
+                            <td colspan="3"></td>
+                        </tr>
+                    </table>
+                </div>
             </div>
+            <div id="clock_box" class="col-md-2">
+                <span id="clock" data-type="text" data-title="Time"></span>
 
-            <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
-                   data-team="home">Penalty</a>
+                <div id="clock-actions">
+                    <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
+                    <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
+                </div>
 
-                <table class="table table-condensed">
-                    <tr>
-                        <th>Period</th>
-                        <th>#</th>
-                        <th>Min</th>
-                        <th>Off Ice</th>
-                        <th>Start</th>
-                        <th>Remaining</th>
-                        <th>&nbsp;</th>
-                    </tr>
-                    <tbody class="list">
+                <div id="period-block">
+                    <span>Period</span>
+                    <span id="period"></span>
+                    <button class="period-up btn btn-primary">+</button>
+                    <button class="period-down btn btn-danger">-</button>
+                </div>
+            </div>
+            <div id="away" class="col-md-4">
+                <h2>Away</h2>
 
-                    </tbody>
-                    <tr>
-                        <td colspan="3"></td>
-                    </tr>
-                </table>
+                <div class="score">
+                    <span id="away-score" class="score"></span>
+                    <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
+                    <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
+                </div>
+
+                <div class="penalties">
+                    <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                       data-team="away">Penalty</a>
+
+                    <table class="table table-condensed">
+                        <tr>
+                            <th>Period</th>
+                            <th>#</th>
+                            <th>Min</th>
+                            <th>Off Ice</th>
+                            <th>Start</th>
+                            <th>Remaining</th>
+                            <th>&nbsp;</th>
+                        </tr>
+                        <tbody class="list">
+
+                        </tbody>
+                        <tr>
+                            <td colspan="3"></td>
+                        </tr>
+                    </table>
+                </div>
             </div>
         </div>
-        <div id="clock_box" class="col-md-2">
-            <span id="clock" data-type="text" data-title="Time"></span>
+        <button id="buzzer">Buzzer</button>
+        <button id="power" data-state="new"><span class="glyphicon glyphicon-off"></span></button>
+        <button id="new-game">New Game</button>
+    </div>
 
-            <div id="clock-actions">
-                <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
-                <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
-            </div>
+    <div class="modal fade" id="add-penalty">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title">TEMP TITLE</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal">
+                        <div class="penalty-player form-group">
+                            <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
 
-            <div id="period-block">
-                <span>Period</span>
-                <span id="period"></span>
-                <button class="period-up btn btn-primary">+</button>
-                <button class="period-down btn btn-danger">-</button>
-            </div>
-        </div>
-        <div id="away" class="col-md-4">
-            <h2>Away</h2>
+                            <div class="col-lg-3">
+                                <input id="add-penalty-player" class="form-control input-sm" type="text" maxlength="2"
+                                       size="1"/>
+                            </div>
+                        </div>
+                        <div class="penalty-serving form-group">
+                            <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
 
-            <div class="score">
-                <span id="away-score" class="score"></span>
-                <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
-                <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
-            </div>
+                            <div class="col-lg-3">
+                                <input id="add-penalty-serving" class="form-control input-sm" type="text" maxlength="2"
+                                       size="1"/>
+                            </div>
+                        </div>
+                        <div class="penalty-time form-group">
+                            <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
 
-            <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
-                   data-team="away">Penalty</a>
+                            <div class="col-lg-3">
+                                <input id="add-penalty-time" class="form-control input-sm" value="3:00"
+                                       type="text" size="1"/>
+                            </div>
+                        </div>
+                        <div class="penalty-clock form-group">
+                            <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
 
-                <table class="table table-condensed">
-                    <tr>
-                        <th>Period</th>
-                        <th>#</th>
-                        <th>Min</th>
-                        <th>Off Ice</th>
-                        <th>Start</th>
-                        <th>Remaining</th>
-                        <th>&nbsp;</th>
-                    </tr>
-                    <tbody class="list">
+                            <div class="col-lg-3">
+                                <input id="add-penalty-off_ice" class="form-control input-sm"/>
+                            </div>
+                        </div>
+                    </form>
 
-                    </tbody>
-                    <tr>
-                        <td colspan="3"></td>
-                    </tr>
-                </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
+                </div>
             </div>
         </div>
     </div>
-<button id="buzzer">Buzzer</button>
-<button id="new-game">New Game</button>
-</div>
-
-<div class="modal fade" id="add-penalty">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">TEMP TITLE</h4>
-            </div>
-            <div class="modal-body">
-                <form class="form-horizontal">
-                    <div class="penalty-player form-group">
-                        <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-player" class="form-control input-sm" type="text" maxlength="2"
-                                   size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-serving form-group">
-                        <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-serving" class="form-control input-sm" type="text" maxlength="2"
-                                   size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-time form-group">
-                        <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-time" class="form-control input-sm" value="3:00"
-                                   type="text" size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-clock form-group">
-                        <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-off_ice" class="form-control input-sm" />
-                        </div>
-                    </div>
-                </form>
-
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
-            </div>
-        </div>
-        <!-- /.modal-content -->
-    </div>
-    <!-- /.modal-dialog -->
-</div>
-<!-- /.modal -->
-
-<script type="text/javascript">
-
-</script>
 </body>
 </html>

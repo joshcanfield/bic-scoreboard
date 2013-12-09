@@ -34,6 +34,7 @@ body {
 #add-penalty .modal-dialog {
     width: 400px;
 }
+
 #add-penalty .modal-title {
     text-transform: capitalize;
 }
@@ -44,6 +45,7 @@ body {
 .penalties {
     margin-top: 20px;
 }
+
 h2 {
     text-align: center;
 }
@@ -57,4 +59,16 @@ h2 {
 
 #new-game {
     float: right;
+}
+
+#power {
+    float: right;
+}
+
+#power.on {
+    background-color: green;
+}
+
+#power.off {
+    background-color: red;
 }

@@ -124,6 +124,13 @@ Scoreboard = {
 
         $("#home-score").html(data.home.score);
         $("#away-score").html(data.away.score);
+
+        var power = $("#power");
+        if (data.scoreboardOn != power.data("state")) {
+            power.removeClass(data.scoreboardOn ? "off" : "on");
+            power.addClass(!data.scoreboardOn ? "off" : "on");
+            power.data("state", data.scoreboardOn);
+        }
     },
     startClock: function () {
         updateGame({"running": true});
@@ -168,6 +175,9 @@ Scoreboard = {
     buzzer: function () {
         doPost("buzzer");
     },
+    power: function () {
+        doPost("power");
+    },
     getMinutes: function () {
         return getMinutes(Scoreboard.time);
     },
@@ -190,6 +200,7 @@ function update() {
 $(document).ready(function () {
         $('#buzzer').click(Scoreboard.buzzer);
         $('#new-game').click(Scoreboard.newGame);
+        $('#power').click(Scoreboard.power);
         $("#clock-start").click(Scoreboard.startClock);
         $("#clock-pause").click(Scoreboard.pauseClock);
 //        $("#clock").click(Scoreboard.setClock);

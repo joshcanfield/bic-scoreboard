@@ -148,4 +148,15 @@ public class GameResource {
         return Response.ok().build();
     }
 
+    @POST
+    @Path("/power")
+    public Response power() {
+        if (game.updatesRunning()) {
+            game.stopUpdates();
+        } else {
+            game.startUpdates();
+        }
+        return Response.ok().build();
+    }
+
 }
