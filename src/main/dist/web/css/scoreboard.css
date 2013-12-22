@@ -1,74 +1,202 @@
-body {
-    margin-top: 100px;
+/*HD TV = 1280x720*/
+
+html, body {
+    height: 720px;
+    width: 1280px;
+    background-color: #004479;
+    margin: 0;
+    padding: 0;
+    font-family: "Arial Black", "Arial Bold", Gadget, sans-serif;
+    color: white;
 }
 
-#clock_box {
+div {
+    background: transparent;
+}
+
+#scoreboard {
+    margin: 0;
+    padding: 0;
+    height: 700px;
+    width: 1260px;
+    border: 10px solid white;
+    border-radius: 10px;
+}
+
+#score_box {
+    width: 100%;
+    height: 300px;
+    border-bottom: 10px solid white;
+}
+
+.label {
+    font-weight: bolder;
+    text-transform: uppercase;
     text-align: center;
 }
 
-#clock-actions .btn {
-    font-size: 30px;
+#score_box .score .label {
+    font-size: 90px;
+    line-height: 90px;
 }
 
-#clock {
-    color: black;
-    cursor: pointer;
-    font-size: 40px;
-    font-family: monospace;
+#score_box .home {
+    position: absolute;
+    left: 10px;
+    top: 10px;
 }
 
-#clock .editable-empty {
-    color: black;
+.digits {
+    border: inset white;
+    background-color: black;
+    border-radius: 10px;
 }
 
-#period {
-    font-family: monospace;
-    font-size: 30px;
-    display: block;
+#score_box .clock .digits {
+    width: 520px;
+    height: 180px;
+    padding-left: 5px;
+    margin-left: 10px;
+    margin-top: 25px;
+    border-radius: 10px;
 }
 
-#add-penalty .modal-body {
+#score_box .clock .digit.minutes.ones::after {
+    content: ":";
+    font-size: 100px;
+}
+
+#score_box .clock .digit {
+    color: #af0e0e;
+    font-size: 180px;
+    line-height: 160px;
+    float: left;
+}
+
+#score_box .score .digits {
+    width: 200px;
+    height: 170px;
+    margin-left: 80px;
+    margin-top: 10px;
+    padding-left: 5px;
+    font-size: 140px;
+    line-height: 160px;
+}
+
+#score_box .score .digit {
+    width: 100px;
+    height: 170px;
+    float: left;
+    border-radius: 10px;
+    color: #efe24b;
+}
+
+#score_box .clock {
+    position: absolute;
+    top: 10px;
+    left: 365px;
+    width: 550px;
+    height: 300px;
+}
+
+#score_box .guest {
+    position: absolute;
+    left: 900px;
+    top: 10px;
+}
+
+#score_box .score {
+    width: 370px;
+    height: 300px;
+}
+
+#penalty_box {
+    width: 100%;
+    height: 390px;
+    border-top: 10px solid white;
+    padding-top: 15px;
+}
+
+#penalty_box .penalties {
+    width: 510px;
+    height: 365px;
+    float: left;
+    padding-left: 5px;
+}
+
+#penalty_box .penalties .player {
+    width: 200px;
+    float: left;
+    padding-left: 10px;
+}
+
+#penalty_box .penalties .penalty {
+    width: 300px;
+    float: left;
+}
+
+#penalty_box .label {
+    font-size: 35px;
+    line-height: 35px;
+    margin-bottom: 20px;
+}
+
+#penalty_box .player .digits {
+    width: 180px;
+}
+
+#penalty_box .penalty .digits {
+    width: 280px;
+}
+
+#penalty_box .period .digits {
+    width: 90px;
+    margin-left: 60px;
+}
+
+#penalty_box .digits {
+    background-color: black;
+    font-size: 35px;
+    height: 140px;
+    margin-bottom: 10px;
+    padding-left: 5px;
+}
+
+#penalty_box .digits .digit {
+    float: left;
+    width: 90px;
+    height: 100%;
+    margin-top: 7px;
+    font-size: 115px;
+    line-height: 115px;
     text-align: center;
 }
 
-#add-penalty .modal-dialog {
-    width: 400px;
+#penalty_box .digits .digit.minutes {
+    margin-right: 10px;
 }
 
-#add-penalty .modal-title {
-    text-transform: capitalize;
+#penalty_box .digits .digit.minutes::after {
+    content: ":";
+    font-size: 80px;
 }
 
-.penalty-player {
+#penalty_box .period {
+    width: 220px;
+    float: left;
 }
 
-.penalties {
-    margin-top: 20px;
-}
-
-h2 {
-    text-align: center;
-}
-
-.score {
-    text-align: center;
-    font-size: 30px;
-    display: block;
-    font-family: monospace;
-}
-
-#new-game {
-    float: right;
-}
-
-#power {
-    float: right;
-}
-
-#power.on {
-    background-color: green;
-}
-
-#power.off {
-    background-color: red;
+#xscoreboard::after {
+    content: "";
+    background-image: url('../img/scoreboard.jpg');
+    background-size: 100%;
+    background-repeat: no-repeat;
+    opacity: 0.5;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    position: absolute;
+    height: 720px;
+    width: 1280px;
 }
