@@ -198,6 +198,10 @@ public class SimpleGameManager {
     public void reset() {
         homePenalties.clear();
         awayPenalties.clear();
+        scoreBoard.setAwayPenalty(0, null);
+        scoreBoard.setAwayPenalty(1, null);
+        scoreBoard.setHomePenalty(0, null);
+        scoreBoard.setHomePenalty(1, null);
         setPeriod(1);
         setScore(Team.home, 0);
         setScore(Team.away, 0);

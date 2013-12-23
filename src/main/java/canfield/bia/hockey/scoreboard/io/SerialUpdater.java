@@ -71,6 +71,7 @@ public class SerialUpdater {
                         // can't send the buzzer in the last minute
                         int lengthMillis = ((ScoreBoard.BuzzerEvent) event).getLengthMillis();
                         if (gameClock.getMillis() - lengthMillis > 0) {
+                            log.info("Sending buzzer lengthMillis={}", lengthMillis);
                             // We can ring the buzzer
                             buzzer_stops = now + lengthMillis;
                         }

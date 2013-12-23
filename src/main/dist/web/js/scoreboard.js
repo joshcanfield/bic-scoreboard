@@ -138,12 +138,15 @@ Scoreboard = {
     pauseClock: function () {
         updateGame({"running": false});
     },
-    // this is x-edit aware (http://vitalets.github.io/x-editable/docs.html)
-    setClock: function (params) {
+    setClock: function (time) {
         var d = new $.Deferred;
 
-        var clockMillis = parseClockMillis(params.value);
-        if (clockMillis === false) {
+        var clockMillis = time;
+        if (typeof time === 'string') {
+            clockMillis = parseClockMillis(time);
+        }
+
+        if (!clockMillis) {
             return d.reject('Invalid time. Example 20:00'); //returning error via deferred object
         }
 
@@ -173,7 +176,7 @@ Scoreboard = {
         return false;
     },
     buzzer: function () {
-        doPost("buzzer");
+        doPost("buzzer/1000"); // 1 second buzzer
     },
     power: function () {
         doPost("power");
@@ -203,7 +206,6 @@ $(document).ready(function () {
         $('#power').click(Scoreboard.power);
         $("#clock-start").click(Scoreboard.startClock);
         $("#clock-pause").click(Scoreboard.pauseClock);
-//        $("#clock").click(Scoreboard.setClock);
 
         $(".period-up").click(function () {
             Scoreboard.setPeriod(Scoreboard.period + 1);
@@ -222,24 +224,44 @@ $(document).ready(function () {
             Scoreboard.subScore(this.dataset.team)
         });
 
-        $('#clock').editable({
-            placement: 'bottom',
-            url: Scoreboard.setClock,
-            emptytext: '00:00'
-
+        var setClockDialog = $('#set-clock');
+        setClockDialog.find('button.time').click(function () {
+            var time = $(this).data('time');
+            console.log("Setting time: " + time);
+            Scoreboard.setClock("" + time).done(function () {
+                setClockDialog.modal('hide');
+                setClockDialog.find('.error').html();
+            }).fail(function (msg) {
+                    setClockDialog.find('.error').html(msg);
+                });
         });
+
+        $('#save-custom-time').click(function () {
+            var customTime = $('#custom-time').val();
+            console.log("set time " + customTime);
+            Scoreboard.setClock(customTime).done(function () {
+                setClockDialog.modal('hide');
+            }).fail(function (msg) {
+                    setClockDialog.find('.error').html(msg);
+                });
+        });
+
+        setClockDialog.on('show.bs.modal', function (e) {
+            setClockDialog.find('.error').html('');
+        });
+
 
         // update starts the polling
         update();
 
-        var dialog = $('#add-penalty');
+        var penaltyDialog = $('#add-penalty');
         $("#add-penalty-add").click(function () {
             var penalty = {};
             var playerField = $('#add-penalty-player');
             var timeField = $('#add-penalty-time');
 
             var error = false;
-            dialog.find(".modal-body .form-group").removeClass('has-error');
+            penaltyDialog.find(".modal-body .form-group").removeClass('has-error');
 
             penalty.playerNumber = playerField.val();
             if (!penalty.playerNumber) {
@@ -265,17 +287,17 @@ $(document).ready(function () {
             if (error) return false;
 
             penalty.period = Scoreboard.period;
-            var team = dialog.data('team');
+            var team = penaltyDialog.data('team');
             Scoreboard.addPenalty(team, penalty);
-            dialog.modal('hide');
+            penaltyDialog.modal('hide');
 
             return false;
         });
 
         // before display
-        dialog.on('show.bs.modal', function (e) {
+        penaltyDialog.on('show.bs.modal', function (e) {
             var team = e.relatedTarget.dataset.team;
-            dialog.data('team', team);
+            penaltyDialog.data('team', team);
 
             $(this).find(".modal-title").html(team + " Penalty");
             // update clock
@@ -286,7 +308,7 @@ $(document).ready(function () {
         });
 
         // after displayed
-        dialog.on('shown.bs.modal', function () {
+        penaltyDialog.on('shown.bs.modal', function () {
             $("#add-penalty-player")[0].focus();
         });
     }

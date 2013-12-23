@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <title>Scoreboard</title>
-    <script src="js/external/jquery-1.10.1.min.js"></script>
+    <script src="js/external/jquery-2.0.3.min.js"></script>
     <script src="js/external/bootstrap.min.js"></script>
     <script src="js/external/bootstrap-editable.min.js"></script>
     <script src="js/scoreboard.js"></script>
@@ -11,93 +11,105 @@
     <link href="css/index.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
-    <div class="container">
-        <div class="row">
-            <div id="home" class="col-md-4">
-                <h2>Home</h2>
+<div class="container">
+    <div class="row">
+        <div id="home" class="col-md-4">
+            <h2>Home</h2>
 
-                <div class="score">
-                    <span id="home-score" class="score"></span>
-                    <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
-                    <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
-                </div>
-
-                <div class="penalties">
-                    <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
-                       data-team="home">Penalty</a>
-
-                    <table class="table table-condensed">
-                        <tr>
-                            <th>Period</th>
-                            <th>#</th>
-                            <th>Min</th>
-                            <th>Off Ice</th>
-                            <th>Start</th>
-                            <th>Remaining</th>
-                            <th>&nbsp;</th>
-                        </tr>
-                        <tbody class="list">
-
-                        </tbody>
-                        <tr>
-                            <td colspan="3"></td>
-                        </tr>
-                    </table>
-                </div>
+            <div class="score">
+                <span id="home-score" class="score"></span>
+                <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
+                <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
             </div>
-            <div id="clock_box" class="col-md-2">
-                <span id="clock" data-type="text" data-title="Time"></span>
 
-                <div id="clock-actions">
-                    <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
-                    <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
-                </div>
+            <div class="penalties">
+                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                   data-team="home">Penalty</a>
 
-                <div id="period-block">
-                    <span>Period</span>
-                    <span id="period"></span>
-                    <button class="period-up btn btn-primary">+</button>
-                    <button class="period-down btn btn-danger">-</button>
-                </div>
-            </div>
-            <div id="away" class="col-md-4">
-                <h2>Away</h2>
+                <table class="table table-condensed">
+                    <tr>
+                        <th>Period</th>
+                        <th>#</th>
+                        <th>Min</th>
+                        <th>Off Ice</th>
+                        <th>Start</th>
+                        <th>Remaining</th>
+                        <th>&nbsp;</th>
+                    </tr>
+                    <tbody class="list">
 
-                <div class="score">
-                    <span id="away-score" class="score"></span>
-                    <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
-                    <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
-                </div>
-
-                <div class="penalties">
-                    <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
-                       data-team="away">Penalty</a>
-
-                    <table class="table table-condensed">
-                        <tr>
-                            <th>Period</th>
-                            <th>#</th>
-                            <th>Min</th>
-                            <th>Off Ice</th>
-                            <th>Start</th>
-                            <th>Remaining</th>
-                            <th>&nbsp;</th>
-                        </tr>
-                        <tbody class="list">
-
-                        </tbody>
-                        <tr>
-                            <td colspan="3"></td>
-                        </tr>
-                    </table>
-                </div>
+                    </tbody>
+                    <tr>
+                        <td colspan="3"></td>
+                    </tr>
+                </table>
             </div>
         </div>
-        <button id="buzzer">Buzzer</button>
-        <button id="power" data-state="new"><span class="glyphicon glyphicon-off"></span></button>
-        <button id="new-game">New Game</button>
-    </div>
+        <div id="clock_box" class="col-md-2">
+            <a data-toggle="modal" href="#set-clock">
+                <span id="clock"></span>
+            </a>
 
+            <div id="clock-actions">
+                <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
+                <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
+            </div>
+
+            <div id="period-block">
+                <span>Period</span>
+                <span id="period"></span>
+                <button class="period-up btn btn-primary">+</button>
+                <button class="period-down btn btn-danger">-</button>
+            </div>
+        </div>
+        <div id="away" class="col-md-4">
+            <h2>Away</h2>
+
+            <div class="score">
+                <span id="away-score" class="score"></span>
+                <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
+                <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
+            </div>
+
+            <div class="penalties">
+                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">Penalty</a>
+
+                <table class="table table-condensed">
+                    <tr>
+                        <th>Period</th>
+                        <th>#</th>
+                        <th>Min</th>
+                        <th>Off Ice</th>
+                        <th>Start</th>
+                        <th>Remaining</th>
+                        <th>&nbsp;</th>
+                    </tr>
+                    <tbody class="list">
+
+                    </tbody>
+                    <tr>
+                        <td colspan="3"></td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <button id="buzzer" class="btn btn-sm btn-warning">Buzzer</button>
+            <button id="new-game" class="btn btn-sm btn-success">New Game</button>
+        </div>
+        <div class="col-md-4">
+            <button id="power" class="btn btn-sm" data-state="new"><span class="glyphicon glyphicon-off"></span>
+            </button>
+        </div>
+
+    </div>
+    <!--
+      -  Dialogs
+      -->
     <div class="modal fade" id="add-penalty">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -144,6 +156,46 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="set-clock">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title">Set Clock</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="error"></div>
+                    <div role="form" class="form-inline">
+                        <div class="form-group">
+                            <label for="custom-time" class="col-sm-2 control-label">Time</label>
+
+                            <div class="col-sm-10">
+                                <input id="custom-time" class="form-control input-sm"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-10">
+                                <button type="submit" class="btn btn-default" id="save-custom-time">set</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="predefined-times form-group">
+                        <div class="col-sm-10">
+                            <button class="time btn btn-default" data-time="2000">20:00</button>
+                            <button class="time btn btn-default" data-time="1800">18:00</button>
+                            <button class="time btn btn-default" data-time="1500">15:00</button>
+                            <button class="time btn btn-default" data-time="1300">13:00</button>
+                            <button class="time btn btn-default" data-time="500">5:00</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>

@@ -21,6 +21,14 @@ body {
     color: black;
 }
 
+#set-clock .modal-dialog {
+    width: 500px;
+}
+
+#set-clock .predefined-times {
+    padding:15px 0;
+}
+
 #period {
     font-family: monospace;
     font-size: 30px;
@@ -63,12 +71,21 @@ h2 {
 
 #power {
     float: right;
+    font-weight: bolder;
+    color: white;
 }
+
 
 #power.on {
     background-color: green;
 }
+#power.on::after {
+    content: "on"
+}
 
 #power.off {
     background-color: red;
+}
+#power.off::after {
+    content: "off"
 }

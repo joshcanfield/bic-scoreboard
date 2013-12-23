@@ -142,8 +142,10 @@ public class GameResource {
     }
 
     @POST
-    @Path("/buzzer")
-    public Response buzzer(int millis) {
+    @Path("/buzzer/{millis}")
+    public Response buzzer(
+            @PathParam("millis") int millis
+    ) {
         game.playBuzzer(millis);
         return Response.ok().build();
     }
