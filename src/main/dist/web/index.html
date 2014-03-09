@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <title>Scoreboard</title>
+    <script src="js/external/socket.io/socket.io.js"></script>
+    <script src="js/websocket-client.js"></script>
     <script src="js/external/jquery-2.0.3.min.js"></script>
     <script src="js/external/bootstrap.min.js"></script>
     <script src="js/external/bootstrap-editable.min.js"></script>
@@ -94,18 +96,26 @@
             </div>
 
         </div>
-
     </div>
     <div class="row">
         <div class="col-md-4">
             <button id="buzzer" class="btn btn-sm btn-warning">Buzzer</button>
             <button id="new-game" class="btn btn-sm btn-success">New Game</button>
         </div>
+        <div class="col-md-4">&nbsp;</div>
         <div class="col-md-4">
-            <button id="power" class="btn btn-sm" data-state="new"><span class="glyphicon glyphicon-off"></span>
-            </button>
+            <div class="onoffswitch power">
+                <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="power">
+                <label class="onoffswitch-label" for="power">
+                    <div class="onoffswitch-inner"></div>
+                    <div class="onoffswitch-switch"></div>
+                </label>
+            </div>
         </div>
 
+    </div>
+    <div class="row">
+        <div id="console" class="well"></div>
     </div>
     <!--
       -  Dialogs

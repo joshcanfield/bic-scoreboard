@@ -1,7 +1,9 @@
 package canfield.bia;
 
-import canfield.bia.hockey.SimpleGameModule;
+import canfield.bia.hockey.web.GameService;
 import canfield.bia.rest.GameApplication;
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOServer;
 import dagger.ObjectGraph;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -15,8 +17,6 @@ import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-
 
 /**
  *
@@ -25,6 +25,7 @@ public class HockeyGameServer {
     private static Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
 
     private static Server server = null;
+    private static SocketIOServer socketIOServer;
 
     public static void main(String[] args) {
         if (args.length == 0 || args[0].equals("start")) {
@@ -43,7 +44,15 @@ public class HockeyGameServer {
                 server.stop();
                 server = null;
             } catch (Exception e) {
-                log.error("failed to stop service ", e);
+                log.error("failed to stop service", e);
+            }
+        }
+
+        if (socketIOServer != null) {
+            try {
+                socketIOServer.stop();
+            } catch (Exception e) {
+                log.error("Failed to stop socket io server", e);
             }
         }
     }
@@ -53,6 +62,14 @@ public class HockeyGameServer {
             return;
         }
 
+        Configuration config = new Configuration();
+        config.setHostname("localhost");
+        config.setPort(8081);
+
+        socketIOServer = new SocketIOServer(config);
+        ObjectGraph objectGraph = GameApplication.getObjectGraph();
+        socketIOServer.addListeners(objectGraph.get(GameService.class));
+        socketIOServer.start();
         startServer();
     }
 

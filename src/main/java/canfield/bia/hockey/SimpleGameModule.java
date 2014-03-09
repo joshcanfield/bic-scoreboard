@@ -3,6 +3,7 @@ package canfield.bia.hockey;
 import canfield.bia.HockeyGameServer;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.io.SerialUpdater;
+import canfield.bia.hockey.web.GameService;
 import canfield.bia.rest.GameResource;
 import dagger.Module;
 import dagger.Provides;
@@ -17,7 +18,8 @@ import javax.inject.Singleton;
                 SerialUpdater.class,
                 ScoreBoard.class,
                 GameResource.class,
-                HockeyGameServer.class
+                HockeyGameServer.class,
+                GameService.class
         }
 )
 public class SimpleGameModule {

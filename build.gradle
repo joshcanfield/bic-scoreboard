@@ -52,6 +52,8 @@ dependencies {
     compile "org.eclipse.jetty:jetty-server:${project.jetty.version}"
     compile "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 
+    compile 'com.corundumstudio.socketio:netty-socketio:1.6.1'
+
     compile ("org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}" ) {
         exclude group: 'org.slf4j'
     }
