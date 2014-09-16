@@ -30,6 +30,12 @@ public class GameClock implements Clock {
 
     @Override
     public int getMillis() {
+        if ( isRunning ) {
+            long now = System.currentTimeMillis();
+            int elapsed = (int)(now - lastUpdateMillis);
+            final int actualRemaining = timeRemainingMillis - elapsed;
+            return  actualRemaining < 0 ? 0 : actualRemaining;
+        }
         return timeRemainingMillis;
     }
 
@@ -76,17 +82,12 @@ public class GameClock implements Clock {
 
     @Override
     public void stop() {
-        update();
         isRunning = false;
-    }
 
-    public void update() {
-        if (!isRunning || timeRemainingMillis == 0) return;
         long now = System.currentTimeMillis();
         long elapsed = now - lastUpdateMillis;
         lastUpdateMillis = now;
         timeRemainingMillis -= elapsed;
         if (timeRemainingMillis < 0) timeRemainingMillis = 0;
     }
-
 }

@@ -101,9 +101,7 @@ Scoreboard = {
     home: {},
     away: {},
     newGame: function () {
-        doPost("", {
-
-        });
+        Server.createGame(/* Game configuration */);
     },
     refresh: function() {
         $.ajax({

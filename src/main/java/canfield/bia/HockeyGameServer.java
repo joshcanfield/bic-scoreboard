@@ -1,10 +1,7 @@
 package canfield.bia;
 
-import canfield.bia.hockey.web.GameService;
+import canfield.bia.hockey.web.WebSocketAdapter;
 import canfield.bia.rest.GameApplication;
-import com.corundumstudio.socketio.Configuration;
-import com.corundumstudio.socketio.SocketIOServer;
-import dagger.ObjectGraph;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.DefaultHandler;
@@ -17,28 +14,31 @@ import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 
-/**
- *
- */
 public class HockeyGameServer {
     private static Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
 
-    private static Server server = null;
-    private static SocketIOServer socketIOServer;
+    private Server server = null;
+    private WebSocketAdapter webSocketAdapter;
 
-    public static void main(String[] args) {
-        if (args.length == 0 || args[0].equals("start")) {
-            start();
-        } else {
-            stop();
+
+    @Inject
+    public HockeyGameServer(WebSocketAdapter webSocketAdapter) {
+        this.webSocketAdapter = webSocketAdapter;
+    }
+
+    public void start() {
+        if (server != null) {
+            return;
         }
+
+        webSocketAdapter.start();
+
+        startServer();
     }
 
-    public HockeyGameServer() {
-    }
-
-    private static void stop() {
+    public void stop() {
         if (server != null) {
             try {
                 server.stop();
@@ -48,32 +48,16 @@ public class HockeyGameServer {
             }
         }
 
-        if (socketIOServer != null) {
+        if (webSocketAdapter != null) {
             try {
-                socketIOServer.stop();
+                webSocketAdapter.stop();
             } catch (Exception e) {
                 log.error("Failed to stop socket io server", e);
             }
         }
     }
 
-    private static void start() {
-        if (server != null) {
-            return;
-        }
-
-        Configuration config = new Configuration();
-        config.setHostname("localhost");
-        config.setPort(8081);
-
-        socketIOServer = new SocketIOServer(config);
-        ObjectGraph objectGraph = GameApplication.getObjectGraph();
-        socketIOServer.addListeners(objectGraph.get(GameService.class));
-        socketIOServer.start();
-        startServer();
-    }
-
-    private static void startServer() {
+    private void startServer() {
         server = new Server();
         final SelectChannelConnector connector = new SelectChannelConnector();
         connector.setPort(8080);
@@ -96,7 +80,7 @@ public class HockeyGameServer {
         try {
             server.start();
             log.info("Server waiting for requests...");
-            server.join();
+            server.join(); // keeps this thread from exiting until the server shuts down
         } catch (Exception e) {
             throw new RuntimeException("Failed to start service.", e);
         }

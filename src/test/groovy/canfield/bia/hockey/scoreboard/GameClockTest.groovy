@@ -11,7 +11,6 @@ class GameClockTest {
     void "can create scoreboard clock"() {
         def clock = new GameClock(20,00)
 
-        clock.update()
         assert clock.getMinutes() == 20
         assert clock.getSeconds() == 0
     }
@@ -24,7 +23,6 @@ class GameClockTest {
 
         Thread.sleep(500)
 
-        clock.update()
         assert clock.getMinutes() == 20
         assert clock.getSeconds() == 0
     }
@@ -37,7 +35,6 @@ class GameClockTest {
 
         Thread.sleep(5000)
 
-        clock.update()
         assert clock.getMinutes() == 19
         assert clock.getSeconds() == 55
     }
@@ -49,13 +46,11 @@ class GameClockTest {
         Thread.sleep(2000)
         clock.stop()
         // 2 seconds elapsed
-        clock.update()
         assert clock.getMinutes() == 19
         assert clock.getSeconds() == 58
 
         Thread.sleep(2000)
         // 2 seconds elapsed still
-        clock.update()
         assert clock.getMinutes() == 19
         assert clock.getSeconds() == 58
 
@@ -63,7 +58,6 @@ class GameClockTest {
 
         Thread.sleep(2000)
         // now 4 seconds have elapsed
-        clock.update()
         assert clock.getMinutes() == 19
         assert clock.getSeconds() == 56
     }

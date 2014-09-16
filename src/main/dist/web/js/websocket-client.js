@@ -25,6 +25,9 @@ Server = {
     },
     setPeriod: function (p) {
         socket.emit('set_period', { "period": p });
+    },
+    createGame: function() {
+        socket.emit('createGame');
     }
 };
 
@@ -41,12 +44,11 @@ socket.on('message', function (data) {
 });
 
 socket.on('power', function (data) {
-    output('<pre>Scoreboard Running? ' + JSON.stringify(data) + '</pre>');
+    output('<pre>Power ' + JSON.stringify(data) + '</pre>');
     Scoreboard.updatePower(data);
 });
 
 socket.on('update', function (data) {
-    output('<pre>Update! ' + JSON.stringify(data) + '</pre>');
     Scoreboard.update(data);
 });
 
@@ -55,6 +57,24 @@ function sendDisconnect() {
 }
 
 function output(message) {
-    var element = $("<div>" + message + "</div>");
+    clearOldMessages();
+    var stamp = new Date().getTime();
+    var element = $("<div stamp='" + stamp + "'>" + message + "</div>");
     $('#console').prepend(element);
+}
+
+function clearOldMessages() {
+    var toRemove = [];
+    var oldStamp = new Date().getTime() - 10000;
+    $('#console').find("div").each(function() {
+        var stamp = parseInt($(this).attr('stamp'));
+        if ( stamp < oldStamp ) {
+            toRemove.push(this);
+        }
+    });
+
+    $(toRemove).each(function(){
+        $(this).remove();
+    });
+
 }

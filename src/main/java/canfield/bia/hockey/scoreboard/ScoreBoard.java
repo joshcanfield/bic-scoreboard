@@ -39,10 +39,9 @@ public class ScoreBoard {
                         if (gameClock == null) return;
 
                         int millis = gameClock.getMillis();
-                        gameClock.update();
                         fire(tickEvent);
 
-                        if (millis != 0 && gameClock.getMillis() == 0) {
+                        if (millis == 0) {
                             fire(endOfPeriodEvent);
                             // TODO advance after millis
                             advancePeriod();
@@ -69,8 +68,6 @@ public class ScoreBoard {
      * @return reference to an immutable clock
      */
     public Clock getGameClock() {
-        if (gameClock != null)
-            gameClock.update();
         return gameClock;
     }
 

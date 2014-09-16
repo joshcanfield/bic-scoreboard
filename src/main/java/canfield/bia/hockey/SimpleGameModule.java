@@ -3,8 +3,10 @@ package canfield.bia.hockey;
 import canfield.bia.HockeyGameServer;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.io.SerialUpdater;
-import canfield.bia.hockey.web.GameService;
+import canfield.bia.hockey.web.WebSocketAdapter;
 import canfield.bia.rest.GameResource;
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOServer;
 import dagger.Module;
 import dagger.Provides;
 
@@ -19,7 +21,7 @@ import javax.inject.Singleton;
                 ScoreBoard.class,
                 GameResource.class,
                 HockeyGameServer.class,
-                GameService.class
+                WebSocketAdapter.class
         }
 )
 public class SimpleGameModule {
@@ -35,5 +37,15 @@ public class SimpleGameModule {
     @Singleton
     ScoreBoard provideScoreboard() {
         return new ScoreBoard();
+    }
+
+    @Provides
+    @Singleton
+    SocketIOServer provideSocketIOServer() {
+        final Configuration config = new Configuration();
+        config.setHostname("localhost");
+        config.setPort(8081);
+
+        return new SocketIOServer(config);
     }
 }
