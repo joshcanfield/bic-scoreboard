@@ -1,10 +1,9 @@
 package canfield.bia.hockey.scoreboard;
 
 /**
- * The GameClock produces child clocks that share isRunning?
+ * This is a count down clock. It only knows time remaining.
  */
 public class GameClock implements Clock {
-    private int clockStartMillis; // 20 minute clock, used when reset
     private int timeRemainingMillis;
     private boolean isRunning = false;
 
@@ -12,7 +11,6 @@ public class GameClock implements Clock {
 
     public GameClock(int minutes, int seconds) {
         setTimeRemaining(minutes, seconds);
-        clockStartMillis = timeRemainingMillis;
     }
 
     public void setTimeRemaining(int minutes, int seconds) {
@@ -20,7 +18,7 @@ public class GameClock implements Clock {
     }
 
     public void reset() {
-        timeRemainingMillis = clockStartMillis;
+        timeRemainingMillis = 0;
     }
 
     @Override
@@ -29,7 +27,7 @@ public class GameClock implements Clock {
     }
 
     @Override
-    public int getMillis() {
+    public int getRemainingMillis() {
         if ( isRunning ) {
             long now = System.currentTimeMillis();
             int elapsed = (int)(now - lastUpdateMillis);
@@ -40,13 +38,13 @@ public class GameClock implements Clock {
     }
 
     @Override
-    public void setMillis(int millis) {
+    public void setRemainingMillis(int millis) {
         timeRemainingMillis = millis;
     }
 
     @Override
     public int getMinutes() {
-        return getMinutes(this.getMillis());
+        return getMinutes(this.getRemainingMillis());
     }
 
     public static int getMinutes(int millis) {
@@ -61,7 +59,7 @@ public class GameClock implements Clock {
 
     @Override
     public int getSeconds() {
-        return getSeconds(this.getMillis());
+        return getSeconds(this.getRemainingMillis());
     }
 
     public static int getSeconds(int millis) {

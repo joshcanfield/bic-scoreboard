@@ -26,8 +26,8 @@ Server = {
     setPeriod: function (p) {
         socket.emit('set_period', { "period": p });
     },
-    createGame: function() {
-        socket.emit('createGame');
+    createGame: function(gameConfig) {
+        socket.emit('createGame', gameConfig);
     }
 };
 
@@ -51,10 +51,6 @@ socket.on('power', function (data) {
 socket.on('update', function (data) {
     Scoreboard.update(data);
 });
-
-function sendDisconnect() {
-    socket.disconnect();
-}
 
 function output(message) {
     clearOldMessages();

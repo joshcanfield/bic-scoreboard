@@ -11,9 +11,6 @@ import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 
-/**
- *
- */
 @Path("/game")
 @Produces("application/json")
 public class GameResource {

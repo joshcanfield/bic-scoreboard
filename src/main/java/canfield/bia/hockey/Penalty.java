@@ -2,18 +2,19 @@ package canfield.bia.hockey;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- *
- */
 public class Penalty {
     private static AtomicInteger idSource = new AtomicInteger();
 
     private Integer id = idSource.incrementAndGet();
 
     private int playerNumber;
+
     private int servingPlayerNumber;
+
     // how long is the penalty
     private int time;
+
+    private int elapsed;
 
     private int period;
 
@@ -69,7 +70,19 @@ public class Penalty {
         this.startTime = startTime;
     }
 
+    public boolean isExpired() {
+        return elapsed >= time;
+    }
+
     public Integer getId() {
         return id;
+    }
+
+    public int getElapsed() {
+        return elapsed;
+    }
+
+    public void setElapsed(int elapsed) {
+        this.elapsed = elapsed;
     }
 }

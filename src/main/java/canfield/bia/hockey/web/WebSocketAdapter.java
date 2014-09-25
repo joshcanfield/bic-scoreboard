@@ -1,5 +1,6 @@
 package canfield.bia.hockey.web;
 
+import canfield.bia.hockey.GameConfig;
 import canfield.bia.hockey.SimpleGameManager;
 import canfield.bia.hockey.Team;
 import com.corundumstudio.socketio.SocketIOClient;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -99,8 +101,17 @@ public class WebSocketAdapter {
     }
 
     @OnEvent("createGame")
-    public void onCreateGame(SocketIOClient client) {
+    public void onCreateGame(SocketIOClient client, GameConfig config)
+    {
         gameManager.reset();
+        final List<Integer> periodLengths = config.getPeriodLengths();
+        for (int i = 0; i < periodLengths.size(); i++) {
+            Integer periodLength = periodLengths.get(i);
+            gameManager.getScoreBoard().setPeriodLength(i, periodLength);
+        }
+        if ( gameManager.getPeriodLength() == 0 ) {
+            gameManager.setPeriod(0);
+        }
     }
 
     @OnEvent("power")
@@ -142,7 +153,9 @@ public class WebSocketAdapter {
         state.put("time", gameManager.getTime());
         state.put("running", gameManager.isClockRunning());
         state.put("period", gameManager.getPeriod());
+        state.put("periodLength", gameManager.getPeriodLength());
         state.put("scoreboardOn", gameManager.updatesRunning());
+        state.put("buzzerOn", gameManager.isBuzzerOn());
 
         for (Team team : Team.values()) {
             final HashMap<String, Object> o = new HashMap<String, Object>();

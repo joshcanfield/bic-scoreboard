@@ -4,6 +4,7 @@ import canfield.bia.hockey.Penalty;
 import canfield.bia.hockey.scoreboard.Clock;
 import canfield.bia.hockey.scoreboard.GameClock;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
+import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import purejavacomm.CommPortIdentifier;
@@ -14,8 +15,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Enumeration;
 
-public class SerialUpdater {
-    private static Logger log = LoggerFactory.getLogger(SerialUpdater.class);
+public class ScoreboardAdapterImpl implements ScoreboardAdapter {
+    private static Logger log = LoggerFactory.getLogger(ScoreboardAdapterImpl.class);
 
     public static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
 
@@ -28,11 +29,11 @@ public class SerialUpdater {
     private SerialPort serialPort;
 
     private final PenaltyClockCmd penaltyClockCmd;
-    private final SerialUpdater.ClockAndScoreCmd clockAndScoreCmd;
+    private final ScoreboardAdapterImpl.ClockAndScoreCmd clockAndScoreCmd;
     private long buzzer_stops = 0;
     private boolean running = false;
 
-    public SerialUpdater(ScoreBoard scoreBoard, String portName) {
+    public ScoreboardAdapterImpl(ScoreBoard scoreBoard, String portName) {
         this.scoreBoard = scoreBoard;
         this.portName = portName;
         clockAndScoreCmd = new ClockAndScoreCmd();
@@ -43,16 +44,16 @@ public class SerialUpdater {
 
     private void initListener(final ScoreBoard scoreBoard) {
 
-        scoreBoard.addListener(new ScoreBoard.EventListener() {
+        scoreBoard.addListener(new ScoreBoardImpl.EventListener() {
             @Override
-            public void handle(ScoreBoard.Event event) {
+            public void handle(ScoreBoardImpl.Event event) {
                 if (!running) return;
 
                 final Clock gameClock = scoreBoard.getGameClock();
                 final long now = System.currentTimeMillis();
                 switch (event.getType()) {
                     case tick:
-                        int millis = gameClock.getMillis();
+                        int millis = gameClock.getRemainingMillis();
 
                         if (millis > 59 * 1000) {
                             clockAndScoreCmd.sendGameClock(gameClock, buzzer_stops > now);
@@ -69,8 +70,8 @@ public class SerialUpdater {
                         break;
                     case buzzer:
                         // can't send the buzzer in the last minute
-                        int lengthMillis = ((ScoreBoard.BuzzerEvent) event).getLengthMillis();
-                        if (gameClock.getMillis() - lengthMillis > 0) {
+                        int lengthMillis = ((ScoreBoardImpl.BuzzerEvent) event).getLengthMillis();
+                        if (gameClock.getRemainingMillis() - lengthMillis > 0) {
                             log.info("Sending buzzer lengthMillis={}", lengthMillis);
                             // We can ring the buzzer
                             buzzer_stops = now + lengthMillis;
@@ -83,20 +84,24 @@ public class SerialUpdater {
         });
     }
 
+    @Override
     public String getPortName() {
         return portName;
     }
 
+    @Override
     public void setPortName(String portName) {
         this.portName = portName;
     }
 
+    @Override
     public void start() {
         running = true;
         // Connect to serial port and start
         openPort();
     }
 
+    @Override
     public void stop() {
         running = false;
         closePort();
@@ -108,8 +113,14 @@ public class SerialUpdater {
         serialPort = null;
     }
 
+    @Override
     public boolean isRunning() {
         return running;
+    }
+
+    @Override
+    public boolean isBuzzerOn() {
+        return buzzer_stops > System.currentTimeMillis();
     }
 
     long lastOpenAttempt = 0;
@@ -198,7 +209,7 @@ public class SerialUpdater {
                     0x79,
                     digit(10, s, ZERO_VALUE_EMPTY),
                     digit(1, s),
-                    digit(1, (byte) ((gameClock.getMillis() / 100) % 10)),
+                    digit(1, (byte) ((gameClock.getRemainingMillis() / 100) % 10)),
                     (byte) 0xFF
             });
 
@@ -284,7 +295,7 @@ public class SerialUpdater {
                     b[index++] = (byte) 0xFF;
                     b[index++] = (byte) 0xFF;
                 } else {
-                    int remaining = scoreBoard.getPenaltyRemainingMillis(penalty);
+                    int remaining = penalty.getTime() - penalty.getElapsed();
 
                     byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
                     b[index++] = digit(1, minutes); // == 0 ? (byte) 0xFF : minutes;

@@ -1,9 +1,12 @@
 package canfield.bia.hockey;
 
+import canfield.bia.hockey.scoreboard.Clock;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
-import canfield.bia.hockey.scoreboard.io.SerialUpdater;
+import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
+import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Queue;
@@ -11,24 +14,28 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
- * SimpleGameManager keeps track of more penalties than will fit on the
+ * SimpleGameManager keeps track of more penalties than will fit on the scoreboard.
+ * TODO: Re-design with a better domain model.
+ * TODO: The clock tracking is really cumbersome. Track elapsed time instead of time remaining!
  */
+@Singleton
 public class SimpleGameManager {
     private ScoreBoard scoreBoard;
-    private SerialUpdater serialUpdater;
+    private ScoreboardAdapter scoreboardAdapter;
 
     private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
     private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
 
+
     @Inject
-    public SimpleGameManager(ScoreBoard scoreBoard, SerialUpdater serialUpdater) {
+    public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter) {
         this.scoreBoard = scoreBoard;
-        this.serialUpdater = serialUpdater;
+        this.scoreboardAdapter = scoreboardAdapter;
 
         scoreBoard.addListener(
-                new ScoreBoard.EventListener() {
+                new ScoreBoardImpl.EventListener() {
                     @Override
-                    public void handle(ScoreBoard.Event event) {
+                    public void handle(ScoreBoardImpl.Event event) {
                         switch (event.getType()) {
                             case tick:
                                 updatePenalties();
@@ -36,18 +43,24 @@ public class SimpleGameManager {
                     }
                 }
         );
+        reset();
     }
 
     public int getPeriod() {
         return scoreBoard.getPeriod();
     }
 
+    public int getPeriodLength() {
+        return scoreBoard.getPeriodLengthMinutes();
+    }
+
     public void setPeriod(Integer period) {
         scoreBoard.setPeriod(period);
+        setTime((int) TimeUnit.MINUTES.toMillis(getPeriodLength()));
     }
 
     public long getTime() {
-        return scoreBoard.getGameClock().getMillis();
+        return scoreBoard.getGameClock().getRemainingMillis();
     }
 
     public boolean isClockRunning() {
@@ -62,8 +75,13 @@ public class SimpleGameManager {
         scoreBoard.getGameClock().stop();
     }
 
-    public void setTime(Integer millis) {
-        scoreBoard.getGameClock().setMillis(millis);
+    public void setTime(int millis) {
+        final Clock gameClock = scoreBoard.getGameClock();
+        gameClock.setRemainingMillis(millis);
+        if ( gameClock.getMinutes() > getPeriodLength() ) {
+            gameClock.setMinutes(getPeriodLength());
+            gameClock.setSeconds(0);
+        }
     }
 
     public int getScore(Team team) {
@@ -107,15 +125,47 @@ public class SimpleGameManager {
 
     }
 
+    void updateElapsed(Penalty penalty) {
+        // if a penalty started in the previous period elapsed time is the rest of that period + whatever has elapsed this period.
+        int timeRemainingInCurrentPeriodMillis = getScoreBoard().getGameClock().getRemainingMillis();
+
+        int elapsed;
+        if ( penalty.getPeriod() < getPeriod() ) {
+            final int periodLengthMillis = (int)TimeUnit.MINUTES.toMillis(getScoreBoard().getPeriodLengthMinutes());
+            final int periodTimeRemainingAtPenaltyStartMillis = penalty.getStartTime();
+
+            // penalty started at period with clock remaining
+            int timeElapsedInCurrentPeriodMillis = periodLengthMillis - timeRemainingInCurrentPeriodMillis;
+
+            elapsed = periodTimeRemainingAtPenaltyStartMillis + timeElapsedInCurrentPeriodMillis;
+
+        } else {
+            final int periodTimeRemainingAtPenaltyStartMillis = penalty.getStartTime();
+            elapsed = periodTimeRemainingAtPenaltyStartMillis - timeRemainingInCurrentPeriodMillis;
+        }
+
+        if ( elapsed > penalty.getTime() ) {
+            elapsed = penalty.getTime();
+        }
+        penalty.setElapsed(elapsed);
+    }
+
     public void updatePenalties() {
         Queue<Integer> availableHomePenaltyIndex = new ArrayDeque<Integer>();
         Queue<Integer> availableAwayPenaltyIndex = new ArrayDeque<Integer>();
-        // clear expired penalties from the scoreboard
+        for (Penalty p : homePenalties) {
+            updateElapsed(p);
+        }
+
+        for (Penalty p : awayPenalties) {
+            updateElapsed(p);
+        }
+
+        // Clear expired penalties from the scoreboard
         for (int i = 0; i < 2; ++i) {
             Penalty p = scoreBoard.getHomePenalty(i);
 
-            if (p != null && isExpired(p)) {
-                homePenalties.remove(p);
+            if (p != null && p.isExpired()) {
                 scoreBoard.setHomePenalty(i, null);
                 p = null;
             }
@@ -124,8 +174,7 @@ public class SimpleGameManager {
             }
 
             p = scoreBoard.getAwayPenalty(i);
-            if (p != null && isExpired(p)) {
-                awayPenalties.remove(p);
+            if (p != null && p.isExpired()) {
                 scoreBoard.setAwayPenalty(i, null);
                 p = null;
             }
@@ -133,18 +182,19 @@ public class SimpleGameManager {
                 availableAwayPenaltyIndex.add(i);
             }
         }
-        int millis = getScoreBoard().getGameClock().getMillis();
-
         // Do we need to put some penalties on the board?
+        final int startTime = roundToSecond(getScoreBoard().getGameClock().getRemainingMillis());
+
         if (homePenalties.size() > 0) {
             while (!availableHomePenaltyIndex.isEmpty()) {
                 int index = availableHomePenaltyIndex.remove();
 
                 for (Penalty penalty : homePenalties) {
+                    if ( penalty.getStartTime() > 0 ) continue; // already started
                     if (scoreBoard.getHomePenalty(0) == penalty || scoreBoard.getHomePenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime(roundToSecond(millis));
+                    penalty.setStartTime(startTime);
                     scoreBoard.setHomePenalty(index, penalty);
                     break;
                 }
@@ -156,10 +206,11 @@ public class SimpleGameManager {
                 int index = availableAwayPenaltyIndex.remove();
 
                 for (Penalty penalty : awayPenalties) {
+                    if ( penalty.getStartTime() > 0 ) continue; // already started
                     if (scoreBoard.getAwayPenalty(0) == penalty || scoreBoard.getAwayPenalty(1) == penalty) {
                         continue; // already on the board
                     }
-                    penalty.setStartTime(roundToSecond(millis));
+                    penalty.setStartTime(startTime);
                     scoreBoard.setAwayPenalty(index, penalty);
                     break;
                 }
@@ -169,10 +220,6 @@ public class SimpleGameManager {
 
     private int roundToSecond(int millis) {
         return ((millis + 999) / 1000) * 1000;
-    }
-
-    private boolean isExpired(Penalty penalty) {
-        return scoreBoard.getPenaltyRemainingMillis(penalty) == 0;
     }
 
     public ScoreBoard getScoreBoard() {
@@ -196,17 +243,17 @@ public class SimpleGameManager {
     }
 
     public void reset() {
+        stopClock();
         homePenalties.clear();
         awayPenalties.clear();
         scoreBoard.setAwayPenalty(0, null);
         scoreBoard.setAwayPenalty(1, null);
         scoreBoard.setHomePenalty(0, null);
         scoreBoard.setHomePenalty(1, null);
-        setPeriod(1);
+        setPeriod(0);
         setScore(Team.home, 0);
         setScore(Team.away, 0);
-        stopClock();
-        setTime((int) TimeUnit.MINUTES.toMillis(20));
+        setTime((int)TimeUnit.MINUTES.toMillis(getPeriodLength()));
     }
 
     public void playBuzzer(int millis) {
@@ -214,15 +261,18 @@ public class SimpleGameManager {
     }
 
     public boolean updatesRunning() {
-        return serialUpdater.isRunning();
+        return scoreboardAdapter.isRunning();
     }
 
     public void stopUpdates() {
-        serialUpdater.stop();
+        scoreboardAdapter.stop();
     }
 
     public void startUpdates() {
-        serialUpdater.start();
+        scoreboardAdapter.start();
     }
 
+    public boolean isBuzzerOn() {
+        return scoreboardAdapter.isBuzzerOn();
+    }
 }

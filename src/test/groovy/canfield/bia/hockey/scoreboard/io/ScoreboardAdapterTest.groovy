@@ -6,28 +6,28 @@ import org.testng.annotations.Test
 /**
  *
  */
-class SerialUpdaterTest {
+class ScoreboardAdapterTest {
 
     @Test
     void "10s digit"() {
-        assert SerialUpdater.digit(10, 59, 0 as byte) == 0x55
+        assert ScoreboardAdapterImpl.digit(10, 59, 0 as byte) == 0x55
     }
 
     @Test
     void "10s digit with single digit"() {
-        assert SerialUpdater.digit(10, 5, 0 as byte) == 0x00
+        assert ScoreboardAdapterImpl.digit(10, 5, 0 as byte) == 0x00
     }
 
     @Test(dataProvider = "digits")
     void "digits"(int value, byte tens, byte ones) {
-        assert SerialUpdater.digit(1, value, (byte) 0) == ones
-        assert SerialUpdater.digit(10, value, (byte) 0) == tens
+        assert ScoreboardAdapterImpl.digit(1, value, (byte) 0) == ones
+        assert ScoreboardAdapterImpl.digit(10, value, (byte) 0) == tens
     }
 
     @Test(dataProvider = "blank 10s digits")
     void "blank 10s digits"(int value, byte tens, byte ones) {
-        assert SerialUpdater.digit(1, value, (byte) 0) == ones
-        assert SerialUpdater.digit(10, value, (byte) 0xFF) == tens
+        assert ScoreboardAdapterImpl.digit(1, value, (byte) 0) == ones
+        assert ScoreboardAdapterImpl.digit(10, value, (byte) 0xFF) == tens
     }
 
     @DataProvider(name = "digits")

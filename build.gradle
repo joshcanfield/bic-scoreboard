@@ -63,8 +63,8 @@ dependencies {
     compile "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
 
     testCompile "org.codehaus.groovy:groovy-all:2.0.5"
-
     testCompile "org.testng:testng:6.1.1"
+    testCompile "org.mockito:mockito-all:1.9.5"
 }
 
 distributions {

@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- *
+ * This is created by Resteasy.
  */
 public class GameApplication extends Application {
 
