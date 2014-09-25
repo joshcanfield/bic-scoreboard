@@ -103,15 +103,17 @@ public class WebSocketAdapter {
     @OnEvent("createGame")
     public void onCreateGame(SocketIOClient client, GameConfig config)
     {
-        gameManager.reset();
         final List<Integer> periodLengths = config.getPeriodLengths();
         for (int i = 0; i < periodLengths.size(); i++) {
             Integer periodLength = periodLengths.get(i);
             gameManager.getScoreBoard().setPeriodLength(i, periodLength);
         }
+        gameManager.reset();
+
         if ( gameManager.getPeriodLength() == 0 ) {
-            gameManager.setPeriod(0);
+            gameManager.setPeriod(1);
         }
+
     }
 
     @OnEvent("power")

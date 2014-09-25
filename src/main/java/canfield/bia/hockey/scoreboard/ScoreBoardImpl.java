@@ -43,10 +43,10 @@ public class ScoreBoardImpl implements ScoreBoard {
                     public void run() {
                         if (gameClock == null) return;
 
-                        int millis = gameClock.getRemainingMillis();
-                        fire(tickEvent);
+                        fire(tickEvent); // this drives the scoreboard serial adapter.
 
-                        if (millis == 0) {
+                        int millis = gameClock.getRemainingMillis();
+                        if (gameClock.isRunning() && millis == 0) {
                             fire(endOfPeriodEvent);
                             // TODO advance after millis
                             advancePeriod();

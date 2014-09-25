@@ -315,6 +315,8 @@ $(document).ready(function () {
             }
 
             Server.createGame({periodLengths: periods});
+
+            newGameDialog.modal('hide');
         });
 
         // before display

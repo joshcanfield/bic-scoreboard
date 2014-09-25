@@ -66,7 +66,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
 
                         break;
                     case end_of_period:
-                        buzzer_stops = now + 2500;
+                        buzzer_stops = now + 3000;
                         break;
                     case buzzer:
                         // can't send the buzzer in the last minute
