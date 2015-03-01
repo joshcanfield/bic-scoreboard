@@ -22,7 +22,10 @@ repositories {
     mavenCentral()
 
     // purejavacomm
-    mavenRepo name: "SparetimeLabs", url: "http://www.sparetimelabs.com/maven2"
+    maven {
+	name = "SparetimeLabs"
+	url = "http://www.sparetimelabs.com/maven2"
+    }
 }
 
 // This simulates Maven's "provided" scope, until it is officially supported by Gradle
@@ -82,5 +85,6 @@ test {
 
     enableAssertions = true
 }
-
-// TODO: Configure execution mode for jettyRun task
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.2.1'
+}
