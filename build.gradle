@@ -17,7 +17,6 @@ project.ext {
     resteasy = [version: "3.0.4.Final"]
 }
 
-print "version " + project.ext.jackson.version
 repositories {
     mavenCentral()
 
@@ -51,7 +50,10 @@ dependencies {
 
     compile "com.sparetimelabs:purejavacomm:0.0.17"
     compile "joda-time:joda-time:2.1"
-    compile 'ch.qos.logback:logback-classic:1.0.13'
+
+    compile 'ch.qos.logback:logback-classic:1.1.2'
+    compile 'org.slf4j:jul-to-slf4j:1.7.10'
+
     compile "org.eclipse.jetty:jetty-server:${project.jetty.version}"
     compile "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 

@@ -274,6 +274,10 @@ $(document).ready(function () {
             });
         });
 
+        // before display
+        setClockDialog.on('show.bs.modal', function (e) {
+            var customTime = $('#custom-time').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
+        });
         $('#save-custom-time').click(function () {
             var customTime = $('#custom-time').val();
             console.log("set time " + customTime);
@@ -330,7 +334,6 @@ $(document).ready(function () {
 
         });
 
-
         var penaltyDialog = $('#add-penalty');
         $("#add-penalty-add").click(function () {
             var penalty = {};
@@ -379,6 +382,8 @@ $(document).ready(function () {
             $(this).find(".modal-title").html(team + " Penalty");
             // update clock
             $('#add-penalty-off_ice').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
+            $('#add-penalty-serving').val('');
+            $('#add-penalty-player').val('');
 
             // remove errors
             $(this).find(".modal-body .form-group").removeClass('has-error');
