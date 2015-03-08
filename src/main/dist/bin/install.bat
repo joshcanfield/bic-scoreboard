@@ -2,7 +2,7 @@
 # @see http://commons.apache.org/proper/commons-daemon/procrun.html
 # @see http://web.archive.org/web/20090228071059/http://blog.platinumsolutions.com/node/234
 
-set INSTALL_DIR=c:\scoreboard2
+set INSTALL_DIR=c:\scoreboard-1.1
 
 %INSTALL_DIR%\bin\scoreboardsvc.exe //IS//ScoreboardService2 \
   --Install=%INSTALL_DIR%\bin\scoreboardsvc.exe \
