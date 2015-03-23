@@ -14,7 +14,7 @@ public class GameClock implements Clock {
     }
 
     public void setTimeRemaining(int minutes, int seconds) {
-        timeRemainingMillis = minutes * 60 * 1000 + seconds * 1000;
+        setRemainingMillis(minutes * 60 * 1000 + seconds * 1000);
     }
 
     public void reset() {
@@ -39,6 +39,9 @@ public class GameClock implements Clock {
 
     @Override
     public void setRemainingMillis(int millis) {
+        if ( isRunning ) {
+            lastUpdateMillis = System.currentTimeMillis();
+        }
         timeRemainingMillis = millis;
     }
 
