@@ -5,6 +5,11 @@ import dagger.ObjectGraph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
+
 /**
  *
  */
@@ -17,27 +22,7 @@ public class ServiceMain {
         if (args.length == 0 || args[0].equals("start")) {
             // only try to start if we're already started
             if (hockeyGameServer == null) {
-
-                System.out.print(
-                    "  _____   __   ___   ____     ___  ____    ___    ____  ____   ___       \n" +
-                    " / ___/  /  ] /   \\ |    \\   /  _]|    \\  /   \\  /    ||    \\ |   \\      \n" +
-                    "(   \\_  /  / |     ||  D  ) /  [_ |  o  )|     ||  o  ||  D  )|    \\     \n" +
-                    " \\__  |/  /  |  O  ||    / |    _]|     ||  O  ||     ||    / |  D  |    \n" +
-                    " /  \\ /   \\_ |     ||    \\ |   [_ |  O  ||     ||  _  ||    \\ |     |    \n" +
-                    " \\    \\     ||     ||  .  \\|     ||     ||     ||  |  ||  .  \\|     |    \n" +
-                    "  \\___|\\____| \\___/ |__|\\_||_____||_____| \\___/ |__|__||__|\\_||_____|    \n" +
-                    "                                                                         \n" +
-                    "  _____   ___  ____  __ __    ___  ____                                  \n" +
-                    " / ___/  /  _]|    \\|  |  |  /  _]|    \\                                 \n" +
-                    "(   \\_  /  [_ |  D  )  |  | /  [_ |  D  )                                \n" +
-                    " \\__  ||    _]|    /|  |  ||    _]|    /                                 \n" +
-                    " /  \\ ||   [_ |    \\|  :  ||   [_ |    \\                                 \n" +
-                    " \\    ||     ||  .  \\\\   / |     ||  .  \\                                \n" +
-                    "  \\___||_____||__|\\_| \\_/  |_____||__|\\_|                                \n" +
-                    "\n");
-                System.out.println("***************************************************");
-                System.out.println("Don't close this window while the clock is running!");
-                System.out.println("***************************************************");
+                printBanner();
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
                 hockeyGameServer = objectGraph.get(HockeyGameServer.class);
                 hockeyGameServer.start();
@@ -51,6 +36,18 @@ public class ServiceMain {
             } else {
                 log.warn("Unable to stop server: Service isn't running!");
             }
+        }
+    }
+
+    private static void printBanner() {
+        try {
+            Path path = Paths.get(ClassLoader.getSystemResource("banner.txt").toURI());
+            //The stream hence file will also be closed here
+            Stream<String> lines = Files.lines(path);
+            lines.forEach(System.out::println);
+        } catch (Exception ignored) {
+            // ignored
+            System.out.println("Failed to load the banner?");
         }
     }
 }

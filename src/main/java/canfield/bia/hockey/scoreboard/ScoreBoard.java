@@ -2,6 +2,8 @@ package canfield.bia.hockey.scoreboard;
 
 import canfield.bia.hockey.Penalty;
 
+import java.util.List;
+
 /**
  *
  */
@@ -18,7 +20,7 @@ public interface ScoreBoard {
 
     void setPeriod(int period);
 
-    void setPeriodLength(int period, int minutes);
+    void setPeriodLength(List<Integer> minutes);
 
     void setHomePenalty(int index, Penalty penalty);
 
@@ -44,15 +46,15 @@ public interface ScoreBoard {
 
     void addListener(EventListener listener);
 
-    static public enum EventType {
+    enum EventType {
         tick, end_of_period, penalty_expired, clock_expired, buzzer
     }
 
-    public interface EventListener {
+    interface EventListener {
         void handle(Event eventType);
     }
 
-    public static class Event {
+    class Event {
         EventType type;
 
         public Event(EventType type) {
@@ -64,7 +66,7 @@ public interface ScoreBoard {
         }
     }
 
-    public static class BuzzerEvent extends Event {
+    class BuzzerEvent extends Event {
         int lengthMillis;
 
         public BuzzerEvent(int lengthMillis) {

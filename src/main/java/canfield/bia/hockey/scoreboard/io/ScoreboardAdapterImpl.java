@@ -47,12 +47,12 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
         scoreBoard.addListener(new ScoreBoardImpl.EventListener() {
             @Override
             public void handle(ScoreBoardImpl.Event event) {
-                if (!running) return;
-
                 final Clock gameClock = scoreBoard.getGameClock();
                 final long now = System.currentTimeMillis();
                 switch (event.getType()) {
                     case tick:
+                        if (!running) return;
+
                         int millis = gameClock.getRemainingMillis();
 
                         if (millis > 59 * 1000) {

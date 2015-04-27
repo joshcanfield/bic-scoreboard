@@ -14,17 +14,14 @@ import dagger.Provides;
 
 import javax.inject.Singleton;
 
-/**
- *
- */
 @Module(
-        injects = {
-                ScoreboardAdapterImpl.class,
-                ScoreBoardImpl.class,
-                GameResource.class,
-                HockeyGameServer.class,
-                WebSocketAdapter.class
-        }
+    injects = {
+        ScoreboardAdapterImpl.class,
+        ScoreBoardImpl.class,
+        GameResource.class,
+        HockeyGameServer.class,
+        WebSocketAdapter.class
+    }
 )
 public class SimpleGameModule {
 

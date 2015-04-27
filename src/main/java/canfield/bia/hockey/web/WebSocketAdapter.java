@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -29,8 +30,8 @@ public class WebSocketAdapter {
 
     @Inject
     public WebSocketAdapter(
-            SimpleGameManager manager,
-            SocketIOServer socketIoServer
+        SimpleGameManager manager,
+        SocketIOServer socketIoServer
     ) {
         gameManager = manager;
         this.socketIoServer = socketIoServer;
@@ -39,16 +40,13 @@ public class WebSocketAdapter {
 
         scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
         scheduledExecutor.scheduleAtFixedRate(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            sendUpdate();
-                        } catch (Exception e ) {
-                            log.warn("Failed sending web-socket update");
-                        }
-                    }
-                }, 1000, 1000 / 4, TimeUnit.MILLISECONDS
+            () -> {
+                try {
+                    sendUpdate();
+                } catch (Exception e) {
+                    log.warn("Failed sending web-socket update");
+                }
+            }, 1000, 1000 / 4, TimeUnit.MILLISECONDS
         );
     }
 
@@ -101,16 +99,24 @@ public class WebSocketAdapter {
     }
 
     @OnEvent("createGame")
-    public void onCreateGame(SocketIOClient client, GameConfig config)
-    {
-        final List<Integer> periodLengths = config.getPeriodLengths();
-        for (int i = 0; i < periodLengths.size(); i++) {
-            Integer periodLength = periodLengths.get(i);
-            gameManager.getScoreBoard().setPeriodLength(i, periodLength);
+    public void onCreateGame(SocketIOClient client, GameConfig config) {
+        final List<Integer> periodLengths;
+        final boolean is3x3 = "3x3".equals(config.getType());
+        if (is3x3) {
+            periodLengths = Arrays.asList(0, config.getGameLengthMinutes());
+        } else {
+            periodLengths = config.getPeriodLengths();
+        }
+        gameManager.getScoreBoard().setPeriodLength(periodLengths);
+        final Integer shiftBuzzerIntervalSeconds = config.getShiftBuzzerIntervalSeconds();
+        if (shiftBuzzerIntervalSeconds == null) {
+            gameManager.setShiftBuzzerIntervalMillis(null);
+        } else {
+            gameManager.setShiftBuzzerIntervalMillis(shiftBuzzerIntervalSeconds * 1000L);
         }
         gameManager.reset();
 
-        if ( gameManager.getPeriodLength() == 0 ) {
+        if (gameManager.getPeriodLength() == 0) {
             gameManager.setPeriod(1);
         }
 
@@ -119,11 +125,14 @@ public class WebSocketAdapter {
     @OnEvent("power")
     public void onScoreboardPower(SocketIOClient client) {
         boolean updatesRunning = gameManager.updatesRunning();
-        log.info("Turning scoreboard Power {}", updatesRunning ? "Off" : "On");
-        if (updatesRunning) gameManager.stopUpdates();
-        else gameManager.startUpdates();
+        log.debug("Turning scoreboard Power {}", updatesRunning ? "Off" : "On");
+        if (updatesRunning) {
+            gameManager.stopUpdates();
+        } else {
+            gameManager.startUpdates();
+        }
 
-        HashMap<String, Object> out = new HashMap<String, Object>();
+        HashMap<String, Object> out = new HashMap<>();
         out.put("scoreboardOn", gameManager.updatesRunning());
 
         client.getNamespace().getBroadcastOperations().sendEvent("power", out);
@@ -131,13 +140,13 @@ public class WebSocketAdapter {
 
     @OnConnect
     public void onConnectHandler(SocketIOClient client) {
-        log.info("Connecting " + client.getSessionId());
+        log.debug("Connecting " + client.getSessionId());
         sendUpdate(client);
     }
 
     @OnDisconnect
     public void onDisconnectHandler(SocketIOClient client) {
-        log.info("Disconnected " + client.getSessionId());
+        log.debug("Disconnected " + client.getSessionId());
     }
 
     private void sendUpdate(SocketIOClient client) {
@@ -151,7 +160,7 @@ public class WebSocketAdapter {
     }
 
     private Object buildUpdate() {
-        final HashMap<String, Object> state = new HashMap<String, Object>();
+        final HashMap<String, Object> state = new HashMap<>();
         state.put("time", gameManager.getTime());
         state.put("running", gameManager.isClockRunning());
         state.put("period", gameManager.getPeriod());
@@ -160,7 +169,7 @@ public class WebSocketAdapter {
         state.put("buzzerOn", gameManager.isBuzzerOn());
 
         for (Team team : Team.values()) {
-            final HashMap<String, Object> o = new HashMap<String, Object>();
+            final HashMap<String, Object> o = new HashMap<>();
             o.put("score", gameManager.getScore(team));
             o.put("penalties", gameManager.getPenalties(team));
             state.put(team.name(), o);

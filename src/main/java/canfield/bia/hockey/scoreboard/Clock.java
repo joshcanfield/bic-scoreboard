@@ -9,6 +9,8 @@ public interface Clock {
 
     void stop();
 
+    boolean isRunning();
+
     int getMinutes();
 
     void setMinutes(int minutes);
@@ -16,8 +18,6 @@ public interface Clock {
     int getSeconds();
 
     void setSeconds(int seconds);
-
-    boolean isRunning();
 
     int getRemainingMillis();
 

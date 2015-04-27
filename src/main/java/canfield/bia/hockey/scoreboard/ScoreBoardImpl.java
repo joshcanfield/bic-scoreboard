@@ -38,22 +38,19 @@ public class ScoreBoardImpl implements ScoreBoard {
     public ScoreBoardImpl() {
         final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.scheduleAtFixedRate(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        if (gameClock == null) return;
+            () -> {
+                if (gameClock == null) return;
 
-                        fire(tickEvent); // this drives the scoreboard serial adapter.
+                fire(tickEvent); // this drives the scoreboard serial adapter.
 
-                        int millis = gameClock.getRemainingMillis();
-                        if (gameClock.isRunning() && millis == 0) {
-                            fire(endOfPeriodEvent);
-                            // TODO advance after millis
-                            advancePeriod();
-                        }
+                int millis = gameClock.getRemainingMillis();
+                if (gameClock.isRunning() && millis == 0) {
+                    fire(endOfPeriodEvent);
+                    // TODO advance after millis
+                    advancePeriod();
+                }
 
-                    }
-                }, 1000, 1000 / 60, TimeUnit.MILLISECONDS
+            }, 1000, 1000 / 60, TimeUnit.MILLISECONDS
         );
     }
 
@@ -97,8 +94,8 @@ public class ScoreBoardImpl implements ScoreBoard {
     }
 
     @Override
-    public void setPeriodLength(int period, int minutes) {
-        periodMinutes.set(period, minutes);
+    public void setPeriodLength(final List<Integer> minutes) {
+        periodMinutes = new ArrayList<>(minutes);
     }
 
     @Override
@@ -159,7 +156,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
     @Override
     public void advancePeriod() {
-        period = (++period % 10);
+        period = ++period % periodMinutes.size();
         gameClock.stop();
         gameClock.setRemainingMillis(getPeriodLengthMinutes() * 60 * 1000);
     }
@@ -174,6 +171,4 @@ public class ScoreBoardImpl implements ScoreBoard {
     public void addListener(EventListener listener) {
         listeners.add(listener);
     }
-
-
 }

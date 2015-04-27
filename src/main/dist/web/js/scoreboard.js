@@ -51,14 +51,14 @@ function formatPenalties(team, penalties, data) {
         }
 
         table += '<tr>' +
-            '<td>' + p.period + '</td>' +
-            '<td>' + p.playerNumber + '</td>' +
-            '<td>' + formatTime(p.time) + '</td>' +
-            '<td>' + formatTime(p.offIceTime) + '</td>' +
-            '<td>' + formatTime(p.startTime) + '</td>' +
-            '<td>' + formatTime(remaining) + '</td>' +
-            '<td><a href="#" data-team="' + team + '" data-pid="' + p.id + '" onclick="deletePenalty(this); return false;">x</a></td>' +
-            '</tr>';
+        '<td>' + p.period + '</td>' +
+        '<td>' + p.playerNumber + '</td>' +
+        '<td>' + formatTime(p.time) + '</td>' +
+        '<td>' + formatTime(p.offIceTime) + '</td>' +
+        '<td>' + formatTime(p.startTime) + '</td>' +
+        '<td>' + formatTime(remaining) + '</td>' +
+        '<td><a href="#" data-team="' + team + '" data-pid="' + p.id + '" onclick="deletePenalty(this); return false;">x</a></td>' +
+        '</tr>';
     }
     return table;
 }
@@ -100,44 +100,6 @@ Scoreboard = {
     time: 0,
     home: {},
     away: {},
-    newGame: function () {
-        Server.createGame(
-            {
-                periods: [
-                    {
-                        label: 0,
-                        length: 5,
-                        intermission: true
-                    },
-                    {
-                        label: 1,
-                        length: 20,
-                        intermission: false
-                    },
-                    {
-                        label: 1,
-                        length: 2,
-                        intermission: true
-                    },
-                    {
-                        label: 2,
-                        length: 20,
-                        intermission: false
-                    },
-                    {
-                        label: 2,
-                        length: 2,
-                        intermission: true
-                    },
-                    {
-                        label: 3,
-                        length: 18,
-                        intermission: false
-                    }
-                ]
-            }
-        );
-    },
     refresh: function () {
         $.ajax({
             url: "/api/game"
@@ -255,11 +217,11 @@ $(document).ready(function () {
 
         $(".score-up").click(function () {
             // TODO: add player/assist tracking
-            Server.goal({ "team": this.dataset.team, "player": 10, "assist": 15 })
+            Server.goal({"team": this.dataset.team, "player": 10, "assist": 15})
         });
 
         $(".score-down").click(function () {
-            Server.undoGoal({ "team": this.dataset.team})
+            Server.undoGoal({"team": this.dataset.team})
         });
 
         var setClockDialog = $('#set-clock');
@@ -323,6 +285,30 @@ $(document).ready(function () {
             newGameDialog.modal('hide');
         });
 
+        $("#new-3x3-game").click(function () {
+            var timeField = $('#3x3_minutes');
+            var error = false;
+            var time = parseInt(timeField.val());
+            if (!time) {
+                timeField.closest('.form-group').addClass('has-error');
+                return false;
+            }
+            val = $('#shift-buzzer').val();
+
+            if (error) {
+                timeField.closest('.form-group').addClass('has-error');
+                return false;
+            }
+
+            Server.createGame({
+                type:'3x3',
+                gameLengthMinutes: time,
+                shiftBuzzerIntervalSeconds: val
+            });
+
+            newGameDialog.modal('hide');
+        });
+
         // before display
         newGameDialog.on('show.bs.modal', function (e) {
             // remove errors
@@ -374,6 +360,11 @@ $(document).ready(function () {
             return false;
         });
 
+        $('#game-tab').find('a').click(function (e) {
+            e.preventDefault();
+            $(this).tab('show')
+        });
+
         // before display
         penaltyDialog.on('show.bs.modal', function (e) {
             var team = e.relatedTarget.dataset.team;
@@ -393,5 +384,7 @@ $(document).ready(function () {
         penaltyDialog.on('shown.bs.modal', function () {
             $("#add-penalty-player")[0].focus();
         });
+
+
     }
 );

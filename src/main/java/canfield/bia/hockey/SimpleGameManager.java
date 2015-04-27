@@ -2,7 +2,6 @@ package canfield.bia.hockey;
 
 import canfield.bia.hockey.scoreboard.Clock;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
-import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
 
 import javax.inject.Inject;
@@ -25,6 +24,8 @@ public class SimpleGameManager {
 
     private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
     private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
+    private Long shiftBuzzerIntervalMillis;
+    private long shiftBuzzerFiredMillis = 0;
 
 
     @Inject
@@ -33,17 +34,38 @@ public class SimpleGameManager {
         this.scoreboardAdapter = scoreboardAdapter;
 
         scoreBoard.addListener(
-                new ScoreBoardImpl.EventListener() {
-                    @Override
-                    public void handle(ScoreBoardImpl.Event event) {
-                        switch (event.getType()) {
-                            case tick:
-                                updatePenalties();
-                        }
-                    }
+            event -> {
+                switch (event.getType()) {
+                    case tick:
+                        updatePenalties();
+                        handleShiftBuzzer();
                 }
+            }
         );
         reset();
+    }
+
+    private void handleShiftBuzzer() {
+        if ( shiftBuzzerIntervalMillis == null ) {
+            return;
+        }
+        final int remainingMillis = scoreBoard.getGameClock().getRemainingMillis();
+        // don't run the buzzer if we're at the end of the period/game
+        if ( remainingMillis < shiftBuzzerIntervalMillis ) {
+            return;
+        }
+        final int periodLengthMillis = scoreBoard.getPeriodLengthMinutes() * 60 * 1000;
+        final int elapsedMillis = periodLengthMillis - remainingMillis;
+
+        // We don't have the total clock time here, so we use the elapsed time to determine how many times
+        // we should have buzzed, and the last buzzed time to determine how many times we have buzzed.
+        // if the numbers arent't he same start the buzzer.
+        final long count = elapsedMillis / shiftBuzzerIntervalMillis;
+        final long last = shiftBuzzerFiredMillis / shiftBuzzerIntervalMillis;
+        if ( last != count ) {
+            shiftBuzzerFiredMillis = elapsedMillis;
+            playBuzzer(1000);
+        }
     }
 
     public int getPeriod() {
@@ -78,7 +100,7 @@ public class SimpleGameManager {
     public void setTime(int millis) {
         final Clock gameClock = scoreBoard.getGameClock();
         gameClock.setRemainingMillis(millis);
-        if ( gameClock.getMinutes() > getPeriodLength() ) {
+        if (gameClock.getMinutes() > getPeriodLength()) {
             gameClock.setMinutes(getPeriodLength());
             gameClock.setSeconds(0);
         }
@@ -130,8 +152,8 @@ public class SimpleGameManager {
         int timeRemainingInCurrentPeriodMillis = getScoreBoard().getGameClock().getRemainingMillis();
 
         int elapsed;
-        if ( penalty.getPeriod() < getPeriod() ) {
-            final int periodLengthMillis = (int)TimeUnit.MINUTES.toMillis(getScoreBoard().getPeriodLengthMinutes());
+        if (penalty.getPeriod() < getPeriod()) {
+            final int periodLengthMillis = (int) TimeUnit.MINUTES.toMillis(getScoreBoard().getPeriodLengthMinutes());
             final int periodTimeRemainingAtPenaltyStartMillis = penalty.getStartTime();
 
             // penalty started at period with clock remaining
@@ -144,7 +166,7 @@ public class SimpleGameManager {
             elapsed = periodTimeRemainingAtPenaltyStartMillis - timeRemainingInCurrentPeriodMillis;
         }
 
-        if ( elapsed > penalty.getTime() ) {
+        if (elapsed > penalty.getTime()) {
             elapsed = penalty.getTime();
         }
         penalty.setElapsed(elapsed);
@@ -190,7 +212,9 @@ public class SimpleGameManager {
                 int index = availableHomePenaltyIndex.remove();
 
                 for (Penalty penalty : homePenalties) {
-                    if ( penalty.getStartTime() > 0 ) continue; // already started
+                    if (penalty.getStartTime() > 0) {
+                        continue; // already started
+                    }
                     if (scoreBoard.getHomePenalty(0) == penalty || scoreBoard.getHomePenalty(1) == penalty) {
                         continue; // already on the board
                     }
@@ -206,7 +230,9 @@ public class SimpleGameManager {
                 int index = availableAwayPenaltyIndex.remove();
 
                 for (Penalty penalty : awayPenalties) {
-                    if ( penalty.getStartTime() > 0 ) continue; // already started
+                    if (penalty.getStartTime() > 0) {
+                        continue; // already started
+                    }
                     if (scoreBoard.getAwayPenalty(0) == penalty || scoreBoard.getAwayPenalty(1) == penalty) {
                         continue; // already on the board
                     }
@@ -253,7 +279,7 @@ public class SimpleGameManager {
         setPeriod(0);
         setScore(Team.home, 0);
         setScore(Team.away, 0);
-        setTime((int)TimeUnit.MINUTES.toMillis(getPeriodLength()));
+        setTime((int) TimeUnit.MINUTES.toMillis(getPeriodLength()));
     }
 
     public void playBuzzer(int millis) {
@@ -274,5 +300,13 @@ public class SimpleGameManager {
 
     public boolean isBuzzerOn() {
         return scoreboardAdapter.isBuzzerOn();
+    }
+
+    public void setShiftBuzzerIntervalMillis(final Long shiftBuzzerIntervalMillis) {
+            this.shiftBuzzerIntervalMillis = shiftBuzzerIntervalMillis;
+    }
+
+    public Long getShiftBuzzerIntervalMillis() {
+        return shiftBuzzerIntervalMillis;
     }
 }

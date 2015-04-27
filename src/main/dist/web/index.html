@@ -221,55 +221,120 @@
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                 <h4 class="modal-title">Create a new Game</h4>
+
                 <p class="help-block">Enter the period length in minutes.</p>
             </div>
             <div class="modal-body">
-                <form class="form-horizontal">
-                    <div class="error"></div>
-                    <div class="period-form form-group">
-                        <label for="period-0" class="col-lg-6 control-label">Period 0</label>
+                <div role="tabpanel">
 
-                        <div class="col-xs-2">
-                            <input id="period-0" class="form-control input-sm" type="text" maxlength="2" size="2"
-                                   value="5"/>
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist" id="game-tab">
+                        <li role="presentation" class="active"
+                                ><a href="#standard" aria-controls="standard" role="tab"
+                                    data-toggle="tab">Standard</a></li>
+                        <li role="presentation"
+                                ><a href="#3x3" aria-controls="3x3" role="tab" data-toggle="tab">3x3</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <div role="tabpanel" class="tab-pane active" id="standard">
+                            <form class="form-horizontal">
+                                <div class="error"></div>
+                                <div class="period-form form-group">
+                                    <span class="col-lg-6 control-label">Period</span>
+
+                                    <div class="col-xs-2">
+                                        <span class="col-lg-6 control-label">Minutes</span>
+                                    </div>
+                                    <div class=col-xs-4>
+                                        &nbsp;
+                                    </div>
+                                </div>
+
+                                <div class="period-form form-group">
+                                    <label for="period-0" class="col-lg-6 control-label">0 (warmup)</label>
+
+                                    <div class="col-xs-2">
+                                        <input id="period-0" class="form-control input-sm" type="text" maxlength="2"
+                                               size="2" value="5"/>
+                                    </div>
+                                    <div class=col-xs-4>
+                                        <a href="#" onclick="$('#period-0').val(0)">skip</a>
+                                    </div>
+                                </div>
+                                <div class="period-form form-group">
+                                    <label for="period-1" class="col-lg-6 control-label">1</label>
+
+                                    <div class="col-lg-2">
+                                        <input id="period-1" class="form-control input-sm" type="text" maxlength="2"
+                                               size="2" value="20"/>
+                                    </div>
+                                </div>
+                                <div class="period-form form-group">
+                                    <label for="period-2" class="col-lg-6 control-label">2</label>
+
+                                    <div class="col-lg-2">
+                                        <input id="period-2" class="form-control input-sm" type="text" maxlength="2"
+                                               size="2" value="20"/>
+                                    </div>
+                                </div>
+                                <div class="period-form form-group">
+                                    <label for="period-3" class="col-lg-6 control-label">3</label>
+
+                                    <div class="col-lg-2">
+                                        <input id="period-3" class="form-control input-sm" type="text" maxlength="2"
+                                               size="2" value="20"/>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                <button id="new-game" type="button" class="btn btn-primary">Create Game</button>
+                            </div>
                         </div>
-                        <div class=col-xs-4>
-                            <a href="#" onclick="$('#period-0').val(0)">skip</a>
+                        <div role="tabpanel" class="tab-pane" id="3x3">
+
+                            <form class="form-horizontal">
+                                <div class="error"></div>
+                                <p class="help-block">3x3 Games run for the full clock length with a shift change buzzer.</p>
+                                <div class="period-form form-group">
+                                    <label for="3x3_minutes" class="col-lg-6 control-label">Game length in
+                                        Minutes</label>
+
+                                    <div class="col-lg-2">
+                                        <input id="3x3_minutes" class="form-control input-sm" type="text"
+                                               maxlength="3" size="3" value="60"/>
+                                    </div>
+                                </div>
+                                <div class="period-form form-group">
+                                    <label for="shift-buzzer" class="col-lg-6 control-label">Shift Buzzer
+                                        in Seconds</label>
+
+                                    <div class="col-lg-2">
+                                        <input id="shift-buzzer" class="form-control input-sm" type="text"
+                                               maxlength="3" size="3" value="120"/>
+                                    </div>
+                                    <div class=col-xs-4>
+                                        <a href="#" onclick="$('#shift-buzzer').val(0)">disable</a>
+                                        <a href="#" onclick="$('#shift-buzzer').val(90)">1:30</a>
+                                        <a href="#" onclick="$('#shift-buzzer').val(120)">2:00</a>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                                <button id="new-3x3-game" type="button" class="btn btn-primary">Create Game</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="period-form form-group">
-                        <label for="period-1" class="col-lg-6 control-label">Period 1</label>
 
-                        <div class="col-lg-2">
-                            <input id="period-1" class="form-control input-sm" type="text" maxlength="2" size="2"
-                                   value="20"/>
-                        </div>
-                    </div>
-                    <div class="period-form form-group">
-                        <label for="period-2" class="col-lg-6 control-label">Period 2</label>
+                </div>
 
-                        <div class="col-lg-2">
-                            <input id="period-2" class="form-control input-sm" type="text" maxlength="2" size="2"
-                                   value="20"/>
-                        </div>
-                    </div>
-                    <div class="period-form form-group">
-                        <label for="period-3" class="col-lg-6 control-label">Period 3</label>
 
-                        <div class="col-lg-2">
-                            <input id="period-3" class="form-control input-sm" type="text" maxlength="2" size="2"
-                                   value="20"/>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                <button id="new-game" type="button" class="btn btn-primary">Create Game</button>
             </div>
         </div>
     </div>
-</div>
 </body>
 </html>

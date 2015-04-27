@@ -32,11 +32,11 @@ Server = {
 };
 
 socket.on('connect', function () {
-    output('<span class="connect-msg">Client has connected to the server!</span>');
+    output('<span class="connect-msg">Connected</span>');
 });
 
 socket.on('disconnect', function () {
-    output('<span class="disconnect-msg">The client has disconnected!</span>');
+    output('<span class="disconnect-msg">Disconnected! Make sure the app is running!</span>');
 });
 
 socket.on('message', function (data) {
@@ -44,7 +44,8 @@ socket.on('message', function (data) {
 });
 
 socket.on('power', function (data) {
-    output('<pre>Power ' + JSON.stringify(data) + '</pre>');
+    var msg = data.scoreboardOn ? "ON" : "OFF";
+    output('<span class="disconnect-msg">The Scoreboard has been turned ' + msg + '</span>');
     Scoreboard.updatePower(data);
 });
 
