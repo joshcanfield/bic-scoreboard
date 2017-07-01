@@ -1,18 +1,22 @@
 package canfield.bia.hockey.scoreboard.io;
 
+import java.util.List;
+
 /**
  *
  */
 public interface ScoreboardAdapter {
-    String getPortName();
+  String getPortName();
 
-    void setPortName(String portName);
+  void setPortName(String portName);
 
-    void start();
+  void start();
 
-    void stop();
+  void stop();
 
-    boolean isRunning();
+  boolean isRunning();
 
-    boolean isBuzzerOn();
+  boolean isBuzzerOn();
+
+  List<String> availablePorts();
 }

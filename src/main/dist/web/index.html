@@ -2,30 +2,42 @@
 <html lang="en">
 <head>
     <title>Scoreboard</title>
-    <script src="js/external/socket.io/socket.io.js"></script>
+    <script src="lib/moment.min.js"></script>
+    <script src="lib/socket.io/socket.io.js"></script>
+    <script src="lib/jquery-2.0.3.min.js"></script>
+    <script src="lib/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
     <script src="js/websocket-client.js"></script>
-    <script src="js/external/jquery-2.0.3.min.js"></script>
-    <script src="js/external/bootstrap.min.js"></script>
-    <script src="js/external/bootstrap-editable.min.js"></script>
     <script src="js/scoreboard.js"></script>
-    <link href="css/external/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-    <link href="css/external/bootstrap-editable.css" rel="stylesheet" type="text/css"/>
+
+    <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
     <link href="css/index.css" rel="stylesheet" type="text/css"/>
+
 </head>
 <body>
+<div id="branding" class="row">
+    <div id="site-logo">
+        <a href="http://www.bremertonicecenter.com/" title="Bremerton Ice Center" rel="home">
+            <img src="img/bic-logo.png"
+                 alt="Bremerton Ice Center">
+        </a>
+    </div><!-- #site-logo -->
+</div>
 <div class="container">
     <div class="row">
         <div id="home" class="col-md-4">
             <h2>Home</h2>
 
             <div class="score">
-                <span id="home-score" class="score"></span>
-                <button data-team="home" class="score-up btn btn-primary btn-lg">Goal</button>
+                <div class="digits">
+                    <div class="digit tens">0</div>
+                    <div class="digit ones">0</div>
+                </div>
                 <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
+                <button data-team="home" class="score-up btn btn-primary btn-lg">+Goal</button>
             </div>
 
             <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary"
+                <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary"
                    data-team="home">Penalty</a>
 
                 <table class="table table-condensed">
@@ -47,14 +59,20 @@
                 </table>
             </div>
         </div>
-        <div id="clock_box" class="col-md-2">
+        <div id="clock_box" class="col-md-4">
             <a data-toggle="modal" href="#set-clock">
-                <span id="clock"></span>
+                <div class="clock">
+                    <div class="digits">
+                        <div class="digit minutes tens">0</div>
+                        <div class="digit minutes ones">0</div>
+                        <div class="digit seconds tens">0</div>
+                        <div class="digit seconds ones">0</div>
+                    </div>
+                </div>
             </a>
 
-            <div id="clock-elapsed"></div>
-            of
-            <div id="period-length"></div>
+            <div id="clock-moment"></div>
+
             <div id="clock-actions">
                 <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
                 <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
@@ -62,17 +80,24 @@
 
             <div id="period-block">
                 <span>Period</span>
-                <span id="period"></span>
-                <button class="period-up btn btn-primary">+</button>
-                <button class="period-down btn btn-danger">-</button>
+                <div id="period">
+                    <div class="digits">
+                        <div class="digit">0</div>
+                    </div>
+                </div>
+                <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-chevron-up"></span></a>
+                <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-chevron-down"></span></a>
             </div>
         </div>
         <div id="away" class="col-md-4">
             <h2>Away</h2>
 
             <div class="score">
-                <span id="away-score" class="score"></span>
-                <button data-team="away" class="score-up btn btn-primary btn-lg">Goal</button>
+                <div class="digits">
+                    <div class="digit tens">0</div>
+                    <div class="digit ones">0</div>
+                </div>
+                <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
                 <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
             </div>
 
@@ -233,7 +258,7 @@
                                 ><a href="#standard" aria-controls="standard" role="tab"
                                     data-toggle="tab">Standard</a></li>
                         <li role="presentation"
-                                ><a href="#3x3" aria-controls="3x3" role="tab" data-toggle="tab">3x3</a>
+                        ><a href="#rec" aria-controls="rec" role="tab" data-toggle="tab">Rec</a>
                         </li>
                     </ul>
 
@@ -294,17 +319,18 @@
                                 <button id="new-game" type="button" class="btn btn-primary">Create Game</button>
                             </div>
                         </div>
-                        <div role="tabpanel" class="tab-pane" id="3x3">
+                        <div role="tabpanel" class="tab-pane" id="rec">
 
                             <form class="form-horizontal">
                                 <div class="error"></div>
-                                <p class="help-block">3x3 Games run for the full clock length with a shift change buzzer.</p>
+                                <p class="help-block">Rec Games run for the full clock length with a shift change
+                                    buzzer.</p>
                                 <div class="period-form form-group">
-                                    <label for="3x3_minutes" class="col-lg-6 control-label">Game length in
+                                    <label for="rec_minutes" class="col-lg-6 control-label">Game length in
                                         Minutes</label>
 
                                     <div class="col-lg-2">
-                                        <input id="3x3_minutes" class="form-control input-sm" type="text"
+                                        <input id="rec_minutes" class="form-control input-sm" type="text"
                                                maxlength="3" size="3" value="60"/>
                                     </div>
                                 </div>
@@ -325,7 +351,7 @@
                             </form>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                                <button id="new-3x3-game" type="button" class="btn btn-primary">Create Game</button>
+                                <button id="new-rec-game" type="button" class="btn btn-primary">Create Game</button>
                             </div>
                         </div>
                     </div>

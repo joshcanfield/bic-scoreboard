@@ -28,3 +28,4 @@ build/
 # put stuff you don't want checked in here
 local/
 
+/out/

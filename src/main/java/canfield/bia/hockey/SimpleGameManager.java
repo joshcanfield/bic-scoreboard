@@ -50,16 +50,9 @@ public class SimpleGameManager {
             return;
         }
         final int remainingMillis = scoreBoard.getGameClock().getRemainingMillis();
-        // don't run the buzzer if we're at the end of the period/game
-        if ( remainingMillis < shiftBuzzerIntervalMillis ) {
-            return;
-        }
         final int periodLengthMillis = scoreBoard.getPeriodLengthMinutes() * 60 * 1000;
         final int elapsedMillis = periodLengthMillis - remainingMillis;
 
-        // We don't have the total clock time here, so we use the elapsed time to determine how many times
-        // we should have buzzed, and the last buzzed time to determine how many times we have buzzed.
-        // if the numbers arent't he same start the buzzer.
         final long count = elapsedMillis / shiftBuzzerIntervalMillis;
         final long last = shiftBuzzerFiredMillis / shiftBuzzerIntervalMillis;
         if ( last != count ) {

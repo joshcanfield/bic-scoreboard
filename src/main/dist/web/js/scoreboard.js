@@ -115,19 +115,63 @@ Scoreboard = {
         Scoreboard.home = data.home;
         Scoreboard.away = data.away;
 
-        $('#home').find('tbody.list').html(formatPenalties('home', data.home.penalties, data));
-        $('#away').find('tbody.list').html(formatPenalties('away', data.away.penalties, data));
+        var $home = $('#home');
+        var $away = $('#away');
 
-        $("#clock").html(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
-        $("#clock-elapsed").html(formatClock(Scoreboard.getElapsedMinutes(), Scoreboard.getElapsedSeconds()));
-        $("#period-length").html(formatClock(data.periodLength, 0));
-        $("#period").html(Scoreboard.period);
+        $home.find('tbody.list').html(formatPenalties('home', data.home.penalties, data));
+        $away.find('tbody.list').html(formatPenalties('away', data.away.penalties, data));
+
+        var $clockBox = $("#clock_box");
+
+        function digits(n) {
+            var digits = [];
+            digits[0] = Math.floor(n / 10);
+            digits[1] = n % 10;
+            return digits;
+        }
+
+        var minuteDigits = digits(Scoreboard.getMinutes());
+        $clockBox.find(".digit.minutes.tens").html(minuteDigits[0]);
+        $clockBox.find(".digit.minutes.ones").html(minuteDigits[1]);
+
+        var secondDigits = digits(Scoreboard.getSeconds());
+        $clockBox.find(".digit.seconds.tens").html(secondDigits[0]);
+        $clockBox.find(".digit.seconds.ones").html(secondDigits[1]);
+
+        var minutes = Scoreboard.getElapsedMinutes();
+        var seconds = Scoreboard.getElapsedSeconds();
+
+        var moment = "";
+        if (minutes === 1) {
+            moment += minutes + " minute";
+        } else if (minutes > 1) {
+            moment += minutes + " minutes";
+        }
+        if (minutes > 0) {
+            moment += " and ";
+        }
+        if (seconds === 1) {
+            moment += seconds + " seconds";
+        } else {
+            moment += seconds + " seconds";
+        }
+        if (moment === "") {
+            moment = "&nbsp;";
+        }
+        $("#clock-moment").html(moment);
+
+        $("#period").find(".digit").html(Scoreboard.period);
 
         $("#clock-pause").toggle(Scoreboard.running);
         $("#clock-start").toggle(!Scoreboard.running);
 
-        $("#home-score").html(data.home.score);
-        $("#away-score").html(data.away.score);
+        var homeDigits = digits(data.home.score);
+        $home.find(".score .digit.tens").html(homeDigits[0]);
+        $home.find(".score .digit.ones").html(homeDigits[1]);
+
+        var awayDigits = digits(data.away.score);
+        $away.find(".score .digit.tens").html(awayDigits[0]);
+        $away.find(".score .digit.ones").html(awayDigits[1]);
 
         Scoreboard.updatePower(data);
         Scoreboard.updateBuzzer(data);
@@ -137,20 +181,14 @@ Scoreboard = {
         power.prop('checked', data.scoreboardOn);
     },
     updateBuzzer: function (data) {
-        var buzzer = $("#buzzer");
+        var body = $('body');
         if (data.buzzerOn) {
-            if (!buzzer.hasClass("btn-danger")) {
-                buzzer.addClass("btn-danger");
-                buzzer.addClass("btn-lg");
-                buzzer.removeClass("btn-warning");
-                buzzer.removeClass("btn-sm");
+            if (!body.hasClass("buzzer")) {
+                body.addClass("buzzer");
             }
         } else {
-            if (!buzzer.hasClass("btn-warning")) {
-                buzzer.removeClass("btn-danger");
-                buzzer.removeClass("btn-lg");
-                buzzer.addClass("btn-warning");
-                buzzer.addClass("btn-sm");
+            if (body.hasClass("buzzer")) {
+                body.removeClass("buzzer");
             }
         }
     },
@@ -237,8 +275,8 @@ $(document).ready(function () {
         });
 
         // before display
-        setClockDialog.on('show.bs.modal', function (e) {
-            var customTime = $('#custom-time').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
+    setClockDialog.on('show.bs.modal', function () {
+        $('#custom-time').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
         });
         $('#save-custom-time').click(function () {
             var customTime = $('#custom-time').val();
@@ -250,7 +288,7 @@ $(document).ready(function () {
             });
         });
 
-        setClockDialog.on('show.bs.modal', function (e) {
+    setClockDialog.on('show.bs.modal', function () {
             setClockDialog.find('.error').html('');
         });
 
@@ -262,7 +300,7 @@ $(document).ready(function () {
                 var timeField = $('#period-' + i);
 
                 var val = timeField.val();
-                if (i == 0 && val == '0') {
+                if (i === 0 && val === '0') {
                     periods[i] = 0;
                 } else {
                     var time = parseInt(val);
@@ -285,15 +323,15 @@ $(document).ready(function () {
             newGameDialog.modal('hide');
         });
 
-        $("#new-3x3-game").click(function () {
-            var timeField = $('#3x3_minutes');
+    $("#new-rec-game").click(function () {
+        var timeField = $('#rec_minutes');
             var error = false;
             var time = parseInt(timeField.val());
             if (!time) {
                 timeField.closest('.form-group').addClass('has-error');
                 return false;
             }
-            val = $('#shift-buzzer').val();
+        var shiftInterval = $('#shift-buzzer').val();
 
             if (error) {
                 timeField.closest('.form-group').addClass('has-error');
@@ -301,16 +339,15 @@ $(document).ready(function () {
             }
 
             Server.createGame({
-                type:'3x3',
-                gameLengthMinutes: time,
-                shiftBuzzerIntervalSeconds: val
+                buzzerIntervalSeconds: shiftInterval,
+                periodLengths: [0, time]
             });
 
             newGameDialog.modal('hide');
         });
 
         // before display
-        newGameDialog.on('show.bs.modal', function (e) {
+    newGameDialog.on('show.bs.modal', function () {
             // remove errors
             $(this).find(".modal-body .form-group").removeClass('has-error');
         });

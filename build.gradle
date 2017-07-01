@@ -19,12 +19,6 @@ project.ext {
 
 repositories {
     mavenCentral()
-
-    // purejavacomm
-    maven {
-	name = "SparetimeLabs"
-	url = "http://www.sparetimelabs.com/maven2"
-    }
 }
 
 // This simulates Maven's "provided" scope, until it is officially supported by Gradle
@@ -48,7 +42,8 @@ dependencies {
     compile "com.squareup.dagger:dagger:1.1.0"
     compile "com.squareup.dagger:dagger-compiler:1.1.0"
 
-    compile "com.sparetimelabs:purejavacomm:0.0.17"
+    compile "com.github.purejavacomm:purejavacomm:1.0.1.RELEASE"
+
     compile "joda-time:joda-time:2.1"
 
     compile 'ch.qos.logback:logback-classic:1.1.2'
