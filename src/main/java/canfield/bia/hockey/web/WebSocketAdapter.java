@@ -99,9 +99,9 @@ public class WebSocketAdapter {
     gameManager.getScoreBoard().setPeriodLength(config.getPeriodLengths());
     final Integer shiftBuzzerIntervalSeconds = config.getBuzzerIntervalSeconds();
     if (shiftBuzzerIntervalSeconds == null) {
-      gameManager.setShiftBuzzerIntervalSeconds(null);
+      gameManager.setShiftLengthSeconds(null);
     } else {
-      gameManager.setShiftBuzzerIntervalSeconds(shiftBuzzerIntervalSeconds * 1000L);
+      gameManager.setShiftLengthSeconds(shiftBuzzerIntervalSeconds);
     }
 
     gameManager.reset();

@@ -78,8 +78,9 @@ public class ScoreBoardImpl implements ScoreBoard {
     if (period >= periodMinutes.size()) {
       return;
     }
-    this.period = period;
-
+    if (getPeriodMinutes(period) > 0) {
+      this.period = period;
+    }
   }
 
   @Override
@@ -98,6 +99,14 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public void setPeriodLength(final List<Integer> minutes) {
+    // Validate period lengths: any period other than 0 has to be greater than 0
+    for (int i = 1; i < minutes.size(); i++) {
+      final Integer minute = minutes.get(i);
+      if (minute == 0) {
+        // TODO: Return an error
+        return;
+      }
+    }
     periodMinutes = new ArrayList<>(minutes);
   }
 
@@ -170,9 +179,11 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public void advancePeriod() {
-    period = ++period % periodMinutes.size();
     gameClock.stop();
-    gameClock.setTime(getPeriodLengthMinutes(), 0);
+    if (period + 1 < periodMinutes.size()) {
+      period = ++period % periodMinutes.size();
+      gameClock.setTime(getPeriodLengthMinutes(), 0);
+    }
   }
 
   private void fire(Event eventType) {

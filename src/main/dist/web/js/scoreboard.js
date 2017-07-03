@@ -228,10 +228,16 @@ Scoreboard = {
         return getSeconds(Scoreboard.time);
     },
     getElapsedMinutes: function () {
+        if ( Scoreboard.periodLengthMillis === 0 ) {
+            return 0;
+        }
         var elapsed = Scoreboard.periodLengthMillis - Scoreboard.time;
         return Math.floor(elapsed / (60 * 1000));
     },
     getElapsedSeconds: function () {
+        if ( Scoreboard.periodLengthMillis === 0 ) {
+            return 0;
+        }
         var elapsed = Scoreboard.periodLengthMillis - Scoreboard.time;
         return Math.floor((elapsed / 1000)) % 60;
     }

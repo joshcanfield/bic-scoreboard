@@ -22,10 +22,10 @@ public class SimpleGameManager {
   private ScoreBoard scoreBoard;
   private ScoreboardAdapter scoreboardAdapter;
 
-  private List<Penalty> homePenalties = new CopyOnWriteArrayList<Penalty>();
-  private List<Penalty> awayPenalties = new CopyOnWriteArrayList<Penalty>();
-  private Long shiftBuzzerIntervalSeconds;
-  private long lastShiftBuzzer = 0;
+  private List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
+  private List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
+  private Integer shiftLengthSeconds;
+  private int lastShiftBuzzer = 0;
 
 
   @Inject
@@ -46,21 +46,30 @@ public class SimpleGameManager {
   }
 
   private void handleShiftBuzzer() {
-    if (shiftBuzzerIntervalSeconds == null) {
+    if (shiftLengthSeconds == null) {
       return;
     }
 
-    Clock gameClock = scoreBoard.getGameClock();
-    Clock.ClockTime time = gameClock.getTime();
-
-    final int periodLengthSeconds = scoreBoard.getPeriodLengthMinutes() * 60;
-    final int secondsRemaining = time.getMinutes() * 60 + time.getSeconds();
-    final int elapsedSeconds = periodLengthSeconds - secondsRemaining;
-
-    if (lastShiftBuzzer < elapsedSeconds) {
-      lastShiftBuzzer = elapsedSeconds;
+    final Clock.ClockTime time = scoreBoard.getGameClock().getTime();
+    final int currentShift = getShift(time);
+    if (currentShift != lastShiftBuzzer) {
+      lastShiftBuzzer = currentShift;
       playBuzzer(1000);
     }
+  }
+
+  /**
+   * Given the clock time, which shift are we in?
+   */
+  private int getShift(Clock.ClockTime time) {
+    if (shiftLengthSeconds == null) {
+      return 0;
+    }
+    final int periodLengthSeconds = scoreBoard.getPeriodLengthMinutes() * 60;
+    final int remainingSeconds = time.getMinutes() * 60 + time.getSeconds();
+    final int elapsedSeconds = periodLengthSeconds - remainingSeconds;
+
+    return elapsedSeconds / shiftLengthSeconds;
   }
 
   public int getPeriod() {
@@ -88,13 +97,15 @@ public class SimpleGameManager {
     final Clock gameClock = scoreBoard.getGameClock();
 
     final int minutes = Clock.getMinutes(millis);
+    final int seconds = Clock.getSeconds(millis);
     if (minutes <= getPeriodLength()) {
-      int seconds = Clock.getSeconds(millis);
       gameClock.setTime(minutes, seconds);
     } else {
       // respect the game configuration
       gameClock.setTime(getPeriodLength(), 0);
     }
+    // reset last shift buzzer to the previous buzzer interval
+    lastShiftBuzzer = getShift(gameClock.getTime());
   }
 
   public boolean isClockRunning() {
@@ -175,9 +186,9 @@ public class SimpleGameManager {
     penalty.setElapsed(elapsed);
   }
 
-  public void updatePenalties() {
-    Queue<Integer> availableHomePenaltyIndex = new ArrayDeque<Integer>();
-    Queue<Integer> availableAwayPenaltyIndex = new ArrayDeque<Integer>();
+  private void updatePenalties() {
+    final Queue<Integer> availableHomePenaltyIndex = new ArrayDeque<>();
+    final Queue<Integer> availableAwayPenaltyIndex = new ArrayDeque<>();
     for (Penalty p : homePenalties) {
       updateElapsed(p);
     }
@@ -305,11 +316,7 @@ public class SimpleGameManager {
     return scoreboardAdapter.isBuzzerOn();
   }
 
-  public Long getShiftBuzzerIntervalSeconds() {
-    return shiftBuzzerIntervalSeconds;
-  }
-
-  public void setShiftBuzzerIntervalSeconds(final Long shiftBuzzerIntervalSeconds) {
-    this.shiftBuzzerIntervalSeconds = shiftBuzzerIntervalSeconds;
+  public void setShiftLengthSeconds(final Integer shiftLengthSeconds) {
+    this.shiftLengthSeconds = shiftLengthSeconds;
   }
 }

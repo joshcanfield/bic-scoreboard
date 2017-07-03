@@ -139,9 +139,9 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
           buzzer_stops = now + 3000;
           break;
         case buzzer:
-          // can't send the buzzer in the last minute
+          // Is the buzzer already ringing?
           int lengthMillis = ((ScoreBoardImpl.BuzzerEvent) event).getLengthMillis();
-          buzzer_stops = now + lengthMillis;
+          buzzer_stops = Math.max(buzzer_stops, now + lengthMillis);
           break;
       }
     });
