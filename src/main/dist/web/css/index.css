@@ -14,11 +14,34 @@ body.buzzer {
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 }
+
+.navbar-default {
+    background-color: #19253e;
+}
+
+img.navbar-brand {
+    padding: 0;
+    margin: 0;
+}
+
+.navbar-brand,
+.navbar-nav li a {
+    background-color: #19253e;
+    line-height: 97px;
+    height: 97px;
+    padding-top: 0;
+}
+
 #home .penalties .penalty {
     float: right;
 }
 #clock_box {
     text-align: center;
+}
+
+#clock-moment {
+    text-align: center;
+    padding: 10px;
 }
 
 #clock-actions .btn {
@@ -29,10 +52,6 @@ body.buzzer {
     color: black;
     cursor: pointer;
     font-size: 40px;
-}
-
-#clock-moment {
-    padding-top: 10px;
 }
 
 .digits {

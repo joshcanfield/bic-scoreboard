@@ -2,7 +2,6 @@ package canfield.bia.hockey.scoreboard.io;
 
 import canfield.bia.hockey.Penalty;
 import canfield.bia.hockey.scoreboard.Clock;
-import canfield.bia.hockey.scoreboard.GameClock;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import org.slf4j.Logger;
@@ -142,11 +141,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
         case buzzer:
           // can't send the buzzer in the last minute
           int lengthMillis = ((ScoreBoardImpl.BuzzerEvent) event).getLengthMillis();
-          if (gameClock.getRemainingMillis() - lengthMillis > 0) {
-            log.info("Sending buzzer lengthMillis={}", lengthMillis);
-            // We can ring the buzzer
-            buzzer_stops = now + lengthMillis;
-          }
+          buzzer_stops = now + lengthMillis;
           break;
       }
     });
@@ -250,8 +245,10 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
 
       final int homeScore = scoreBoard.getHomeScore();
       final int awayScore = scoreBoard.getAwayScore();
-      final int minutes = gameClock.getMinutes();
-      final int seconds = gameClock.getSeconds();
+      final Clock.ClockTime time = gameClock.getTime();
+
+      final int minutes = time.getMinutes();
+      final int seconds = time.getSeconds();
 
       if (minutes > 0) {
         send(new byte[] {
@@ -271,13 +268,13 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
         });
 
       } else {
-
+        // at less than a minute send seconds with 10th of second remaining
         send(new byte[] {
             0x2E,
             0x79,
             digit(10, seconds, ZERO_VALUE_EMPTY),
             digit(1, seconds),
-            digit(1, (byte) ((gameClock.getRemainingMillis() / 100) % 10)),
+            digit(1, (byte) time.getTenthsOfSeconds()),
             (byte) 0xFF
         });
 
@@ -364,9 +361,9 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
         } else {
           int remaining = penalty.getTime() - penalty.getElapsed();
 
-          byte minutes = (byte) (GameClock.getMinutes(remaining) & 0xFF);
+          byte minutes = (byte) (Clock.getMinutes(remaining) & 0xFF);
           b[index++] = digit(1, minutes); // == 0 ? (byte) 0xFF : minutes;
-          int seconds = GameClock.getSeconds(remaining);
+          int seconds = Clock.getSeconds(remaining);
           b[index++] = digit(10, seconds);
           b[index++] = digit(1, seconds);
         }

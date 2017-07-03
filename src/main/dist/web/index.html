@@ -14,15 +14,36 @@
 
 </head>
 <body>
-<div id="branding" class="row">
-    <div id="site-logo">
-        <a href="http://www.bremertonicecenter.com/" title="Bremerton Ice Center" rel="home">
-            <img src="img/bic-logo.png"
-                 alt="Bremerton Ice Center">
-        </a>
-    </div><!-- #site-logo -->
-</div>
 <div class="container">
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
+                        data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <img src="img/bic-logo.png" class="navbar-brand" width="265" height="97" alt="Bremerton Ice Center">
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button>
+                    </li>
+                    <li>
+                        <button type="button" data-toggle="modal" href="#new-game-dialog"
+                                class="btn btn-primary navbar-btn">New Game
+                        </button>
+                    </li>
+                </ul>
+            </div><!-- /.navbar-collapse -->
+        </div><!-- /.container-fluid -->
+    </nav>
     <div class="row">
         <div id="home" class="col-md-4">
             <h2>Home</h2>
@@ -37,8 +58,7 @@
             </div>
 
             <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary"
-                   data-team="home">Penalty</a>
+                <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">Penalty</a>
 
                 <table class="table table-condensed">
                     <tr>
@@ -127,8 +147,6 @@
     </div>
     <div class="row">
         <div class="col-md-4">
-            <button id="buzzer" class="btn btn-sm btn-warning">Buzzer</button>
-            <a data-toggle="modal" href="#new-game-dialog" class="btn btn-primary btn-sm">New Game</a>
 
         </div>
         <div class="col-md-4">&nbsp;</div>
@@ -163,16 +181,16 @@
                         <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
 
                         <div class="col-lg-3">
-                            <input id="add-penalty-player" class="form-control input-sm" type="text" maxlength="2"
-                                   size="1"/>
+                            <input id="add-penalty-player"
+                                   class="form-control input-sm" type="text" maxlength="2" size="1"/>
                         </div>
                     </div>
                     <div class="penalty-serving form-group">
                         <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
 
                         <div class="col-lg-3">
-                            <input id="add-penalty-serving" class="form-control input-sm" type="text" maxlength="2"
-                                   size="1"/>
+                            <input id="add-penalty-serving"
+                                   class="form-control input-sm" type="text" maxlength="2" size="1"/>
                         </div>
                     </div>
                     <div class="penalty-time form-group">
@@ -279,7 +297,7 @@
                                 </div>
 
                                 <div class="period-form form-group">
-                                    <label for="period-0" class="col-lg-6 control-label">0 (warmup)</label>
+                                    <label for="period-0" class="col-lg-6 control-label">warmup</label>
 
                                     <div class="col-xs-2">
                                         <input id="period-0" class="form-control input-sm" type="text" maxlength="2"

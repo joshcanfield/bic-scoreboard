@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 public class ScoreBoardImpl implements ScoreBoard {
   private static final int HOME = 0;
   private static final int AWAY = 1;
-  private GameClock gameClock = new GameClock(5, 0);
+  private Clock gameClock = new GameClock(5, 0);
   private int period = 0;
 
   // Default game configuration
@@ -45,8 +45,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
       fire(tickEvent); // this drives the scoreboard serial adapter.
 
-      int millis = gameClock.getRemainingMillis();
-      if (gameClock.isRunning() && millis == 0) {
+      if (gameClock.isRunning() && gameClock.hasExpired()) {
         fire(endOfPeriodEvent);
 
         advancePeriod();
@@ -173,7 +172,7 @@ public class ScoreBoardImpl implements ScoreBoard {
   public void advancePeriod() {
     period = ++period % periodMinutes.size();
     gameClock.stop();
-    gameClock.setRemainingMillis(getPeriodLengthMinutes() * 60 * 1000);
+    gameClock.setTime(getPeriodLengthMinutes(), 0);
   }
 
   private void fire(Event eventType) {

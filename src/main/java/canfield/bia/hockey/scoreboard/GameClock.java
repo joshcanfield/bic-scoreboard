@@ -1,7 +1,7 @@
 package canfield.bia.hockey.scoreboard;
 
 /**
- * The game clock
+ * A count-down clock that holds the time remaining and supports pause/resume without losing time fidelity.
  */
 public class GameClock implements Clock {
   /**
@@ -15,20 +15,12 @@ public class GameClock implements Clock {
   private boolean isRunning = false;
 
   /**
-   * What was the time stamp from the last update?
+   * When the clock was started
    */
-  private long lastUpdateMillis;
+  private long clockStartMillis;
 
   public GameClock(int minutes, int seconds) {
-    setRemainingMillis(minutes * 60 * 1000 + seconds * 1000);
-  }
-
-  public static int getMinutes(int millis) {
-    return (millis + 999) / (60 * 1000);
-  }
-
-  public static int getSeconds(int millis) {
-    return (millis + 999) / 1000 % 60;
+    setTime(minutes, seconds);
   }
 
   public void reset() {
@@ -41,10 +33,20 @@ public class GameClock implements Clock {
   }
 
   @Override
-  public int getRemainingMillis() {
+  public ClockTime getTime() {
+    int remainingMillis = getRemainingMillis();
+    return new ClockTime(
+        Clock.getMinutes(remainingMillis),
+        Clock.getSeconds(remainingMillis),
+        Clock.getTenthsOfSecond(remainingMillis)
+    );
+  }
+
+  private int getRemainingMillis() {
     if (isRunning) {
+      // Calculate based on time elapsed since last clock start
       long now = System.currentTimeMillis();
-      int elapsed = (int) (now - lastUpdateMillis);
+      int elapsed = (int) (now - clockStartMillis);
       final int actualRemaining = timeRemainingMillis - elapsed;
       return actualRemaining < 0 ? 0 : actualRemaining;
     }
@@ -52,48 +54,33 @@ public class GameClock implements Clock {
   }
 
   @Override
-  public void setRemainingMillis(int millis) {
-    if (isRunning) {
-      lastUpdateMillis = System.currentTimeMillis();
-    }
-    timeRemainingMillis = millis;
+  public boolean hasExpired() {
+    return getRemainingMillis() == 0;
   }
 
   @Override
-  public int getMinutes() {
-    return getMinutes(this.getRemainingMillis());
-  }
-
-  @Override
-  public void setMinutes(int minutes) {
-    int seconds = getSeconds();
+  public void setTime(int minutes, int seconds) {
     timeRemainingMillis = minutes * 60 * 1000 + seconds * 1000;
+    clockStartMillis = System.currentTimeMillis();
   }
 
-  @Override
-  public int getSeconds() {
-    return getSeconds(this.getRemainingMillis());
-  }
-
-  @Override
-  public void setSeconds(int seconds) {
-    int minutes = getMinutes();
-    timeRemainingMillis = minutes * 60 * 1000 + seconds * 1000;
-  }
 
   @Override
   public void start() {
-    lastUpdateMillis = System.currentTimeMillis();
+    clockStartMillis = System.currentTimeMillis();
     isRunning = true;
   }
 
+  /**
+   * Stops the clock and updates the elapsed time counter
+   */
   @Override
   public void stop() {
     isRunning = false;
 
     long now = System.currentTimeMillis();
-    long elapsed = now - lastUpdateMillis;
-    lastUpdateMillis = now;
+    long elapsed = now - clockStartMillis;
+    clockStartMillis = 0;
     timeRemainingMillis -= elapsed;
     if (timeRemainingMillis < 0) {
       timeRemainingMillis = 0;

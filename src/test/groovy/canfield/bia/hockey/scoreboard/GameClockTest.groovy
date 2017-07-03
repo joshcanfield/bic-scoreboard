@@ -11,8 +11,10 @@ class GameClockTest {
     void "can create scoreboard clock"() {
         def clock = new GameClock(20,00)
 
-        assert clock.getMinutes() == 20
-        assert clock.getSeconds() == 0
+        def time = clock.getTime()
+
+        assert time.getMinutes() == 20
+        assert time.getSeconds() == 0
     }
 
     @Test
@@ -23,8 +25,9 @@ class GameClockTest {
 
         Thread.sleep(500)
 
-        assert clock.getMinutes() == 20
-        assert clock.getSeconds() == 0
+        def time = clock.getTime()
+        assert time.getMinutes() == 20
+        assert time.getSeconds() == 0
     }
 
     @Test
@@ -35,8 +38,9 @@ class GameClockTest {
 
         Thread.sleep(5000)
 
-        assert clock.getMinutes() == 19
-        assert clock.getSeconds() == 55
+        def time = clock.getTime()
+        assert time.getMinutes() == 19
+        assert time.getSeconds() == 55
     }
 
     @Test
@@ -46,19 +50,22 @@ class GameClockTest {
         Thread.sleep(2000)
         clock.stop()
         // 2 seconds elapsed
-        assert clock.getMinutes() == 19
-        assert clock.getSeconds() == 58
+        def time = clock.getTime()
+        assert time.getMinutes() == 19
+        assert time.getSeconds() == 58
 
         Thread.sleep(2000)
         // 2 seconds elapsed still
-        assert clock.getMinutes() == 19
-        assert clock.getSeconds() == 58
+        time = clock.getTime()
+        assert time.getMinutes() == 19
+        assert time.getSeconds() == 58
 
         clock.start()
 
         Thread.sleep(2000)
         // now 4 seconds have elapsed
-        assert clock.getMinutes() == 19
-        assert clock.getSeconds() == 56
+        time = clock.getTime()
+        assert time.getMinutes() == 19
+        assert time.getSeconds() == 56
     }
 }
