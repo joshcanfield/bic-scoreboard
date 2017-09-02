@@ -16,6 +16,6 @@
     </root>
 
     <logger name="canfield.bia" level="INFO"/>
-    <logger name="canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl" level="TRACE"/>
+    <!--<logger name="canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl" level="TRACE"/>-->
 
 </configuration>
