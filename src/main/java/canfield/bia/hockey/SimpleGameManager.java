@@ -85,7 +85,7 @@ public class SimpleGameManager {
     return scoreBoard.getPeriodLengthMinutes();
   }
 
-  public int getTime() {
+  public int getRemainingTimeMillis() {
     final Clock.ClockTime time = scoreBoard.getGameClock().getTime();
     return (time.getMinutes() * 60 + time.getSeconds()) * 1000;
   }
@@ -163,7 +163,7 @@ public class SimpleGameManager {
 
   void updateElapsed(Penalty penalty) {
     // if a penalty started in the previous period elapsed time is the rest of that period + whatever has elapsed this period.
-    int timeRemainingInCurrentPeriodMillis = getTime();
+    int timeRemainingInCurrentPeriodMillis = getRemainingTimeMillis();
 
     int elapsed;
     if (penalty.getPeriod() < getPeriod()) {
@@ -219,7 +219,7 @@ public class SimpleGameManager {
       }
     }
     // Do we need to put some penalties on the board?
-    final int startTime = roundToSecond(getTime());
+    final int startTime = roundToSecond(getRemainingTimeMillis());
 
     if (homePenalties.size() > 0) {
       while (!availableHomePenaltyIndex.isEmpty()) {
@@ -304,6 +304,19 @@ public class SimpleGameManager {
     return scoreboardAdapter.isRunning();
   }
 
+  public List<String> possiblePortNames() {
+    return scoreboardAdapter.possiblePorts();
+  }
+
+  public void setAdapterPort(String portName) {
+    scoreboardAdapter.setPortName(portName);
+
+    if ( scoreboardAdapter.isRunning()) {
+      scoreboardAdapter.stop();
+      scoreboardAdapter.start();
+    }
+  }
+
   public void stopUpdates() {
     scoreboardAdapter.stop();
   }
@@ -318,5 +331,9 @@ public class SimpleGameManager {
 
   public void setShiftLengthSeconds(final Integer shiftLengthSeconds) {
     this.shiftLengthSeconds = shiftLengthSeconds;
+  }
+
+  public String currentPort() {
+    return scoreboardAdapter.getPortName();
   }
 }

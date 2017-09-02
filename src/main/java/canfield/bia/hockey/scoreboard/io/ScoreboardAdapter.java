@@ -18,5 +18,5 @@ public interface ScoreboardAdapter {
 
   boolean isBuzzerOn();
 
-  List<String> availablePorts();
+  List<String> possiblePorts();
 }

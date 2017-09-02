@@ -33,7 +33,7 @@ public class ScoreBoardImpl implements ScoreBoard {
   private Event tickEvent = new Event(EventType.tick);
   private Event endOfPeriodEvent = new Event(EventType.end_of_period);
 
-  private List<EventListener> listeners = new ArrayList<EventListener>();
+  private List<EventListener> listeners = new ArrayList<>();
 
   public ScoreBoardImpl() {
     final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();

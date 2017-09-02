@@ -21,6 +21,7 @@ function parseClock(clock) {
     if (isNaN(m) || isNaN(s)) return false;
     return {minutes: m, seconds: s}
 }
+
 function parseClockMillis(clock) {
     var parts = parseClock(clock);
     if (parts === false) return false;
@@ -34,12 +35,15 @@ function formatClock(minutes, seconds) {
 function getMinutes(millis) {
     return Math.floor((millis + 999) / (60 * 1000));
 }
+
 function getSeconds(millis) {
     return Math.floor((millis + 999) / 1000 % 60);
 }
+
 function formatTime(remaining) {
     return getMinutes(remaining) + ':' + pad(getSeconds(remaining), 2);
 }
+
 function formatPenalties(team, penalties, data) {
     var table = '';
     for (var i = 0; i < penalties.length; ++i) {
@@ -51,14 +55,14 @@ function formatPenalties(team, penalties, data) {
         }
 
         table += '<tr>' +
-        '<td>' + p.period + '</td>' +
-        '<td>' + p.playerNumber + '</td>' +
-        '<td>' + formatTime(p.time) + '</td>' +
-        '<td>' + formatTime(p.offIceTime) + '</td>' +
-        '<td>' + formatTime(p.startTime) + '</td>' +
-        '<td>' + formatTime(remaining) + '</td>' +
-        '<td><a href="#" data-team="' + team + '" data-pid="' + p.id + '" onclick="deletePenalty(this); return false;">x</a></td>' +
-        '</tr>';
+            '<td>' + p.period + '</td>' +
+            '<td>' + p.playerNumber + '</td>' +
+            '<td>' + formatTime(p.time) + '</td>' +
+            '<td>' + formatTime(p.offIceTime) + '</td>' +
+            '<td>' + formatTime(p.startTime) + '</td>' +
+            '<td>' + formatTime(remaining) + '</td>' +
+            '<td><a href="#" data-team="' + team + '" data-pid="' + p.id + '" onclick="deletePenalty(this); return false;">x</a></td>' +
+            '</tr>';
     }
     return table;
 }
@@ -96,10 +100,13 @@ function doDelete(endpoint) {
         url: "/api/game/" + endpoint
     })
 }
+
 Scoreboard = {
     time: 0,
     home: {},
     away: {},
+    portNames: [],
+    currentPort: "",
     refresh: function () {
         $.ajax({
             url: "/api/game"
@@ -192,7 +199,20 @@ Scoreboard = {
             }
         }
     },
-
+    getPortNames: function () {
+        var d = new $.Deferred;
+        doMethod("GET", "portNames").success(function (data) {
+            Scoreboard.updatePorts(data);
+        }).done(function () {
+            d.resolve();
+        });
+        return d.promise();
+    },
+    updatePorts: function (data) {
+        console.debug("ports:", data);
+        Scoreboard.portNames = data.portNames;
+        Scoreboard.currentPort = data.currentPort;
+    },
     setClock: function (time) {
         var d = new $.Deferred;
 
@@ -228,14 +248,14 @@ Scoreboard = {
         return getSeconds(Scoreboard.time);
     },
     getElapsedMinutes: function () {
-        if ( Scoreboard.periodLengthMillis === 0 ) {
+        if (Scoreboard.periodLengthMillis === 0) {
             return 0;
         }
         var elapsed = Scoreboard.periodLengthMillis - Scoreboard.time;
         return Math.floor(elapsed / (60 * 1000));
     },
     getElapsedSeconds: function () {
-        if ( Scoreboard.periodLengthMillis === 0 ) {
+        if (Scoreboard.periodLengthMillis === 0) {
             return 0;
         }
         var elapsed = Scoreboard.periodLengthMillis - Scoreboard.time;
@@ -245,7 +265,58 @@ Scoreboard = {
 
 $(document).ready(function () {
         $('#buzzer').click(Server.buzzer);
-        $('#power').click(Server.power);
+
+        function refreshPortDialog() {
+            console.debug("current port: ", Scoreboard.currentPort);
+            var items = Scoreboard.portNames
+                .map(function (name) {
+                    var selected = (name === Scoreboard.currentPort ? ' disabled' : '' );
+                    return "<button "
+                        + "class='btn btn-info" + selected + " port-name' "
+                        + "data-portName='" + name + "'>" + name
+                        + "</button>"
+                })
+                .join("");
+
+            var $connect = $('#connect-portNames');
+            $connect.html(items);
+            $connect.find('button.port-name').click(function () {
+                    setPortName($(this).data('portname'));
+                }
+            );
+        }
+
+        function setPortName(portName) {
+            console.debug("show progress");
+            $('#scoreboard-connect').find('.progress').show();
+
+            doMethod("POST", "portName", {"portName": portName})
+                .success(function (data) {
+                    Scoreboard.updatePorts(data);
+                })
+                .done(function () {
+                    refreshPortDialog();
+                    console.debug("hide progress");
+                    $('#scoreboard-connect').find('.progress').hide();
+                })
+        }
+
+        var scoreboardConnectDialog = $('#scoreboard-connect');
+        scoreboardConnectDialog.on('show.bs.modal', function () {
+            refreshPortDialog();
+        });
+        var $power = $('#power');
+        $power.click(Server.power);
+        $power.change(function () {
+            if (this.checked) {
+                // fetch ports
+                // open power modal
+                Scoreboard.getPortNames().done(function () {
+                    scoreboardConnectDialog.modal()
+                });
+            }
+        });
+
         $("#clock-start").click(Server.startClock);
         $("#clock-pause").click(Server.pauseClock);
 
@@ -281,8 +352,8 @@ $(document).ready(function () {
         });
 
         // before display
-    setClockDialog.on('show.bs.modal', function () {
-        $('#custom-time').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
+        setClockDialog.on('show.bs.modal', function () {
+            $('#custom-time').val(formatClock(Scoreboard.getMinutes(), Scoreboard.getSeconds()));
         });
         $('#save-custom-time').click(function () {
             var customTime = $('#custom-time').val();
@@ -294,7 +365,7 @@ $(document).ready(function () {
             });
         });
 
-    setClockDialog.on('show.bs.modal', function () {
+        setClockDialog.on('show.bs.modal', function () {
             setClockDialog.find('.error').html('');
         });
 
@@ -329,15 +400,15 @@ $(document).ready(function () {
             newGameDialog.modal('hide');
         });
 
-    $("#new-rec-game").click(function () {
-        var timeField = $('#rec_minutes');
+        $("#new-rec-game").click(function () {
+            var timeField = $('#rec_minutes');
             var error = false;
             var time = parseInt(timeField.val());
             if (!time) {
                 timeField.closest('.form-group').addClass('has-error');
                 return false;
             }
-        var shiftInterval = $('#shift-buzzer').val();
+            var shiftInterval = $('#shift-buzzer').val();
 
             if (error) {
                 timeField.closest('.form-group').addClass('has-error');
@@ -353,7 +424,7 @@ $(document).ready(function () {
         });
 
         // before display
-    newGameDialog.on('show.bs.modal', function () {
+        newGameDialog.on('show.bs.modal', function () {
             // remove errors
             $(this).find(".modal-body .form-group").removeClass('has-error');
         });

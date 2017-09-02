@@ -150,7 +150,7 @@ public class WebSocketAdapter {
 
   private Object buildUpdate() {
     final HashMap<String, Object> state = new HashMap<>();
-    state.put("time", gameManager.getTime());
+    state.put("time", gameManager.getRemainingTimeMillis());
     state.put("running", gameManager.isClockRunning());
     state.put("period", gameManager.getPeriod());
     state.put("periodLength", gameManager.getPeriodLength());

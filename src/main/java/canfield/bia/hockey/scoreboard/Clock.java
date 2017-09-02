@@ -14,7 +14,7 @@ public interface Clock {
   }
 
   static int getTenthsOfSecond(int millis) {
-    return (millis + 999) / 100 % 10;
+    return (millis) / 100 % 10;
   }
 
   void start();

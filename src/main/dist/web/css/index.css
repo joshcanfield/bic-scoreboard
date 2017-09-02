@@ -163,7 +163,9 @@ h2 {
 
 /* http://proto.io/freebies/onoff/ */
 .onoffswitch {
-    position: relative; width: 220px;
+    position: relative;
+    width: 220px;
+    margin-top:8px;
     -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
 }
 .onoffswitch-checkbox {
@@ -206,5 +208,5 @@ h2 {
     margin-left: 0;
 }
 .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
-    right: 0px;
+    right: 0;
 }

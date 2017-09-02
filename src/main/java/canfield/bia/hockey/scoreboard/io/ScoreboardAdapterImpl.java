@@ -15,6 +15,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   private static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
@@ -50,33 +52,29 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   }
 
   private static CommPortIdentifier getPortId(String portName) {
-    final Enumeration<CommPortIdentifier> portIdentifiers = getPortIdentifiers();
-
-    while (portIdentifiers.hasMoreElements()) {
-      CommPortIdentifier portIdentifier = portIdentifiers.nextElement();
-      log.trace("Found port: {}", portIdentifier.getName());
-      if (portIdentifier.getName().equals(portName)) {
-        log.trace("Using {}", portIdentifier.getName());
-        return portIdentifier;
-      }
-    }
-    log.trace("Unable to locate {}", portName);
-    return null;
+    final List<CommPortIdentifier> portIdentifiers = getPortIdentifiers();
+    final Optional<CommPortIdentifier> first = portIdentifiers.stream()
+        .filter((commPortIdentifier -> commPortIdentifier.getName().equals(portName)))
+        .findFirst();
+    return first.orElse(null);
   }
 
   @SuppressWarnings("unchecked")
-  private static Enumeration<CommPortIdentifier> getPortIdentifiers() {
-    return (Enumeration<CommPortIdentifier>) CommPortIdentifier.getPortIdentifiers();
+  private static List<CommPortIdentifier> getPortIdentifiers() {
+    final Enumeration<CommPortIdentifier> portIdentifiers = CommPortIdentifier.getPortIdentifiers();
+    final List<CommPortIdentifier> serialPorts = new ArrayList<>();
+    while (portIdentifiers.hasMoreElements()) {
+      CommPortIdentifier commPortIdentifier = portIdentifiers.nextElement();
+      if (commPortIdentifier.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+        serialPorts.add(commPortIdentifier);
+      }
+    }
+    return serialPorts;
   }
 
   @Override
-  public List<String> availablePorts() {
-    final ArrayList<String> portNames = new ArrayList<>();
-    final Enumeration<CommPortIdentifier> portIdentifiers = getPortIdentifiers();
-    while (portIdentifiers.hasMoreElements()) {
-      portNames.add(portIdentifiers.nextElement().getName());
-    }
-    return portNames;
+  public List<String> possiblePorts() {
+    return getPortIdentifiers().stream().map(CommPortIdentifier::getName).sorted().collect(Collectors.toList());
   }
 
   @Override

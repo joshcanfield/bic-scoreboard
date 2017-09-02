@@ -56,7 +56,7 @@ socket.on('update', function (data) {
 function output(message) {
     clearOldMessages();
     var stamp = new Date().getTime();
-    var element = $("<div stamp='" + stamp + "'>" + message + "</div>");
+    var element = $("<div data-stamp='" + stamp + "'>" + message + "</div>");
     $('#console').prepend(element);
 }
 
