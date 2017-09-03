@@ -6,15 +6,15 @@ package canfield.bia.hockey.scoreboard;
 public interface Clock {
 
   static int getMinutes(int millis) {
-    return (millis + 999) / (60 * 1000);
+    return (millis + 999) / 1000 / 60;
   }
 
   static int getSeconds(int millis) {
-    return (millis + 999) / 1000 % 60;
+    return millis / 1000 % 60;
   }
 
   static int getTenthsOfSecond(int millis) {
-    return (millis) / 100 % 10;
+    return millis % 1000 / 100;
   }
 
   void start();
