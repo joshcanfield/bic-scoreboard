@@ -2,42 +2,45 @@ package canfield.bia.hockey;
 
 import java.util.List;
 
+@SuppressWarnings("unused")
 public class GameConfig {
-    private List<Integer> periodLengths;
-    private String type;
-    private Integer gameLengthMinutes;
+  /**
+   * Configures default penalty times
+   */
+  private boolean stopClock;
 
-    public Integer getShiftBuzzerIntervalSeconds() {
-        return shiftBuzzerIntervalSeconds;
-    }
+  /**
+   * 0 - warm-ups
+   * 1-2 - period in minutes
+   */
+  private List<Integer> periodLengths;
 
-    public void setShiftBuzzerIntervalSeconds(final Integer shiftBuzzerIntervalSeconds) {
-        this.shiftBuzzerIntervalSeconds = shiftBuzzerIntervalSeconds;
-    }
+  /**
+   * Shift buzzer for rec games
+   */
+  private Integer buzzerIntervalSeconds;
 
-    public Integer getGameLengthMinutes() {
-        return gameLengthMinutes;
-    }
+  public Integer getBuzzerIntervalSeconds() {
+    return buzzerIntervalSeconds;
+  }
 
-    public void setGameLengthMinutes(final Integer gameLengthMinutes) {
-        this.gameLengthMinutes = gameLengthMinutes;
-    }
+  public void setBuzzerIntervalSeconds(final Integer buzzerIntervalSeconds) {
+    this.buzzerIntervalSeconds = buzzerIntervalSeconds;
+  }
 
-    public String getType() {
-        return type;
-    }
+  public List<Integer> getPeriodLengths() {
+    return periodLengths;
+  }
 
-    public void setType(final String type) {
-        this.type = type;
-    }
+  public void setPeriodLengths(List<Integer> periodLengths) {
+    this.periodLengths = periodLengths;
+  }
 
-    private Integer shiftBuzzerIntervalSeconds;
+  public boolean isStopClock() {
+    return stopClock;
+  }
 
-    public List<Integer> getPeriodLengths() {
-        return periodLengths;
-    }
-
-    public void setPeriodLengths(List<Integer> periodLengths) {
-        this.periodLengths = periodLengths;
-    }
+  public void setStopClock(boolean stopClock) {
+    this.stopClock = stopClock;
+  }
 }

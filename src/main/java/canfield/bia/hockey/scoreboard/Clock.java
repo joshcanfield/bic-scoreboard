@@ -5,21 +5,51 @@ package canfield.bia.hockey.scoreboard;
  */
 public interface Clock {
 
-    void start();
+  static int getMinutes(int millis) {
+    return (millis + 999) / 1000 / 60;
+  }
 
-    void stop();
+  static int getSeconds(int millis) {
+    return millis / 1000 % 60;
+  }
 
-    boolean isRunning();
+  static int getTenthsOfSecond(int millis) {
+    return millis % 1000 / 100;
+  }
 
-    int getMinutes();
+  void start();
 
-    void setMinutes(int minutes);
+  void stop();
 
-    int getSeconds();
+  boolean isRunning();
 
-    void setSeconds(int seconds);
+  ClockTime getTime();
 
-    int getRemainingMillis();
+  boolean hasExpired();
 
-    void setRemainingMillis(int millis);
+  void setTime(int minutes, int seconds);
+
+  class ClockTime {
+    int minutes;
+    int seconds;
+    int tenthsOfSeconds;
+
+    ClockTime(int minutes, int seconds, int tenthsOfSeconds) {
+      this.minutes = minutes;
+      this.seconds = seconds;
+      this.tenthsOfSeconds = tenthsOfSeconds;
+    }
+
+    public int getMinutes() {
+      return minutes;
+    }
+
+    public int getSeconds() {
+      return seconds;
+    }
+
+    public int getTenthsOfSeconds() {
+      return tenthsOfSeconds;
+    }
+  }
 }

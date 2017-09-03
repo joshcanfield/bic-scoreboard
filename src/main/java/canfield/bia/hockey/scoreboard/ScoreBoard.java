@@ -47,7 +47,7 @@ public interface ScoreBoard {
     void addListener(EventListener listener);
 
     enum EventType {
-        tick, end_of_period, penalty_expired, clock_expired, buzzer
+        tick, end_of_period, buzzer
     }
 
     interface EventListener {
@@ -57,7 +57,7 @@ public interface ScoreBoard {
     class Event {
         EventType type;
 
-        public Event(EventType type) {
+        Event(EventType type) {
             this.type = type;
         }
 
@@ -69,7 +69,7 @@ public interface ScoreBoard {
     class BuzzerEvent extends Event {
         int lengthMillis;
 
-        public BuzzerEvent(int lengthMillis) {
+        BuzzerEvent(int lengthMillis) {
             super(EventType.buzzer);
             this.lengthMillis = lengthMillis;
         }
@@ -78,8 +78,5 @@ public interface ScoreBoard {
             return lengthMillis;
         }
 
-        public void setLengthMillis(int lengthMillis) {
-            this.lengthMillis = lengthMillis;
-        }
     }
 }

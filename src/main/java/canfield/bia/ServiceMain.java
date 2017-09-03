@@ -2,13 +2,11 @@ package canfield.bia;
 
 import canfield.bia.rest.GameApplication;
 import dagger.ObjectGraph;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Stream;
+import java.io.InputStream;
 
 /**
  *
@@ -41,13 +39,11 @@ public class ServiceMain {
 
     private static void printBanner() {
         try {
-            Path path = Paths.get(ClassLoader.getSystemResource("banner.txt").toURI());
-            //The stream hence file will also be closed here
-            Stream<String> lines = Files.lines(path);
-            lines.forEach(System.out::println);
+          InputStream bannerStream = ClassLoader.getSystemResourceAsStream("banner.txt");
+          IOUtils.copy(bannerStream, System.out);
         } catch (Exception ignored) {
             // ignored
-            System.out.println("Failed to load the banner?");
+          System.out.println("");
         }
     }
 }

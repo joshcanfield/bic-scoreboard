@@ -1,9 +1,47 @@
 body {
-    margin-top: 100px;
+    font-family: "Arial Black", "Arial Bold", Gadget, sans-serif;
+    background-color: #9acfea;
 }
 
+body.buzzer {
+    background-color: #dca7a7;
+}
+
+#branding {
+    width: 80%;
+    background-color: #19253e;
+    margin: auto;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.navbar-default {
+    background-color: #19253e;
+}
+
+img.navbar-brand {
+    padding: 0;
+    margin: 0;
+}
+
+.navbar-brand,
+.navbar-nav li a {
+    background-color: #19253e;
+    line-height: 97px;
+    height: 97px;
+    padding-top: 0;
+}
+
+#home .penalties .penalty {
+    float: right;
+}
 #clock_box {
     text-align: center;
+}
+
+#clock-moment {
+    text-align: center;
+    padding: 10px;
 }
 
 #clock-actions .btn {
@@ -14,13 +52,65 @@ body {
     color: black;
     cursor: pointer;
     font-size: 40px;
-    font-family: monospace;
 }
 
-#clock .editable-empty {
-    color: black;
+.digits {
+    border: inset white;
+    background-color: black;
+    border-radius: 10px;
 }
 
+#clock_box .clock {
+    margin-top: 20px;
+}
+
+#clock_box .clock .digits {
+    width: 210px;
+    height: 75px;
+    padding-left: 5px;
+    margin: auto;
+    border-radius: 10px;
+}
+
+#clock_box .clock .digit.minutes.ones::after {
+    content: ":";
+    font-size: 20px;
+}
+
+#clock_box .clock .digit {
+    color: #af0e0e;
+    font-size: 70px;
+    line-height: 60px;
+    float: left;
+}
+
+#home .score .digits,
+#away .score .digits {
+    width: 120px;
+    height: 90px;
+    margin: auto;
+    padding-left: 5px;
+    font-size: 80px;
+    line-height: 75px;
+}
+
+#home .score .digit, #away .score .digit {
+    width: 52px;
+    height: 40px;
+    float: left;
+    border-radius: 10px;
+    color: #efe24b;
+}
+
+#period .digits {
+    width: 65px;
+    height: 75px;
+    padding-left: 5px;
+    margin: auto;
+    border-radius: 10px;
+    color: white;
+    font-size: 50px;
+}
 #set-clock .modal-dialog {
     width: 500px;
 }
@@ -30,9 +120,7 @@ body {
 }
 
 #period {
-    font-family: monospace;
     font-size: 30px;
-    display: block;
 }
 
 #add-penalty .modal-body {
@@ -55,14 +143,17 @@ body {
 }
 
 h2 {
+    font-weight: bolder;
+    text-transform: uppercase;
     text-align: center;
+    color: white;
+    font-size: 45px;
 }
 
 .score {
     text-align: center;
     font-size: 30px;
     display: block;
-    font-family: monospace;
 }
 
 #new-game {
@@ -72,7 +163,9 @@ h2 {
 
 /* http://proto.io/freebies/onoff/ */
 .onoffswitch {
-    position: relative; width: 220px;
+    position: relative;
+    width: 220px;
+    margin-top:8px;
     -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
 }
 .onoffswitch-checkbox {
@@ -115,5 +208,5 @@ h2 {
     margin-left: 0;
 }
 .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
-    right: 0px;
+    right: 0;
 }
