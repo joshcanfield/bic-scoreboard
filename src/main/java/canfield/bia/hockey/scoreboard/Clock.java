@@ -6,7 +6,7 @@ package canfield.bia.hockey.scoreboard;
 public interface Clock {
 
   static int getMinutes(int millis) {
-    return (millis + 999) / 1000 / 60;
+    return millis / 1000 / 60;
   }
 
   static int getSeconds(int millis) {

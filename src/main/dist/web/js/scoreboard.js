@@ -33,11 +33,11 @@ function formatClock(minutes, seconds) {
 }
 
 function getMinutes(millis) {
-    return Math.floor((millis + 999) / (60 * 1000));
+    return Math.floor(millis / 1000 / 60);
 }
 
 function getSeconds(millis) {
-    return Math.floor((millis + 999) / 1000 % 60);
+    return Math.floor(millis / 1000 % 60);
 }
 
 function formatTime(remaining) {

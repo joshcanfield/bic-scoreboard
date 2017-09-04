@@ -248,7 +248,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
       final int minutes = time.getMinutes();
       final int seconds = time.getSeconds();
 
-      if (minutes > 0) {
+      if (minutes > 0 || gameClock.hasExpired()) {
         send(new byte[] {
             0x2e,
             0x78,
