@@ -4,6 +4,7 @@ apply plugin: "java"
 apply plugin: "idea"
 apply plugin: 'groovy'
 apply plugin: 'java-library-distribution'
+apply plugin: 'application'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -15,6 +16,10 @@ java {
 
 group = "canfield.josh"
 version = "1.1"
+
+application {
+    mainClass = 'canfield.bia.ServiceMain'
+}
 
 project.ext {
     jackson = [version: "1.9.9"]
@@ -90,6 +95,10 @@ test {
     jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
 
     enableAssertions = true
+}
+tasks.named('run') {
+    args 'start'
+    workingDir = file('src/main/dist')
 }
 tasks.named('wrapper') {
     gradleVersion = '8.7'
