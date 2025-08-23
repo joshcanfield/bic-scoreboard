@@ -23,7 +23,7 @@ import java.util.Map;
 @Produces("application/json")
 public class GameResource {
 
-  private SimpleGameManager game;
+  private final SimpleGameManager game;
 
   @Inject
   public GameResource(SimpleGameManager game) {

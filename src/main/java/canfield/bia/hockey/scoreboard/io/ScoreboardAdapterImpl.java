@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   private static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
-  private static Logger log = LoggerFactory.getLogger(ScoreboardAdapterImpl.class);
+  private static final Logger log = LoggerFactory.getLogger(ScoreboardAdapterImpl.class);
   private final PenaltyClockCmd penaltyClockCmd = new PenaltyClockCmd();
   private final ScoreboardAdapterImpl.ClockAndScoreCmd clockAndScoreCmd = new ClockAndScoreCmd();
 
@@ -33,7 +33,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
 
   private long lastSend = 0;
 
-  private ScoreBoard scoreBoard;
+  private final ScoreBoard scoreBoard;
 
   public ScoreboardAdapterImpl(ScoreBoard scoreBoard, String portName) {
     this.scoreBoard = scoreBoard;
@@ -206,7 +206,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
       for (byte aMsg : msg) {
         sb.append(String.format("%02x ", aMsg));
       }
-      log.trace("{}: {}", elapsed, sb.toString());
+      log.trace("{}: {}", elapsed, sb);
     }
   }
 

@@ -19,11 +19,11 @@ import java.util.concurrent.TimeUnit;
  */
 @Singleton
 public class SimpleGameManager {
-  private ScoreBoard scoreBoard;
-  private ScoreboardAdapter scoreboardAdapter;
+  private final ScoreBoard scoreBoard;
+  private final ScoreboardAdapter scoreboardAdapter;
 
-  private List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
-  private List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
+  private final List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
+  private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
   private Integer shiftLengthSeconds;
   private int lastShiftBuzzer = 0;
 
