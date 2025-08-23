@@ -43,7 +43,8 @@ public class SimpleGameModule {
     SocketIOServer provideSocketIOServer() {
         final Configuration config = new Configuration();
         config.setHostname("localhost");
-        config.setPort(8081);
+        int port = Integer.parseInt(System.getProperty("socketio.port", "8081"));
+        config.setPort(port);
 
         return new SocketIOServer(config);
     }
