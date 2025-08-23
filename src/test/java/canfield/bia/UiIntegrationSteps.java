@@ -30,6 +30,7 @@ import java.util.zip.ZipInputStream;
 public class UiIntegrationSteps {
     private static Thread serverThread;
     private static String originalUserDir;
+    private static String originalResourceBase;
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static WebDriver driver;
     private static int initialTime;
@@ -37,9 +38,12 @@ public class UiIntegrationSteps {
     @BeforeAll
     public static void startServer() throws Exception {
         originalUserDir = System.getProperty("user.dir");
-        System.setProperty("user.dir", Paths.get("src/main/dist").toFile().getAbsolutePath());
+        originalResourceBase = System.getProperty("RESOURCE_BASE");
+        Path dist = Paths.get("src/main/dist").toAbsolutePath();
+        System.setProperty("user.dir", dist.toString());
+        System.setProperty("RESOURCE_BASE", dist.resolve("web").toString());
 
-        Path webSrc = Paths.get("src/main/dist/web");
+        Path webSrc = dist.resolve("web");
         Path webDest = Paths.get("web");
         if (Files.notExists(webDest)) {
             try {
@@ -122,6 +126,11 @@ public class UiIntegrationSteps {
                         });
             }
             System.setProperty("user.dir", originalUserDir);
+            if (originalResourceBase != null) {
+                System.setProperty("RESOURCE_BASE", originalResourceBase);
+            } else {
+                System.clearProperty("RESOURCE_BASE");
+            }
         }
     }
 
