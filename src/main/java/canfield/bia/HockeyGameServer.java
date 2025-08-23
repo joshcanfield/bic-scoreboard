@@ -66,7 +66,8 @@ public class HockeyGameServer {
         final ResourceHandler fileHandler = new ResourceHandler();
         fileHandler.setDirectoriesListed(true);
         fileHandler.setWelcomeFiles(new String[]{"index.html"});
-        fileHandler.setResourceBase("web");
+        String resourceBase = System.getProperty("RESOURCE_BASE", "web");
+        fileHandler.setResourceBase(resourceBase);
 
         final ServletContextHandler resteasyHandler = new ServletContextHandler();
         final ServletHolder servletHolder = resteasyHandler.addServlet(HttpServletDispatcher.class, "/api/*");
