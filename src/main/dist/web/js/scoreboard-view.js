@@ -11,28 +11,35 @@ function updatePenalties(team, penalties) {
         var p = penalties[i];
         var player = playerDigits.eq(i);
         var pen = penaltyDigits.eq(i);
-        if (p) {
-            var pd = digits(p.playerNumber);
-            player.find('.digit.tens').text(pd[0]);
-            player.find('.digit.ones').text(pd[1]);
 
+        var clearDigits = function () {
+            player.find('.digit').text(0);
+            pen.find('.digit').text(0);
+        };
+
+        if (p) {
             var remaining = p.time;
             if (p.startTime > 0) {
                 remaining = p.time - p.elapsed;
-                if (remaining < 0) {
-                    remaining = 0;
-                }
             }
-            var minutes = Math.floor(remaining / 1000 / 60);
-            var seconds = Math.floor((remaining / 1000) % 60);
-            var sd = digits(seconds);
 
-            pen.find('.digit.minutes').text(minutes);
-            pen.find('.digit.seconds.tens').text(sd[0]);
-            pen.find('.digit.seconds.ones').text(sd[1]);
+            if (remaining > 0) {
+                var pd = digits(p.playerNumber);
+                player.find('.digit.tens').text(pd[0]);
+                player.find('.digit.ones').text(pd[1]);
+
+                var minutes = Math.floor(remaining / 1000 / 60);
+                var seconds = Math.floor((remaining / 1000) % 60);
+                var sd = digits(seconds);
+
+                pen.find('.digit.minutes').text(minutes);
+                pen.find('.digit.seconds.tens').text(sd[0]);
+                pen.find('.digit.seconds.ones').text(sd[1]);
+            } else {
+                clearDigits();
+            }
         } else {
-            player.find('.digit').text(0);
-            pen.find('.digit').text(0);
+            clearDigits();
         }
     }
 }
