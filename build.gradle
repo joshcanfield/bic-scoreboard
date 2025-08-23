@@ -77,11 +77,13 @@ dependencies {
     testImplementation "org.codehaus.groovy:groovy-all:2.0.5"
     testImplementation "org.testng:testng:7.10.2"
     testImplementation "org.mockito:mockito-all:1.9.5"
+
     testImplementation('org.seleniumhq.selenium:selenium-java:4.35.0') { // https://www.selenium.dev/downloads/
         exclude group: 'org.eclipse.jetty'
     }
 
     testImplementation 'io.github.bonigarcia:webdrivermanager:5.9.2'
+
     testImplementation 'io.cucumber:cucumber-java:7.14.0'
     testImplementation 'io.cucumber:cucumber-testng:7.14.0'
 }
