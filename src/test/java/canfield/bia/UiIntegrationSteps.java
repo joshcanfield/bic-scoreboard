@@ -44,7 +44,7 @@ public class UiIntegrationSteps {
             return conn.getResponseCode() == 200;
             // handle response
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return false;
         } finally {
             if (conn != null) {
                 conn.disconnect();
@@ -344,14 +344,14 @@ public class UiIntegrationSteps {
         js.executeScript("document.getElementById('add-penalty-off_ice').value='2:00';");
         jsClick("#add-penalty-add");
         new WebDriverWait(driver, Duration.ofSeconds(2)).until(
-                d -> d.findElements(By.cssSelector("#home .penalties tbody.list tr")).size() > 0);
+                d -> !d.findElements(By.cssSelector("#home .penalties tbody.list tr")).isEmpty());
     }
 
     @Then("the home team penalties list should contain {int} penalty for player {int}")
     public void verifyPenalty(int count, int player) {
         List<WebElement> rows = driver.findElements(By.cssSelector("#home .penalties tbody.list tr"));
         Assert.assertEquals(rows.size(), count);
-        WebElement first = rows.get(0);
+        WebElement first = rows.getFirst();
         List<WebElement> cells = first.findElements(By.tagName("td"));
         int playerNum = Integer.parseInt(cells.get(1).getText());
         Assert.assertEquals(playerNum, player);
