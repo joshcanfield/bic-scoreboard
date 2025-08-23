@@ -17,7 +17,7 @@ class TestSimpleGameManager {
 
 
     @Test
-    public void "test penalty update after period rolls"() {
+    void "test penalty update after period rolls"() {
         def scoreBoard = mock(ScoreBoard)
         def gameClock = mock(Clock)
         def scoreboardAdapter = mock(ScoreboardAdapter)
@@ -45,7 +45,7 @@ class TestSimpleGameManager {
     }
 
     @Test
-    public void "test penalty update after next period starts"() {
+    void "test penalty update after next period starts"() {
         def scoreBoard = mock(ScoreBoard)
         def gameClock = mock(Clock)
         def scoreboardAdapter = mock(ScoreboardAdapter)

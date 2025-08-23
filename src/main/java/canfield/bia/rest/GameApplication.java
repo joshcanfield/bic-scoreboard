@@ -14,7 +14,7 @@ import java.util.Set;
  */
 public class GameApplication extends Application {
 
-    private static JacksonJsonProvider jacksonJsonProvider = new JacksonJsonProvider();
+    private static final JacksonJsonProvider jacksonJsonProvider = new JacksonJsonProvider();
     private static GameResource gameResource;
     private static ObjectGraph objectGraph;
 
@@ -38,6 +38,6 @@ public class GameApplication extends Application {
             ObjectGraph graph = getObjectGraph();
             gameResource = graph.get(GameResource.class);
         }
-        return new HashSet<Object>(Arrays.asList(gameResource, jacksonJsonProvider));
+        return new HashSet<>(Arrays.asList(gameResource, jacksonJsonProvider));
     }
 }
