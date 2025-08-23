@@ -24,8 +24,8 @@ class TestSimpleGameManager {
 
         when(scoreBoard.getGameClock()).thenReturn(gameClock)
         when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
-        when(scoreBoard.getPeriod()).thenReturn(2);
-        when(gameClock.getRemainingMillis()).thenReturn((int)TimeUnit.MINUTES.toMillis(20))
+        when(scoreBoard.getPeriod()).thenReturn(2)
+        when(gameClock.getTime()).thenReturn(new Clock.ClockTime(20, 0, 0))
 
         final SimpleGameManager simpleGameManager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
 
@@ -52,8 +52,8 @@ class TestSimpleGameManager {
 
         when(scoreBoard.getGameClock()).thenReturn(gameClock)
         when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
-        when(scoreBoard.getPeriod()).thenReturn(2);
-        when(gameClock.getRemainingMillis()).thenReturn((int)TimeUnit.MINUTES.toMillis(19))
+        when(scoreBoard.getPeriod()).thenReturn(2)
+        when(gameClock.getTime()).thenReturn(new Clock.ClockTime(19, 0, 0))
 
         final SimpleGameManager simpleGameManager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
 

@@ -20,7 +20,12 @@ public class GameApplication extends Application {
 
     public synchronized static ObjectGraph getObjectGraph() {
         if (objectGraph == null) {
-            ObjectGraph graph = ObjectGraph.create(new SimpleGameModule());
+            ObjectGraph graph;
+            try {
+                graph = ObjectGraph.create(new SimpleGameModule());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             graph.validate();
             objectGraph = graph;
         }

@@ -35,9 +35,10 @@ public class GameClock implements Clock {
   @Override
   public ClockTime getTime() {
     int remainingMillis = getRemainingMillis();
+    int roundedMillis = remainingMillis + 999;
     return new ClockTime(
-        Clock.getMinutes(remainingMillis),
-        Clock.getSeconds(remainingMillis),
+        Clock.getMinutes(roundedMillis),
+        Clock.getSeconds(roundedMillis),
         Clock.getTenthsOfSecond(remainingMillis)
     );
   }
