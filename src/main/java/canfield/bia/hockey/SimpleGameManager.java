@@ -161,7 +161,7 @@ public class SimpleGameManager {
 
   }
 
-  void updateElapsed(Penalty penalty) {
+  public void updateElapsed(Penalty penalty) {
     // if a penalty started in the previous period elapsed time is the rest of that period + whatever has elapsed this period.
     int timeRemainingInCurrentPeriodMillis = getRemainingTimeMillis();
 

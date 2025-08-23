@@ -17,15 +17,15 @@ class TestSimpleGameManager {
 
 
     @Test
-    public void "test penalty update after period rolls"() {
+    void "test penalty update after period rolls"() {
         def scoreBoard = mock(ScoreBoard)
         def gameClock = mock(Clock)
         def scoreboardAdapter = mock(ScoreboardAdapter)
 
         when(scoreBoard.getGameClock()).thenReturn(gameClock)
         when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
-        when(scoreBoard.getPeriod()).thenReturn(2);
-        when(gameClock.getRemainingMillis()).thenReturn((int)TimeUnit.MINUTES.toMillis(20))
+        when(scoreBoard.getPeriod()).thenReturn(2)
+        when(gameClock.getTime()).thenReturn(new Clock.ClockTime(20, 0, 0))
 
         final SimpleGameManager simpleGameManager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
 
@@ -45,15 +45,15 @@ class TestSimpleGameManager {
     }
 
     @Test
-    public void "test penalty update after next period starts"() {
+    void "test penalty update after next period starts"() {
         def scoreBoard = mock(ScoreBoard)
         def gameClock = mock(Clock)
         def scoreboardAdapter = mock(ScoreboardAdapter)
 
         when(scoreBoard.getGameClock()).thenReturn(gameClock)
         when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
-        when(scoreBoard.getPeriod()).thenReturn(2);
-        when(gameClock.getRemainingMillis()).thenReturn((int)TimeUnit.MINUTES.toMillis(19))
+        when(scoreBoard.getPeriod()).thenReturn(2)
+        when(gameClock.getTime()).thenReturn(new Clock.ClockTime(19, 0, 0))
 
         final SimpleGameManager simpleGameManager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
 

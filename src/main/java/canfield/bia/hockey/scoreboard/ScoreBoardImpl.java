@@ -75,7 +75,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public void setPeriod(int period) {
-    if (period >= periodMinutes.size()) {
+    if (period < 0 || period >= periodMinutes.size()) {
       return;
     }
     if (getPeriodMinutes(period) > 0) {
@@ -90,7 +90,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public int getPeriodMinutes(int p) {
-    if (periodMinutes.size() > p) {
+    if (p >= 0 && periodMinutes.size() > p) {
       final Integer minutes = periodMinutes.get(p);
       return minutes == null ? 0 : minutes;
     }
@@ -112,7 +112,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public void setHomePenalty(int index, Penalty penalty) {
-    if (index > 1) {
+    if (index < 0 || index >= penalties[HOME].length) {
       return;
     }
     penalties[HOME][index] = penalty;
@@ -120,7 +120,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public Penalty getHomePenalty(int index) {
-    if (index > 1) {
+    if (index < 0 || index >= penalties[HOME].length) {
       return null;
     }
     return penalties[HOME][index];
@@ -128,7 +128,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public void setAwayPenalty(int index, Penalty penalty) {
-    if (index > 1) {
+    if (index < 0 || index >= penalties[AWAY].length) {
       return;
     }
     penalties[AWAY][index] = penalty;
@@ -137,7 +137,7 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   @Override
   public Penalty getAwayPenalty(int index) {
-    if (index > 1) {
+    if (index < 0 || index >= penalties[AWAY].length) {
       return null;
     }
     return penalties[AWAY][index];

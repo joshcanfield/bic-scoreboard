@@ -4,12 +4,22 @@ apply plugin: "java"
 apply plugin: "idea"
 apply plugin: 'groovy'
 apply plugin: 'java-library-distribution'
+apply plugin: 'application'
 
-sourceCompatibility = "1.8"
-targetCompatibility = "1.8"
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
 group = "canfield.josh"
 version = "1.1"
+
+application {
+    mainClass = 'canfield.bia.ServiceMain'
+}
 
 project.ext {
     jackson = [version: "1.9.9"]
@@ -39,37 +49,38 @@ sourceSets {
 }
 
 dependencies {
-    compile "com.squareup.dagger:dagger:1.1.0"
-    compile "com.squareup.dagger:dagger-compiler:1.1.0"
+    implementation "com.squareup.dagger:dagger:1.1.0"
+    implementation "com.squareup.dagger:dagger-compiler:1.1.0"
+    annotationProcessor "com.squareup.dagger:dagger-compiler:1.1.0"
 
-    compile "com.github.purejavacomm:purejavacomm:1.0.1.RELEASE"
+    implementation "com.github.purejavacomm:purejavacomm:1.0.1.RELEASE"
 
-    compile "joda-time:joda-time:2.1"
+    implementation "joda-time:joda-time:2.1"
 
-    compile 'ch.qos.logback:logback-classic:1.1.2'
-    compile 'org.slf4j:jul-to-slf4j:1.7.10'
+    implementation 'ch.qos.logback:logback-classic:1.1.2'
+    implementation 'org.slf4j:jul-to-slf4j:1.7.10'
 
-    compile "org.eclipse.jetty:jetty-server:${project.jetty.version}"
-    compile "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
+    implementation "org.eclipse.jetty:jetty-server:${project.jetty.version}"
+    implementation "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 
-    compile 'com.corundumstudio.socketio:netty-socketio:1.6.1'
+    implementation 'com.corundumstudio.socketio:netty-socketio:1.6.1'
 
-    compile ("org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}" ) {
+    implementation ("org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}" ) {
         exclude group: 'org.slf4j'
     }
-    compile "org.jboss.resteasy:resteasy-jackson-provider:${project.resteasy.version}"
+    implementation "org.jboss.resteasy:resteasy-jackson-provider:${project.resteasy.version}"
 
-    compile "org.codehaus.jackson:jackson-mapper-asl:${project.jackson.version}"
-    compile "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
+    implementation "org.codehaus.jackson:jackson-mapper-asl:${project.jackson.version}"
+    implementation "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
 
-    testCompile "org.codehaus.groovy:groovy-all:2.0.5"
-    testCompile "org.testng:testng:6.1.1"
-    testCompile "org.mockito:mockito-all:1.9.5"
+    testImplementation "org.codehaus.groovy:groovy-all:2.0.5"
+    testImplementation "org.testng:testng:6.1.1"
+    testImplementation "org.mockito:mockito-all:1.9.5"
 }
 
 distributions {
     main {
-        baseName = 'scoreboard'
+        distributionBaseName = 'scoreboard'
         contents {
             exclude("logs")
         }
@@ -81,10 +92,14 @@ test {
 
     //options.suites("src/test/conf/testng.xml")
 
-    jvmArgs("-XX:MaxPermSize=256M")
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
 
     enableAssertions = true
 }
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.1'
+tasks.named('run') {
+    args 'start'
+    workingDir = file('src/main/dist')
+}
+tasks.named('wrapper') {
+    gradleVersion = '8.7'
 }
