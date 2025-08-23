@@ -18,9 +18,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
+import java.net.*;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
@@ -34,8 +32,51 @@ public class UiIntegrationSteps {
     private static WebDriver driver;
     private static int initialTime;
 
+    public static boolean isServerRunning() {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) URI.create("http://localhost:8080/").toURL().openConnection();
+            conn.setConnectTimeout(500);
+            conn.setReadTimeout(500);
+            conn.setRequestMethod("GET");
+            return conn.getResponseCode() == 200;
+            // handle response
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
     @BeforeAll
     public static void startServer() throws Exception {
+        if (isServerRunning()) {
+            System.out.println("Server already running, reusing existing instance");
+            startChromeDriver();
+            return;
+        }
+        final AtomicReference<Throwable> serverError = setupAndStartServer();
+
+        for (int i = 0; i < 300; i++) {
+            if (serverError.get() != null) {
+                throw new IllegalStateException("Failed to start service", serverError.get());
+            }
+            if (isServerRunning()) {
+                System.out.println("Server started successfully");
+                startChromeDriver();
+                return;
+            }
+            Thread.sleep(100);
+        }
+        if (serverError.get() != null) {
+            throw new IllegalStateException("Failed to start service", serverError.get());
+        }
+        throw new IllegalStateException("Server failed to start within timeout");
+    }
+
+    private static AtomicReference<Throwable> setupAndStartServer() throws IOException {
         originalUserDir = System.getProperty("user.dir");
         originalResourceBase = System.getProperty("RESOURCE_BASE");
         Path dist = Paths.get("src/main/dist").toAbsolutePath();
@@ -73,46 +114,27 @@ public class UiIntegrationSteps {
         }, "scoreboard-server");
         serverThread.setDaemon(true);
         serverThread.start();
+        return serverError;
+    }
 
-        URL url = new URL("http://localhost:8080/");
-        for (int i = 0; i < 300; i++) {
-            if (serverError.get() != null) {
-                throw new IllegalStateException("Failed to start service", serverError.get());
-            }
-            try {
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(100);
-                conn.setReadTimeout(100);
-                if (conn.getResponseCode() == 200) {
-                    conn.disconnect();
-                    System.out.println("[ChromeDriver] Server started, initializing driver");
-                    String proxy = System.getenv("https_proxy");
-                    if (proxy != null && !proxy.isEmpty()) {
-                        URI uri = URI.create(proxy);
-                        System.setProperty("https.proxyHost", uri.getHost());
-                        System.setProperty("https.proxyPort", String.valueOf(uri.getPort()));
-                        System.setProperty("http.proxyHost", uri.getHost());
-                        System.setProperty("http.proxyPort", String.valueOf(uri.getPort()));
-                        String proxyHostPort = uri.getHost() + ":" + uri.getPort();
-                        System.out.println("[ChromeDriver] Using proxy: " + proxyHostPort);
-                        WebDriverManager.chromedriver().proxy(proxyHostPort).setup();
-                    } else {
-                        WebDriverManager.chromedriver().setup();
-                    }
-                    ChromeOptions options = new ChromeOptions();
-                    options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage");
-                    driver = new ChromeDriver(options);
-                    return;
-                }
-            } catch (IOException e) {
-                // retry
-            }
-            Thread.sleep(100);
+    private static void startChromeDriver() {
+        System.out.println("[ChromeDriver] Server started, initializing driver");
+        String proxy = System.getenv("https_proxy");
+        if (proxy != null && !proxy.isEmpty()) {
+            URI uri = URI.create(proxy);
+            System.setProperty("https.proxyHost", uri.getHost());
+            System.setProperty("https.proxyPort", String.valueOf(uri.getPort()));
+            System.setProperty("http.proxyHost", uri.getHost());
+            System.setProperty("http.proxyPort", String.valueOf(uri.getPort()));
+            String proxyHostPort = uri.getHost() + ":" + uri.getPort();
+            System.out.println("[ChromeDriver] Using proxy: " + proxyHostPort);
+            WebDriverManager.chromedriver().proxy(proxyHostPort).setup();
+        } else {
+            WebDriverManager.chromedriver().setup();
         }
-        if (serverError.get() != null) {
-            throw new IllegalStateException("Failed to start service", serverError.get());
-        }
-        throw new IllegalStateException("Server failed to start within timeout");
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage");
+        driver = new ChromeDriver(options);
     }
 
     @AfterAll
@@ -137,11 +159,13 @@ public class UiIntegrationSteps {
                             }
                         });
             }
-            System.setProperty("user.dir", originalUserDir);
-            if (originalResourceBase != null) {
-                System.setProperty("RESOURCE_BASE", originalResourceBase);
-            } else {
-                System.clearProperty("RESOURCE_BASE");
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+                if (originalResourceBase != null) {
+                    System.setProperty("RESOURCE_BASE", originalResourceBase);
+                } else {
+                    System.clearProperty("RESOURCE_BASE");
+                }
             }
         }
     }
@@ -163,11 +187,11 @@ public class UiIntegrationSteps {
 
     @Before
     public void resetGame() throws Exception {
-        postJson("/api/game", new HashMap<>());
+        postJson(new HashMap<>());
     }
 
-    private static void postJson(String path, Map<String, Object> body) throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) new URL("http://localhost:8080" + path).openConnection();
+    private static void postJson(Map<String, Object> body) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) URI.create("http://localhost:8080/api/game").toURL().openConnection();
         conn.setRequestMethod("POST");
         conn.setConnectTimeout(2000);
         conn.setReadTimeout(2000);
@@ -215,7 +239,7 @@ public class UiIntegrationSteps {
 
     @When("I create a new game")
     public void createNewGame() throws Exception {
-        jsClick("button[href='#new-game-dialog']");
+        jsClick("button[href=\"#new-game-dialog\"]");
         Thread.sleep(100);
         jsClick("#new-game");
         new WebDriverWait(driver, Duration.ofSeconds(2)).until(
@@ -249,8 +273,17 @@ public class UiIntegrationSteps {
     @Given("the clock is stopped")
     public void theClockIsStopped() {
         driver.get("http://localhost:8080/");
+        // the clock starts at 0 when the page loads - wait for it to load
+        // check the tens and minutes digit to be non-zero
+        new WebDriverWait(driver, Duration.ofSeconds(2)).until(
+                d -> !(d.findElement(By.cssSelector(".digit.minutes.tens")).getText().equals("0")
+                       && d.findElement(By.cssSelector(".digit.minutes.ones")).getText().equals("0"))
+        );
+
+        // ensure the clock is stopped
         jsClick("#clock-pause");
         initialTime = readClockMillis();
+        assert initialTime > 0;
     }
 
     @When("I start the clock")
