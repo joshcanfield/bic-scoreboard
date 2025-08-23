@@ -19,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 
 public class WebSocketAdapter {
   private final ScheduledExecutorService scheduledExecutor;
-  private Logger log = LoggerFactory.getLogger(WebSocketAdapter.class);
-  private SimpleGameManager gameManager;
-  private SocketIOServer socketIoServer;
+  private final Logger log = LoggerFactory.getLogger(WebSocketAdapter.class);
+  private final SimpleGameManager gameManager;
+  private final SocketIOServer socketIoServer;
   private boolean isRunning = false;
 
   @Inject
@@ -98,11 +98,7 @@ public class WebSocketAdapter {
   public void onCreateGame(SocketIOClient client, GameConfig config) {
     gameManager.getScoreBoard().setPeriodLength(config.getPeriodLengths());
     final Integer shiftBuzzerIntervalSeconds = config.getBuzzerIntervalSeconds();
-    if (shiftBuzzerIntervalSeconds == null) {
-      gameManager.setShiftLengthSeconds(null);
-    } else {
       gameManager.setShiftLengthSeconds(shiftBuzzerIntervalSeconds);
-    }
 
     gameManager.reset();
 

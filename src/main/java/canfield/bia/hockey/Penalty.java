@@ -3,9 +3,9 @@ package canfield.bia.hockey;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Penalty {
-    private static AtomicInteger idSource = new AtomicInteger();
+    private static final AtomicInteger idSource = new AtomicInteger();
 
-    private Integer id = idSource.incrementAndGet();
+    private final Integer id = idSource.incrementAndGet();
 
     private int playerNumber;
 

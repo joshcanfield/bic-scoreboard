@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 public class ScoreBoardImpl implements ScoreBoard {
   private static final int HOME = 0;
   private static final int AWAY = 1;
-  private Clock gameClock = new GameClock(5, 0);
+  private final Clock gameClock = new GameClock(5, 0);
   private int period = 0;
 
   // Default game configuration
@@ -25,15 +25,15 @@ public class ScoreBoardImpl implements ScoreBoard {
   private int awayScore;
 
   // Empty penalties
-  private Penalty[][] penalties = new Penalty[][] {
+  private final Penalty[][] penalties = new Penalty[][] {
       {null, null},
       {null, null}
   };
 
-  private Event tickEvent = new Event(EventType.tick);
-  private Event endOfPeriodEvent = new Event(EventType.end_of_period);
+  private final Event tickEvent = new Event(EventType.tick);
+  private final Event endOfPeriodEvent = new Event(EventType.end_of_period);
 
-  private List<EventListener> listeners = new ArrayList<>();
+  private final List<EventListener> listeners = new ArrayList<>();
 
   public ScoreBoardImpl() {
     final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();

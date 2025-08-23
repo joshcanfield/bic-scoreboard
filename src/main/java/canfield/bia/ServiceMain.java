@@ -43,7 +43,7 @@ public class ServiceMain {
           IOUtils.copy(bannerStream, System.out);
         } catch (Exception ignored) {
             // ignored
-          System.out.println("");
+          System.out.println();
         }
     }
 }

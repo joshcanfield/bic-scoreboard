@@ -17,10 +17,10 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 
 public class HockeyGameServer {
-    private static Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
+    private static final Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
 
     private Server server = null;
-    private WebSocketAdapter webSocketAdapter;
+    private final WebSocketAdapter webSocketAdapter;
 
 
     @Inject
