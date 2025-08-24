@@ -1,16 +1,10 @@
 package canfield.bia;
 
 import io.cucumber.java.After;
-import io.cucumber.java.AfterAll;
 import io.cucumber.java.Before;
-import io.cucumber.java.BeforeAll;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.*;
-import io.github.bonigarcia.wdm.WebDriverManager;
-
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -24,153 +18,12 @@ import java.net.*;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
+
+import static canfield.bia.UiHooks.driver;
 
 public class UiIntegrationSteps {
-    private static Thread serverThread;
-    private static String originalUserDir;
-    private static String originalResourceBase;
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static WebDriver driver;
     private static int initialTime;
-
-    public static boolean isServerRunning() {
-        HttpURLConnection conn = null;
-        try {
-            conn = (HttpURLConnection) URI.create("http://localhost:8080/").toURL().openConnection();
-            conn.setConnectTimeout(500);
-            conn.setReadTimeout(500);
-            conn.setRequestMethod("GET");
-            return conn.getResponseCode() == 200;
-            // handle response
-        } catch (IOException e) {
-            return false;
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
-    }
-
-    @BeforeAll
-    public static void startServer() throws Exception {
-        if (isServerRunning()) {
-            System.out.println("Server already running, reusing existing instance");
-            startChromeDriver();
-            return;
-        }
-        final AtomicReference<Throwable> serverError = setupAndStartServer();
-
-        for (int i = 0; i < 300; i++) {
-            if (serverError.get() != null) {
-                throw new IllegalStateException("Failed to start service", serverError.get());
-            }
-            if (isServerRunning()) {
-                System.out.println("Server started successfully");
-                startChromeDriver();
-                return;
-            }
-            Thread.sleep(100);
-        }
-        if (serverError.get() != null) {
-            throw new IllegalStateException("Failed to start service", serverError.get());
-        }
-        throw new IllegalStateException("Server failed to start within timeout");
-    }
-
-    private static AtomicReference<Throwable> setupAndStartServer() throws IOException {
-        originalUserDir = System.getProperty("user.dir");
-        originalResourceBase = System.getProperty("RESOURCE_BASE");
-        Path dist = Paths.get("src/main/dist").toAbsolutePath();
-        System.setProperty("user.dir", dist.toString());
-        System.setProperty("RESOURCE_BASE", dist.resolve("web").toString());
-
-        Path webSrc = dist.resolve("web");
-        Path webDest = Paths.get("web");
-        if (Files.notExists(webDest)) {
-            try {
-                Files.createSymbolicLink(webDest, webSrc);
-            } catch (UnsupportedOperationException | IOException e) {
-                Files.walk(webSrc).forEach(src -> {
-                    Path dest = webDest.resolve(webSrc.relativize(src).toString());
-                    try {
-                        if (Files.isDirectory(src)) {
-                            Files.createDirectories(dest);
-                        } else {
-                            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
-                        }
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                });
-            }
-        }
-
-        final AtomicReference<Throwable> serverError = new AtomicReference<>();
-        serverThread = new Thread(() -> {
-            try {
-                ServiceMain.main(new String[]{"start"});
-            } catch (Throwable t) {
-                serverError.set(t);
-            }
-        }, "scoreboard-server");
-        serverThread.setDaemon(true);
-        serverThread.start();
-        return serverError;
-    }
-
-    private static void startChromeDriver() {
-        System.out.println("[ChromeDriver] Server started, initializing driver");
-        String proxy = System.getenv("https_proxy");
-        if (proxy != null && !proxy.isEmpty()) {
-            URI uri = URI.create(proxy);
-            System.setProperty("https.proxyHost", uri.getHost());
-            System.setProperty("https.proxyPort", String.valueOf(uri.getPort()));
-            System.setProperty("http.proxyHost", uri.getHost());
-            System.setProperty("http.proxyPort", String.valueOf(uri.getPort()));
-            String proxyHostPort = uri.getHost() + ":" + uri.getPort();
-            System.out.println("[ChromeDriver] Using proxy: " + proxyHostPort);
-            WebDriverManager.chromedriver().proxy(proxyHostPort).setup();
-        } else {
-            WebDriverManager.chromedriver().setup();
-        }
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage");
-        driver = new ChromeDriver(options);
-    }
-
-    @AfterAll
-    public static void stopServer() throws Exception {
-        try {
-            ServiceMain.main(new String[]{"stop"});
-        } finally {
-            if (driver != null) {
-                driver.quit();
-            }
-            if (serverThread != null) {
-                serverThread.join(5000);
-            }
-            Path webDest = Paths.get("web");
-            if (Files.exists(webDest)) {
-                Files.walk(webDest)
-                        .sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException ignored) {
-                            }
-                        });
-            }
-            if (originalUserDir != null) {
-                System.setProperty("user.dir", originalUserDir);
-                if (originalResourceBase != null) {
-                    System.setProperty("RESOURCE_BASE", originalResourceBase);
-                } else {
-                    System.clearProperty("RESOURCE_BASE");
-                }
-            }
-        }
-    }
 
     @After
     public void takeScreenshotOnFailure(Scenario scenario) {
