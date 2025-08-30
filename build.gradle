@@ -3,7 +3,6 @@ description = "Bremerton Ice Arena ScoreBoard"
 apply plugin: "java"
 apply plugin: "idea"
 apply plugin: 'groovy'
-apply plugin: 'java-library-distribution'
 apply plugin: 'application'
 
 java {
@@ -50,7 +49,7 @@ sourceSets {
 
 dependencies {
     implementation "com.squareup.dagger:dagger:1.1.0"
-    implementation "com.squareup.dagger:dagger-compiler:1.1.0"
+    // Dagger compiler is compile-time only; keep as annotation processor, not runtime
     annotationProcessor "com.squareup.dagger:dagger-compiler:1.1.0"
 
     implementation "com.github.purejavacomm:purejavacomm:1.0.1.RELEASE"
