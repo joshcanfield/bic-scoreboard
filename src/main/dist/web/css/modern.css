@@ -53,6 +53,11 @@ body.buzzer {
 .navbar-default .navbar-btn {
     color: var(--text);
 }
+/* Clear legacy background so brand/logo doesn't change on hover */
+.navbar.navbar-default .navbar-brand,
+.navbar.navbar-default .navbar-nav>li>a { background: transparent !important; }
+/* Improve logo rendering/alignment */
+img.navbar-brand { display: block; height: 97px; width: auto; }
 .navbar-btn#buzzer { background: var(--warn); border: none; color: #1b1b1b; font-weight: 700; }
 /* Base primary button styling via tokens to reduce duplication */
 .btn.btn-primary {
