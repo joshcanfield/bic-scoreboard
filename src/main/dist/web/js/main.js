@@ -406,6 +406,13 @@ const initEvents = () => {
   on(document, 'click', '#confirm-on', (e) => {
     setPowerUI('on');
   });
+  on(document, 'click', '#not-on', (e) => {
+    // User indicates the board didn't turn on: stop sending and close dialog
+    const modal = $('#scoreboard-connect');
+    Modals.hide(modal);
+    try { Server.power(); } catch {}
+    setPowerUI('off');
+  });
 
   // Set clock modal presets
   const setClockDialog = $('#set-clock');
