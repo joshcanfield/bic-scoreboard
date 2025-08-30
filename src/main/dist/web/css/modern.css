@@ -6,8 +6,9 @@
     --panel: #0f1530;
     --text: #e6e9ef;
     --muted: #a5b0c2;
-    --accent: #4cc9f0;
-    --accent-2: #22d1ee;
+    /* Use original Bootstrap 3 primary blue */
+    --accent: #337ab7;
+    --accent-2: #337ab7;
     --warn: #ffb703;
     --danger: #ef476f;
     --success: #06d6a0;
@@ -53,7 +54,20 @@ body.buzzer {
     color: var(--text);
 }
 .navbar-btn#buzzer { background: var(--warn); border: none; color: #1b1b1b; font-weight: 700; }
-.navbar-btn.btn-primary { background: var(--accent); border: none; font-weight: 700; }
+/* Base primary button styling via tokens to reduce duplication */
+.btn.btn-primary {
+    background: linear-gradient(180deg, var(--btn-primary-bg, var(--accent)), var(--btn-primary-bg-2, var(--accent-2)));
+    border: none;
+    box-shadow: var(--btn-primary-shadow, 0 6px 14px rgba(76,201,240,0.25));
+}
+/* Navbar primary is flatter to minimize visual noise in the bar */
+.navbar .btn.btn-primary,
+.navbar-btn.btn-primary {
+    --btn-primary-bg: var(--accent);
+    --btn-primary-bg-2: var(--accent);
+    --btn-primary-shadow: none;
+    font-weight: 700;
+}
 
 /* Power switch modern look using existing markup */
 .onoffswitch { width: 260px; margin-top: 12px; }
@@ -69,8 +83,6 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 
 /* Score cards */
 .score { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
-.score .btn.btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border: none; box-shadow: 0 6px 14px rgba(76,201,240,0.25); }
-.score .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
 
 /* LED digits refresh */
 .digits { background: #04070f; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 20px rgba(76,201,240,0.05); }
@@ -89,7 +101,12 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 /* Penalties table */
 .penalties .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .penalties .table > tbody > tr > td, .penalties .table > thead > tr > th { border-color: rgba(255,255,255,0.06); }
-.penalties a.btn.btn-primary { background: var(--accent); border: none; }
+/* Penalties action uses flat accent */
+.penalties a.btn.btn-primary {
+    --btn-primary-bg: var(--accent);
+    --btn-primary-bg-2: var(--accent);
+    --btn-primary-shadow: none;
+}
 
 /* Console removed */
 
@@ -116,7 +133,7 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .modal-header { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)); border-top-left-radius: 16px; border-top-right-radius: 16px; }
 .modal-header .close { color: var(--text); text-shadow: none; opacity: .8; font-size: 28px; line-height: 1; padding: 4px 8px; margin-top: -6px; }
 .modal-header .close:hover, .modal-header .close:focus { color: #fff; opacity: 1; outline: none; }
-.modal .btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border: none; }
+.modal .btn-primary { /* inherits base primary styles */ }
 .modal .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
 
 /* Friendly enter motion: slight lift + fade in */
