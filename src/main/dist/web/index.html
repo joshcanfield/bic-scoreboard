@@ -11,6 +11,14 @@
 
 </head>
 <body>
+<div id="conn-overlay" aria-live="polite" style="display:none">
+  <div class="overlay-card">
+    <div class="overlay-title">Connection lost</div>
+    <div id="conn-overlay-text" class="overlay-text">Reconnecting…</div>
+    <div class="overlay-note">Please restart the Scoreboard application.</div>
+  </div>
+  <div class="overlay-bg"></div>
+</div>
 <div class="container">
     <nav class="navbar navbar-default">
         <div class="container-fluid">
@@ -41,9 +49,6 @@
                     </li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <span id="conn-status" class="label label-default" title="Socket status">Connecting...</span>
-                    </li>
                     <li>
                         <button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button>
                     </li>
@@ -163,9 +168,7 @@
         </div>
 
     </div>
-    <div class="row">
-        <div id="console" class="well"></div>
-    </div>
+    
 </div>
 <!--
   -  Dialogs
