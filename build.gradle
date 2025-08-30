@@ -62,7 +62,6 @@ dependencies {
     implementation "org.eclipse.jetty:jetty-server:${project.jetty.version}"
     implementation "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 
-    implementation 'com.corundumstudio.socketio:netty-socketio:1.6.1'
 
     implementation ("org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}" ) {
         exclude group: 'org.slf4j'
@@ -72,6 +71,9 @@ dependencies {
     implementation "org.codehaus.jackson:jackson-mapper-asl:${project.jackson.version}"
     implementation "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
     implementation 'commons-io:commons-io:2.11.0'
+
+    // Lightweight native WebSocket server for modern UI transport
+    implementation 'org.java-websocket:Java-WebSocket:1.5.6'
 
     testImplementation "org.codehaus.groovy:groovy-all:2.0.5"
     testImplementation "org.testng:testng:7.10.2"

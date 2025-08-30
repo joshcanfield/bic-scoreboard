@@ -1,6 +1,6 @@
 package canfield.bia;
 
-import canfield.bia.hockey.web.WebSocketAdapter;
+import canfield.bia.hockey.web.NativeWebSocketServer;
 import canfield.bia.rest.GameApplication;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
@@ -20,12 +20,12 @@ public class HockeyGameServer {
     private static final Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
 
     private Server server = null;
-    private final WebSocketAdapter webSocketAdapter;
+    private final NativeWebSocketServer nativeWebSocketServer;
 
 
     @Inject
-    public HockeyGameServer(WebSocketAdapter webSocketAdapter) {
-        this.webSocketAdapter = webSocketAdapter;
+    public HockeyGameServer(NativeWebSocketServer nativeWebSocketServer) {
+        this.nativeWebSocketServer = nativeWebSocketServer;
     }
 
     public void start() {
@@ -33,7 +33,11 @@ public class HockeyGameServer {
             return;
         }
 
-        webSocketAdapter.start();
+        try {
+            nativeWebSocketServer.start();
+        } catch (Exception e) {
+            log.error("Failed to start native WebSocket server", e);
+        }
 
         startServer();
     }
@@ -48,11 +52,11 @@ public class HockeyGameServer {
             }
         }
 
-        if (webSocketAdapter != null) {
+        if (nativeWebSocketServer != null) {
             try {
-                webSocketAdapter.stop();
+                nativeWebSocketServer.shutdown();
             } catch (Exception e) {
-                log.error("Failed to stop socket io server", e);
+                log.error("Failed to stop native WebSocket server", e);
             }
         }
     }

@@ -1,0 +1,118 @@
+/* Modernized control UI styles (overrides legacy index.css) */
+
+:root {
+    --bg: #0b1020;
+    --bg-elev: #11182e;
+    --panel: #0f1530;
+    --text: #e6e9ef;
+    --muted: #a5b0c2;
+    --accent: #4cc9f0;
+    --accent-2: #22d1ee;
+    --warn: #ffb703;
+    --danger: #ef476f;
+    --success: #06d6a0;
+    --led: #ff3b30;
+    --led-amber: #ffe66d;
+    --glass: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.12);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+html, body {
+    background: radial-gradient(1200px 800px at 20% 10%, #10224a, var(--bg));
+    color: var(--text);
+}
+
+/* Buzzer visual pulse */
+body.buzzer {
+    animation: buzzerPulse 0.6s ease-in-out 0s infinite alternate;
+}
+@keyframes buzzerPulse {
+    from { background-color: #2b0b0b; }
+    to { background-color: #5b1010; }
+}
+
+/* App container */
+.container {
+    background: linear-gradient(180deg, var(--glass), transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 20px 24px 28px;
+}
+
+/* Navbar refresh */
+.navbar.navbar-default {
+    background: linear-gradient(180deg, #0f1530, #0c1228);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.navbar-default .navbar-brand,
+.navbar-default .navbar-nav>li>a,
+.navbar-default .navbar-btn {
+    color: var(--text);
+}
+.navbar .label { display: inline-block; margin-right: 10px; }
+#conn-status { background: #5c6c8a; border-radius: 10px; padding: 6px 10px; border: 1px solid var(--border); }
+#conn-status[data-state="ok"] { background: #1b7f5a; }
+#conn-status[data-state="reconnecting"] { background: #8f6b12; }
+#conn-status[data-state="down"] { background: #8b2c3a; }
+.navbar-btn#buzzer { background: var(--warn); border: none; color: #1b1b1b; font-weight: 700; }
+.navbar-btn.btn-primary { background: var(--accent); border: none; font-weight: 700; }
+
+/* Power switch modern look using existing markup */
+.onoffswitch { width: 260px; margin-top: 12px; }
+.onoffswitch-label { border: 1px solid var(--border); border-radius: 40px; background: var(--panel); }
+.onoffswitch-inner:before { content: "Scoreboard ON"; background: linear-gradient(180deg, #1a2e5a, #14244a); }
+.onoffswitch-inner:after { content: "Scoreboard OFF"; background: #1b243b; }
+.onoffswitch-switch { width: 38px; background: #e9edf5; border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+/* Layout: home | clock | away */
+#home, #away, #clock_box { padding: 8px 10px; }
+
+h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+
+/* Score cards */
+.score { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+.score .btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border: none; }
+.score .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
+
+/* LED digits refresh */
+.digits { background: #04070f; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 20px rgba(76,201,240,0.05); }
+#clock_box .clock .digit, #home .score .digit, #away .score .digit, #period .digits .digit { text-shadow: 0 0 12px rgba(255,100,100,0.45), 0 0 3px rgba(255,255,255,0.15); }
+#clock_box .clock .digit { color: var(--led); }
+#home .score .digit, #away .score .digit { color: var(--led-amber); }
+
+/* Clock area */
+#clock_box .clock { margin-top: 12px; }
+#clock-actions .btn { color: var(--text); background: #1d2540; border: 1px solid var(--border); border-radius: 12px; padding: 6px 10px; }
+
+/* Period block */
+#period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; color: var(--muted); }
+#period-block a { color: var(--accent); }
+
+/* Penalties table */
+.penalties .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.penalties .table > tbody > tr > td, .penalties .table > thead > tr > th { border-color: rgba(255,255,255,0.06); }
+.penalties a.btn.btn-primary { background: var(--accent); border: none; }
+
+/* Console */
+#console { background: #0e142a; color: var(--muted); border: 1px dashed var(--border); border-radius: 10px; min-height: 40px; }
+
+.progress { background: rgba(255,255,255,0.06); border-radius: 10px; border: 1px solid var(--border); }
+.progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 0 12px rgba(76,201,240,0.45); }
+
+/* Modal polish (Bootstrap 3 overrides) */
+.modal-content { background: #0f1631; color: var(--text); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+.modal-header, .modal-footer { border-color: rgba(255,255,255,0.08); }
+.modal .btn-primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border: none; }
+.modal .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
+
+/* Tabs */
+.nav-tabs>li>a { background: #1b2446; border: 1px solid var(--border); color: var(--muted); }
+.nav-tabs>li.active>a { background: #242f5c !important; color: var(--text) !important; }
+
+/* Responsive tweaks */
+@media (max-width: 992px) {
+    .navbar-brand { transform: scale(0.8); transform-origin: left center; }
+}

@@ -9,7 +9,7 @@ both hardware and browser clients:
 
 * **Jetty + RESTEasy** expose a REST API on port `8080` for querying and
   updating the game clock, scores, penalties, and buzzer.
-* **netty-socketio** provides a WebSocket server on port `8081` that pushes
+* Native WebSocket server on port `8082` pushes
   real‑time score and clock updates to connected web clients.
 * **PureJavaComm** connects to the physical scoreboard over a serial port so
   on-ice displays mirror the server state.
@@ -42,9 +42,28 @@ Run the test suite with:
 
 ## Running
 
-Start the scoreboard service with:
+Start the scoreboard service:
 
 ```sh
 ./gradlew run --args 'start'
+```
+
+Default ports and endpoints:
+
+- HTTP API and static files: http://localhost:8080/
+  - Control UI: http://localhost:8080/index.html
+  - Display UI: http://localhost:8080/scoreboard.html
+- Native WebSocket: ws://localhost:8082/ws
+
+Runtime configuration (JVM system properties):
+
+- `-Dws.port=8082`: WebSocket server port
+- `-DRESOURCE_BASE=web`: static file root relative to working dir (default: `web` under `src/main/dist`)
+- `-Dscoreboard.commport=usb.ttyserial`: serial port name for hardware I/O
+
+You can override socket host/port used by the UIs via URL params, e.g.:
+
+```
+http://localhost:8080/index.html?socketHost=example.com&socketPort=9090
 ```
 

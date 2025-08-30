@@ -2,14 +2,12 @@
 <html lang="en">
 <head>
     <title>Scoreboard</title>
-    <script src="lib/socket.io/socket.io.js"></script>
-    <script src="lib/jquery-2.0.3.min.js"></script>
-    <script src="lib/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
-    <script src="js/websocket-client.js"></script>
-    <script src="js/scoreboard.js"></script>
+    <!-- Using native ES modules; no jQuery/Bootstrap JS required -->
+    <script type="module" src="js/main.js"></script>
 
     <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
     <link href="css/index.css" rel="stylesheet" type="text/css"/>
+    <link href="css/modern.css" rel="stylesheet" type="text/css"/>
 
 </head>
 <body>
@@ -43,6 +41,9 @@
                     </li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <span id="conn-status" class="label label-default" title="Socket status">Connecting...</span>
+                    </li>
                     <li>
                         <button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button>
                     </li>
@@ -330,7 +331,7 @@
                                                size="2" value="5"/>
                                     </div>
                                     <div class=col-xs-4>
-                                        <a href="#" onclick="$('#period-0').val(0)">skip</a>
+                        <a href="#" data-action="set-value" data-target="#period-0" data-value="0">skip</a>
                                     </div>
                                 </div>
                                 <div class="period-form form-group">
@@ -387,9 +388,9 @@
                                                maxlength="3" size="3" value="120"/>
                                     </div>
                                     <div class=col-xs-4>
-                                        <a href="#" onclick="$('#shift-buzzer').val(0)">disable</a>
-                                        <a href="#" onclick="$('#shift-buzzer').val(90)">1:30</a>
-                                        <a href="#" onclick="$('#shift-buzzer').val(120)">2:00</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="0">disable</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="90">1:30</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="120">2:00</a>
                                     </div>
                                 </div>
                             </form>
