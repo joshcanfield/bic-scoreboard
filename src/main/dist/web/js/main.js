@@ -72,28 +72,60 @@ const createTransport = () => {
   const defaultPort = '8082';
   const { host, port, isHttps } = buildBaseHost(defaultPort);
   const wsUrl = `${isHttps ? 'wss' : 'ws'}://${host}:${port}/ws`;
-  const ws = new WebSocket(wsUrl);
+
   const listeners = new Map();
-  ws.addEventListener('message', (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      const cb = listeners.get(msg.event);
-      if (cb) cb(msg.data);
-    } catch (_) {/* ignore */}
-  });
+  const statusHandlers = { connect: null, disconnect: null, error: null, reconnecting: null };
+  let ws = null;
+  let shouldReconnect = true;
+  let reconnectDelay = 500;
+  const reconnectDelayMax = 5000;
+  const pending = [];
+
+  const flushPending = () => {
+    while (pending.length && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(pending.shift());
+    }
+  };
+
+  const connect = () => {
+    if (statusHandlers.reconnecting) statusHandlers.reconnecting();
+    ws = new WebSocket(wsUrl);
+    ws.addEventListener('open', () => {
+      reconnectDelay = 500;
+      statusHandlers.connect && statusHandlers.connect();
+      flushPending();
+    });
+    ws.addEventListener('message', (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        const cb = listeners.get(msg.event);
+        if (cb) cb(msg.data);
+      } catch (_) {/* ignore */}
+    });
+    ws.addEventListener('close', () => {
+      statusHandlers.disconnect && statusHandlers.disconnect();
+      if (shouldReconnect) {
+        const delay = reconnectDelay;
+        reconnectDelay = Math.min(reconnectDelay * 2, reconnectDelayMax);
+        setTimeout(connect, delay);
+      }
+    });
+    ws.addEventListener('error', () => {
+      statusHandlers.error && statusHandlers.error();
+      // close event will schedule reconnect
+    });
+  };
+
+  connect();
+
   return {
     kind: 'ws',
-    socket: ws,
     on: (event, cb) => listeners.set(event, cb),
     emit: (event, data) => {
       const payload = JSON.stringify({ event, data });
-      ws.readyState === WebSocket.OPEN ? ws.send(payload) : ws.addEventListener('open', () => ws.send(payload), { once: true });
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(payload); else pending.push(payload);
     },
-    onStatus: (handlers) => {
-      ws.addEventListener('open', () => handlers.connect && handlers.connect());
-      ws.addEventListener('close', () => handlers.disconnect && handlers.disconnect());
-      ws.addEventListener('error', () => handlers.error && handlers.error());
-    }
+    onStatus: (handlers) => Object.assign(statusHandlers, handlers)
   };
 };
 const transport = createTransport();
@@ -239,7 +271,9 @@ const renderUpdate = (data) => {
   away.querySelector('.score .digit.ones').textContent = ad[1];
 
   // power + buzzer visuals
-  $('#power').checked = !!data.scoreboardOn;
+  if (typeof updatePowerFromServer === 'function') {
+    updatePowerFromServer(!!data.scoreboardOn);
+  }
   document.body.classList.toggle('buzzer', !!data.buzzerOn);
 };
 
@@ -296,19 +330,81 @@ const initEvents = () => {
     api.del(`${team}/penalty/${pid}`).catch(()=>{});
   });
 
-  // Power toggle
-  const power = $('#power');
-  power.addEventListener('click', () => Server.power());
-  power.addEventListener('change', async (e) => {
-    if (e.currentTarget.checked) {
-      try {
-        const data = await api.get('portNames');
-        State.portNames = data.portNames || [];
-        State.currentPort = data.currentPort || '';
-        refreshPortDialog();
-        Modals.showById('#scoreboard-connect');
-      } catch {}
+  // Power control button workflow (no device telemetry)
+  const powerBtn = $('#power-btn');
+  const powerStatus = $('#power-status');
+  let powerState = 'off'; // off | connecting | assumed | on | error
+  const setPowerUI = (state, text) => {
+    powerState = state;
+    switch (state) {
+      case 'off':
+        powerBtn.disabled = false;
+        powerBtn.textContent = 'Turn On Scoreboard';
+        powerStatus.className = 'label label-default';
+        powerStatus.textContent = 'Off';
+        break;
+      case 'connecting':
+        powerBtn.disabled = true;
+        powerBtn.textContent = 'Connecting…';
+        powerStatus.className = 'label label-info';
+        powerStatus.textContent = text || 'Opening port…';
+        break;
+      case 'assumed':
+        powerBtn.disabled = true;
+        powerBtn.textContent = 'Connecting…';
+        powerStatus.className = 'label label-warning';
+        powerStatus.textContent = 'Assumed On — confirm';
+        break;
+      case 'on':
+        powerBtn.disabled = false;
+        powerBtn.textContent = 'Turn Off Scoreboard';
+        powerStatus.className = 'label label-success';
+        powerStatus.textContent = 'On';
+        break;
+      case 'error':
+        powerBtn.disabled = false;
+        powerBtn.textContent = 'Retry Turn On';
+        powerStatus.className = 'label label-danger';
+        powerStatus.textContent = text || 'Error';
+        break;
     }
+  };
+  window.updatePowerFromServer = (on) => {
+    // If server reports a boolean, reflect it unless we're mid-assumed confirmation
+    if (powerState === 'connecting' || powerState === 'assumed') return;
+    setPowerUI(on ? 'on' : 'off');
+  };
+  setPowerUI(State.scoreboardOn ? 'on' : 'off');
+
+  powerBtn.addEventListener('click', async () => {
+    if (powerState === 'on') {
+      // Turn off
+      setPowerUI('connecting', 'Turning off…');
+      try { Server.power(); } catch {}
+      // Assume quick off
+      setTimeout(() => setPowerUI('off'), 500);
+      return;
+    }
+    // Turn on flow
+    setPowerUI('connecting', 'Opening port…');
+    try { Server.power(); } catch {}
+    // Prepare ports list for troubleshooting
+    try {
+      const data = await api.get('portNames');
+      State.portNames = data.portNames || [];
+      State.currentPort = data.currentPort || '';
+      refreshPortDialog();
+    } catch {}
+    // Move to assumed-on and prompt confirmation via modal
+    setTimeout(() => {
+      setPowerUI('assumed');
+      Modals.showById('#scoreboard-connect');
+    }, 800);
+  });
+
+  // Confirmation from modal
+  on(document, 'click', '#confirm-on', (e) => {
+    setPowerUI('on');
   });
 
   // Set clock modal presets
@@ -451,21 +547,43 @@ const output = (html) => {
 
 const initSocket = () => {
   const status = document.getElementById('conn-status');
+  const overlay = document.getElementById('conn-overlay');
+  const overlayText = document.getElementById('conn-overlay-text');
   const setStatus = (state, text) => {
     if (!status) return;
     status.dataset.state = state;
     status.textContent = text;
   };
+  const setOverlay = (state, text) => {
+    if (!overlay) return;
+    overlay.dataset.state = state;
+    overlay.style.display = state === 'ok' ? 'none' : 'flex';
+    if (overlayText) overlayText.textContent = text || '';
+  };
   transport.onStatus({
-    connect: () => { setStatus('ok', 'Connected'); output('<span class="connect-msg">Connected</span>'); },
-    disconnect: () => { setStatus('down', 'Disconnected'); output('<span class="disconnect-msg">Disconnected! Make sure the app is running!</span>'); },
-    reconnecting: () => setStatus('reconnecting', 'Reconnecting...'),
-    error: () => setStatus('down', 'Connect error')
+    connect: () => {
+      setStatus('ok', 'Connected');
+      setOverlay('ok', '');
+      output('<span class="connect-msg">Connected</span>');
+    },
+    disconnect: () => {
+      setStatus('down', 'Disconnected');
+      setOverlay('down', 'Reconnecting...');
+      output('<span class="disconnect-msg">Disconnected! Make sure the app is running!</span>');
+    },
+    reconnecting: () => {
+      setStatus('reconnecting', 'Reconnecting...');
+      setOverlay('reconnecting', 'Reconnecting...');
+    },
+    error: () => {
+      setStatus('down', 'Connect error');
+      setOverlay('down', 'Reconnecting...');
+    }
   });
   socket.on('message', (data) => output(`<pre>Message ${JSON.stringify(data)}</pre>`));
   socket.on('power', (data) => {
     output(`<span class="disconnect-msg">The Scoreboard has been turned ${data.scoreboardOn ? 'ON' : 'OFF'}</span>`);
-    $('#power').checked = !!data.scoreboardOn;
+    if (typeof updatePowerFromServer === 'function') updatePowerFromServer(!!data.scoreboardOn);
   });
   socket.on('update', (data) => renderUpdate(data));
 };

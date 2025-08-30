@@ -149,6 +149,10 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .nav-tabs>li>a { background: #1b2446; border: 1px solid var(--border); color: var(--muted); }
 .nav-tabs>li.active>a { background: #242f5c !important; color: var(--text) !important; }
 
+/* Power control */
+#power-control { display: flex; align-items: center; gap: 10px; }
+#power-status.label { background: #2c385f; border: 1px solid var(--border); }
+
 /* Responsive tweaks */
 @media (max-width: 992px) {
     .navbar-brand { transform: scale(0.8); transform-origin: left center; }

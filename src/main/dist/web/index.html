@@ -39,12 +39,9 @@
 
                 <ul class="nav navbar-nav navbar-left">
                     <li>
-                        <div class="onoffswitch power">
-                            <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="power">
-                            <label class="onoffswitch-label" for="power">
-                                <div class="onoffswitch-inner"></div>
-                                <div class="onoffswitch-switch"></div>
-                            </label>
+                        <div id="power-control" class="power-control">
+                            <button type="button" id="power-btn" class="btn btn-primary navbar-btn">Turn On Scoreboard</button>
+                            <span id="power-status" class="label label-default" aria-live="polite">Off</span>
                         </div>
                     </li>
                 </ul>
@@ -282,7 +279,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-dismiss="modal">It's On!</button>
+                <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
             </div>
         </div>
     </div>
