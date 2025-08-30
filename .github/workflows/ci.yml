@@ -16,13 +16,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Gradle Wrapper
+      # Wrapper validation can occasionally time out due to upstream CDN hiccups.
+      # Retry up to 3 times; only fail after the final attempt.
+      - name: Validate Gradle Wrapper (attempt 1)
+        id: wrapper_validation_1
+        uses: gradle/actions/wrapper-validation@v3
+        continue-on-error: true
+
+      - name: Validate Gradle Wrapper (attempt 2)
+        id: wrapper_validation_2
+        if: steps.wrapper_validation_1.outcome == 'failure'
+        uses: gradle/actions/wrapper-validation@v3
+        continue-on-error: true
+
+      - name: Validate Gradle Wrapper (attempt 3)
+        if: steps.wrapper_validation_2.outcome == 'failure'
         uses: gradle/actions/wrapper-validation@v3
 
-      - name: Set up JDK 21
+      # Primary: Temurin. If it times out (e.g., CDNs), fall back to Zulu.
+      - name: Set up JDK 21 (Temurin)
+        id: setup_java_temurin
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+        continue-on-error: true
+
+      - name: Set up JDK 21 (Zulu fallback)
+        if: steps.setup_java_temurin.outcome == 'failure'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
           java-version: '21'
           cache: 'gradle'
 
@@ -31,4 +56,3 @@ jobs:
 
       - name: Build (compile, test, package)
         run: ./gradlew --no-daemon build
-
