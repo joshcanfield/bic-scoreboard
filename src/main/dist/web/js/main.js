@@ -343,7 +343,13 @@ const tryPortAtIndex = async (i) => {
   if (prog) prog.style.display = '';
   setConnectMessage(`Trying ${name}… Did the scoreboard turn on?`);
   try {
-    await api.post('portName', { portName: name });
+    const resp = await api.post('portName', { portName: name });
+    if (resp) {
+      State.portNames = resp.portNames || State.portNames;
+      State.currentPort = resp.currentPort || name;
+    } else {
+      State.currentPort = name;
+    }
     // Explicitly power on for this port (ensure previous off)
     try { Server.powerOff(); } catch {}
     try { Server.powerOn(); } catch {}
@@ -427,7 +433,7 @@ const initEvents = () => {
       case 'off':
         powerBtn.disabled = false;
         powerBtn.textContent = 'Turn On Scoreboard';
-        powerStatus.className = 'label label-default';
+        powerStatus.className = 'label label-danger';
         powerStatus.textContent = 'Off';
         break;
       case 'connecting':
@@ -446,7 +452,7 @@ const initEvents = () => {
         powerBtn.disabled = false;
         powerBtn.textContent = 'Turn Off Scoreboard';
         powerStatus.className = 'label label-success';
-        powerStatus.textContent = 'On';
+        powerStatus.textContent = 'On' + (State.currentPort ? ` — ${State.currentPort}` : '');
         break;
       case 'error':
         powerBtn.disabled = false;
@@ -707,10 +713,17 @@ const initSocket = () => {
     if (overlayText) overlayText.textContent = text || '';
   };
   transport.onStatus({
-    connect: () => {
+    connect: async () => {
       setStatus('ok', 'Connected');
       setOverlay('ok', '');
       output('<span class="connect-msg">Connected</span>');
+      try {
+        const data = await api.get('portNames');
+        State.portNames = data.portNames || [];
+        State.currentPort = data.currentPort || '';
+        // Refresh power label with port if already on
+        if (State.scoreboardOn) setPowerUI('on'); else setPowerUI('off');
+      } catch {}
     },
     disconnect: () => {
       setStatus('down', 'Disconnected');

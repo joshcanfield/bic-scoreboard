@@ -151,7 +151,6 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 
 /* Power control */
 #power-control { display: flex; align-items: center; gap: 10px; }
-#power-status.label { background: #2c385f; border: 1px solid var(--border); }
 
 /* Responsive tweaks */
 @media (max-width: 992px) {
