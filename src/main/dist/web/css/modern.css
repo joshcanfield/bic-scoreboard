@@ -167,3 +167,9 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 #conn-overlay .overlay-note { margin-top: 8px; font-size: 12px; color: #9aa6bf; }
 #conn-overlay[data-state="reconnecting"] .overlay-title { color: #ffb703; }
 #conn-overlay[data-state="down"] .overlay-title { color: #ef476f; }
+
+/* Port list in connect dialog */
+#connect-portNames { display: flex; flex-wrap: wrap; gap: 8px; }
+#connect-portNames .port-pill { background: #1b2446; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+#connect-portNames .port-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#connect-portNames .port-pill.tried { opacity: 0.6; }

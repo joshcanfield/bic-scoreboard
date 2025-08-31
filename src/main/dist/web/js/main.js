@@ -136,7 +136,9 @@ const Server = {
   goal: (data) => socket.emit('goal', data),
   undoGoal: (data) => socket.emit('undo_goal', data),
   buzzer: () => socket.emit('buzzer'),
-  power: () => socket.emit('power'),
+  powerOn: () => socket.emit('power_on'),
+  powerOff: () => socket.emit('power_off'),
+  powerState: () => socket.emit('power_state'),
   setPeriod: (p) => socket.emit('set_period', { period: p }),
   createGame: (cfg) => socket.emit('createGame', cfg),
 };
@@ -280,26 +282,111 @@ const renderUpdate = (data) => {
 // ---------- Ports UI ----------
 const refreshPortDialog = () => {
   const wrap = $('#connect-portNames');
+  if (wrap) wrap.innerHTML = '';
+};
+
+const renderPortPills = (activeIndex = 0) => {
+  const wrap = $('#connect-portNames');
+  if (!wrap) return;
   wrap.innerHTML = '';
-  State.portNames.forEach(name => {
-    const btn = document.createElement('button');
-    btn.className = 'btn btn-info port-name' + (name === State.currentPort ? ' disabled' : '');
-    btn.textContent = name;
-    btn.dataset.portName = name;
-    btn.addEventListener('click', async () => {
-      const modal = $('#scoreboard-connect');
-      modal.querySelector('.progress').style.display = '';
-      try {
-        const data = await api.post('portName', { portName: name });
-        State.portNames = data.portNames || [];
-        State.currentPort = data.currentPort || '';
-        refreshPortDialog();
-      } finally {
-        modal.querySelector('.progress').style.display = 'none';
-      }
-    });
-    wrap.appendChild(btn);
+  (portStepper.ports || []).forEach((name, i) => {
+    const pill = document.createElement('span');
+    pill.className = 'port-pill' + (i === activeIndex ? ' active' : '') + (i < activeIndex ? ' tried' : '');
+    pill.textContent = name;
+    wrap.appendChild(pill);
   });
+};
+
+// Step through ports one by one and ask for confirmation
+let portStepper = { ports: [], index: 0, active: false };
+let notOnCountdownTimer = null;
+const startNotOnCountdown = (btn, seconds = 5, nextName = '') => {
+  if (!btn) return;
+  if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+  let remaining = seconds;
+  const waitingText = 'Waiting';
+  btn.disabled = true;
+  btn.textContent = `${waitingText} (${remaining})`;
+  notOnCountdownTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(notOnCountdownTimer);
+      notOnCountdownTimer = null;
+      btn.disabled = false;
+      btn.textContent = nextName ? `Try ${nextName}` : 'Not On';
+    } else {
+      btn.textContent = `${waitingText} (${remaining})`;
+    }
+  }, 1000);
+};
+const setConnectMessage = (msg) => { const el = $('#connect-message'); if (el) el.textContent = msg || ''; };
+const tryPortAtIndex = async (i) => {
+  const modal = $('#scoreboard-connect');
+  const prog = modal.querySelector('.progress');
+  const notOnBtn = $('#not-on');
+  const confirmBtn = $('#confirm-on');
+  const retryBtn = $('#retry-ports');
+  const name = portStepper.ports[i];
+  if (!name) {
+    // Exhausted ports: keep dialog open, set UI to Off, allow Retry/Give Up elsewhere
+    if (prog) prog.style.display = 'none';
+    setConnectMessage('No more ports to try. Check USB/power and cables.');
+    portStepper.active = false;
+    try { Server.powerOff(); } catch {}
+    setPowerUI('off');
+    renderPortPills(portStepper.ports.length); // mark all as tried
+    if (notOnBtn) { if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; } notOnBtn.style.display = 'none'; notOnBtn.disabled = false; notOnBtn.textContent = 'Not On'; }
+    // Keep confirm visible; Retry/Give Up are shown by the Not On handler when appropriate
+    return;
+  }
+  renderPortPills(i);
+  if (prog) prog.style.display = '';
+  setConnectMessage(`Trying ${name}… Did the scoreboard turn on?`);
+  try {
+    await api.post('portName', { portName: name });
+    // Explicitly power on for this port (ensure previous off)
+    try { Server.powerOff(); } catch {}
+    try { Server.powerOn(); } catch {}
+  } finally {
+    setTimeout(() => { if (prog) prog.style.display = 'none'; }, 400);
+  }
+  // Temporarily disable "Didn't Turn On" for 5 seconds to allow hardware to respond
+  if (notOnBtn) {
+    notOnBtn.style.display = '';
+    if (retryBtn) retryBtn.style.display = 'none';
+    if (confirmBtn) { confirmBtn.textContent = "It's On!"; confirmBtn.className = 'btn btn-success'; }
+    const nextName = portStepper.ports[i+1] || '';
+    startNotOnCountdown(notOnBtn, 5, nextName);
+  }
+};
+const resetConnectDialogUI = () => {
+  const notOnBtn = $('#not-on');
+  const confirmBtn = $('#confirm-on');
+  const retryBtn = $('#retry-ports');
+  const giveUpBtn = $('#give-up');
+  if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+  setConnectMessage('');
+  if (retryBtn) retryBtn.style.display = 'none';
+  if (giveUpBtn) giveUpBtn.style.display = 'none';
+  if (confirmBtn) { confirmBtn.style.display = ''; confirmBtn.textContent = "It's On!"; confirmBtn.className = 'btn btn-success'; }
+  if (notOnBtn) { notOnBtn.style.display = 'none'; notOnBtn.disabled = false; notOnBtn.textContent = 'Not On'; }
+  renderPortPills(0);
+};
+
+const beginPortStepper = async () => {
+  portStepper.active = true;
+  // Build ordered ports: try currentPort first if present
+  const ports = [...(State.portNames || [])];
+  const curr = State.currentPort;
+  if (curr) {
+    const idx = ports.indexOf(curr);
+    if (idx > 0) { ports.splice(idx, 1); ports.unshift(curr); }
+  }
+  portStepper.ports = ports;
+  portStepper.index = 0;
+  resetConnectDialogUI();
+  Modals.showById('#scoreboard-connect');
+  await tryPortAtIndex(portStepper.index);
 };
 
 // ---------- Wire up events ----------
@@ -380,38 +467,90 @@ const initEvents = () => {
     if (powerState === 'on') {
       // Turn off
       setPowerUI('connecting', 'Turning off…');
-      try { Server.power(); } catch {}
+      try { Server.powerOff(); } catch {}
       // Assume quick off
       setTimeout(() => setPowerUI('off'), 500);
       return;
     }
     // Turn on flow
     setPowerUI('connecting', 'Opening port…');
-    try { Server.power(); } catch {}
-    // Prepare ports list for troubleshooting
+    // Prepare ports list
     try {
       const data = await api.get('portNames');
       State.portNames = data.portNames || [];
       State.currentPort = data.currentPort || '';
       refreshPortDialog();
     } catch {}
-    // Move to assumed-on and prompt confirmation via modal
-    setTimeout(() => {
+    // Step through ports if available, otherwise show modal with message
+    if (State.portNames && State.portNames.length) {
       setPowerUI('assumed');
+      await beginPortStepper();
+    } else {
+      setPowerUI('error', 'No serial ports found');
+      resetConnectDialogUI();
       Modals.showById('#scoreboard-connect');
-    }, 800);
+      setConnectMessage('No serial ports detected. Check USB/power and try again.');
+    }
   });
 
   // Confirmation from modal
   on(document, 'click', '#confirm-on', (e) => {
     setPowerUI('on');
   });
-  on(document, 'click', '#not-on', (e) => {
-    // User indicates the board didn't turn on: stop sending and close dialog
+  on(document, 'click', '#not-on', async (e) => {
+    // User indicates the board didn't turn on
+    try { Server.powerOff(); } catch {}
+    if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+    const confirmBtn = $('#confirm-on');
+    const retryBtn = $('#retry-ports');
+    const giveUpBtn = $('#give-up');
+    const notOnBtn = $('#not-on');
+    if (portStepper.active) {
+      const isLast = portStepper.index >= (portStepper.ports.length - 1);
+      if (!isLast) {
+        portStepper.index += 1;
+        await tryPortAtIndex(portStepper.index);
+      } else {
+        // Last port: show Retry + Give Up, hide confirm
+        setConnectMessage('No more ports to try. You can Retry or Give Up.');
+        if (confirmBtn) { confirmBtn.style.display = ''; }
+        if (retryBtn) retryBtn.style.display = '';
+        if (giveUpBtn) giveUpBtn.style.display = '';
+        if (notOnBtn) notOnBtn.style.display = 'none';
+      }
+    } else {
+      const modal = $('#scoreboard-connect');
+      Modals.hide(modal);
+      setPowerUI('off');
+    }
+  });
+
+  // Retry through ports again
+  on(document, 'click', '#retry-ports', async () => {
+    const notOnBtn = $('#not-on');
+    const confirmBtn = $('#confirm-on');
+    const retryBtn = $('#retry-ports');
+    const giveUpBtn = $('#give-up');
+    if (retryBtn) retryBtn.style.display = 'none';
+    if (giveUpBtn) giveUpBtn.style.display = 'none';
+    if (notOnBtn) { notOnBtn.style.display = ''; notOnBtn.disabled = true; }
+    if (confirmBtn) { confirmBtn.style.display = ''; confirmBtn.textContent = "It's On!"; confirmBtn.className = 'btn btn-success'; }
+    // Refresh port list
+    try {
+      const data = await api.get('portNames');
+      State.portNames = data.portNames || [];
+      State.currentPort = data.currentPort || '';
+    } catch {}
+    setPowerUI('assumed');
+    await beginPortStepper();
+  });
+
+  // Give up: close port and dialog, reflect Off
+  on(document, 'click', '#give-up', () => {
     const modal = $('#scoreboard-connect');
-    Modals.hide(modal);
-    try { Server.power(); } catch {}
+    try { Server.powerOff(); } catch {}
     setPowerUI('off');
+    Modals.hide(modal);
   });
 
   // Set clock modal presets

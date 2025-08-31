@@ -84,11 +84,36 @@ const buildBaseHost = (defPort) => {
 const createTransport = () => {
   const { host, port, isHttps } = buildBaseHost('8082');
   const wsUrl = `${isHttps ? 'wss' : 'ws'}://${host}:${port}/ws`;
-  const ws = new WebSocket(wsUrl);
   const listeners = new Map();
-  ws.addEventListener('message', (e) => {
-    try { const msg = JSON.parse(e.data); const cb = listeners.get(msg.event); if (cb) cb(msg.data); } catch(_){}
-  });
+  let ws = null;
+  let reconnectDelay = 500;
+  const reconnectDelayMax = 5000;
+
+  const overlay = document.getElementById('conn-overlay');
+  const overlayText = document.getElementById('conn-overlay-text');
+  const setOverlay = (state, text) => {
+    if (!overlay) return;
+    overlay.dataset.state = state;
+    overlay.style.display = state === 'ok' ? 'none' : 'flex';
+    if (overlayText) overlayText.textContent = text || '';
+  };
+
+  const connect = () => {
+    ws = new WebSocket(wsUrl);
+    ws.addEventListener('open', () => { reconnectDelay = 500; setOverlay('ok', ''); });
+    ws.addEventListener('message', (e) => {
+      try { const msg = JSON.parse(e.data); const cb = listeners.get(msg.event); if (cb) cb(msg.data); } catch(_){}
+    });
+    ws.addEventListener('close', () => {
+      setOverlay('down', 'Reconnecting...');
+      const delay = reconnectDelay;
+      reconnectDelay = Math.min(reconnectDelay * 2, reconnectDelayMax);
+      setTimeout(connect, delay);
+    });
+    ws.addEventListener('error', () => { setOverlay('down', 'Reconnecting...'); });
+  };
+
+  connect();
   return { on: (ev, cb) => listeners.set(ev, cb), emit: ()=>{} };
 };
 const transport = createTransport();

@@ -106,8 +106,23 @@ public class NativeWebSocketServer extends WebSocketServer {
             } else if ("buzzer".equals(event)) {
                 gameManager.playBuzzer(1000);
             } else if ("power".equals(event)) {
+                // Backward-compat toggle
                 boolean running = gameManager.updatesRunning();
                 if (running) gameManager.stopUpdates(); else gameManager.startUpdates();
+                HashMap<String, Object> out = new HashMap<>();
+                out.put("scoreboardOn", gameManager.updatesRunning());
+                broadcastJson("power", out);
+            } else if ("power_on".equals(event)) {
+                if (!gameManager.updatesRunning()) gameManager.startUpdates();
+                HashMap<String, Object> out = new HashMap<>();
+                out.put("scoreboardOn", gameManager.updatesRunning());
+                broadcastJson("power", out);
+            } else if ("power_off".equals(event)) {
+                if (gameManager.updatesRunning()) gameManager.stopUpdates();
+                HashMap<String, Object> out = new HashMap<>();
+                out.put("scoreboardOn", gameManager.updatesRunning());
+                broadcastJson("power", out);
+            } else if ("power_state".equals(event)) {
                 HashMap<String, Object> out = new HashMap<>();
                 out.put("scoreboardOn", gameManager.updatesRunning());
                 broadcastJson("power", out);

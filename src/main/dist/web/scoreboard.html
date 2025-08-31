@@ -7,6 +7,14 @@
     <script type="module" src="js/scoreboard-main.js"></script>
 </head>
 <body>
+<div id="conn-overlay" aria-live="polite" style="display:none">
+  <div class="overlay-card">
+    <div class="overlay-title">Connection lost</div>
+    <div id="conn-overlay-text" class="overlay-text">Reconnecting…</div>
+    <div class="overlay-note">This is a local app. If it crashed, please restart the Scoreboard application on the server.</div>
+  </div>
+  <div class="overlay-bg"></div>
+</div>
 
 <div id="scoreboard">
     <div id="score_box">

@@ -165,7 +165,7 @@
         </div>
 
     </div>
-    
+
 </div>
 <!--
   -  Dialogs
@@ -266,11 +266,11 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Is the Scoreboard on?</h4>
+                <h4 class="modal-title">Look up, is the Scoreboard on?</h4>
             </div>
             <div class="modal-body">
-                <div id="connect-portNames">
-                </div>
+                <div id="connect-portNames"></div>
+                <p id="connect-message" class="help-block" style="margin-top:8px;"></p>
             </div>
 
             <div class="progress" style="display:none">
@@ -279,7 +279,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" id="not-on" class="btn btn-default">Didn't Turn On</button>
+                <button type="button" id="not-on" class="btn btn-default">Not On</button>
+                <button type="button" id="retry-ports" class="btn btn-primary" style="display:none">Retry</button>
+                <button type="button" id="give-up" class="btn btn-danger" style="display:none">Give Up</button>
                 <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
             </div>
         </div>

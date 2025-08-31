@@ -21,3 +21,10 @@ html, body { background: radial-gradient(1200px 800px at 15% 10%, #0f2150, var(-
 
 #penalty_box { border-top-color: rgba(255,255,255,0.5); }
 
+/* Connection overlay for display */
+#conn-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999; }
+#conn-overlay .overlay-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.75); }
+#conn-overlay .overlay-card { position: relative; z-index: 1; background: rgba(10,10,30,0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); padding: 20px 26px; min-width: 320px; text-align: center; }
+#conn-overlay .overlay-title { font-size: 28px; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 6px; }
+#conn-overlay .overlay-text { font-size: 16px; opacity: 0.9; }
+#conn-overlay .overlay-note { margin-top: 8px; font-size: 14px; opacity: 0.8; }
