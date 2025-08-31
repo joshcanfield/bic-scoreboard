@@ -5,10 +5,8 @@ import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
 import canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl;
-import canfield.bia.hockey.web.WebSocketAdapter;
+import canfield.bia.hockey.web.NativeWebSocketServer;
 import canfield.bia.rest.GameResource;
-import com.corundumstudio.socketio.Configuration;
-import com.corundumstudio.socketio.SocketIOServer;
 import dagger.Module;
 import dagger.Provides;
 
@@ -19,8 +17,7 @@ import javax.inject.Singleton;
         ScoreboardAdapterImpl.class,
         ScoreBoardImpl.class,
         GameResource.class,
-        HockeyGameServer.class,
-        WebSocketAdapter.class
+        HockeyGameServer.class
     }
 )
 public class SimpleGameModule {
@@ -40,12 +37,8 @@ public class SimpleGameModule {
 
     @Provides
     @Singleton
-    SocketIOServer provideSocketIOServer() {
-        final Configuration config = new Configuration();
-        config.setHostname("localhost");
-        int port = Integer.parseInt(System.getProperty("socketio.port", "8081"));
-        config.setPort(port);
-
-        return new SocketIOServer(config);
+    NativeWebSocketServer provideNativeWebSocketServer(SimpleGameManager manager) {
+        int port = Integer.parseInt(System.getProperty("ws.port", "8082"));
+        return new NativeWebSocketServer(manager, port);
     }
 }

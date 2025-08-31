@@ -2,17 +2,23 @@
 <html lang="en">
 <head>
     <title>Scoreboard</title>
-    <script src="lib/socket.io/socket.io.js"></script>
-    <script src="lib/jquery-2.0.3.min.js"></script>
-    <script src="lib/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
-    <script src="js/websocket-client.js"></script>
-    <script src="js/scoreboard.js"></script>
+    <!-- Using native ES modules; no jQuery/Bootstrap JS required -->
+    <script type="module" src="js/main.js"></script>
 
     <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
     <link href="css/index.css" rel="stylesheet" type="text/css"/>
+    <link href="css/modern.css" rel="stylesheet" type="text/css"/>
 
 </head>
 <body>
+<div id="conn-overlay" aria-live="polite" style="display:none">
+  <div class="overlay-card">
+    <div class="overlay-title">Connection lost</div>
+    <div id="conn-overlay-text" class="overlay-text">Reconnecting…</div>
+    <div class="overlay-note">Please restart the Scoreboard application.</div>
+  </div>
+  <div class="overlay-bg"></div>
+</div>
 <div class="container">
     <nav class="navbar navbar-default">
         <div class="container-fluid">
@@ -33,12 +39,9 @@
 
                 <ul class="nav navbar-nav navbar-left">
                     <li>
-                        <div class="onoffswitch power">
-                            <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="power">
-                            <label class="onoffswitch-label" for="power">
-                                <div class="onoffswitch-inner"></div>
-                                <div class="onoffswitch-switch"></div>
-                            </label>
+                        <div id="power-control" class="power-control">
+                            <button type="button" id="power-btn" class="btn btn-primary navbar-btn">Turn On Scoreboard</button>
+                            <span id="power-status" class="label label-default" aria-live="polite">Off</span>
                         </div>
                     </li>
                 </ul>
@@ -162,9 +165,7 @@
         </div>
 
     </div>
-    <div class="row">
-        <div id="console" class="well"></div>
-    </div>
+
 </div>
 <!--
   -  Dialogs
@@ -265,11 +266,11 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Is the Scoreboard on?</h4>
+                <h4 class="modal-title">Look up, is the Scoreboard on?</h4>
             </div>
             <div class="modal-body">
-                <div id="connect-portNames">
-                </div>
+                <div id="connect-portNames"></div>
+                <p id="connect-message" class="help-block" style="margin-top:8px;"></p>
             </div>
 
             <div class="progress" style="display:none">
@@ -278,7 +279,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-dismiss="modal">It's On!</button>
+                <button type="button" id="not-on" class="btn btn-default">Not On</button>
+                <button type="button" id="retry-ports" class="btn btn-primary" style="display:none">Retry</button>
+                <button type="button" id="give-up" class="btn btn-danger" style="display:none">Give Up</button>
+                <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
             </div>
         </div>
     </div>
@@ -330,7 +334,7 @@
                                                size="2" value="5"/>
                                     </div>
                                     <div class=col-xs-4>
-                                        <a href="#" onclick="$('#period-0').val(0)">skip</a>
+                        <a href="#" data-action="set-value" data-target="#period-0" data-value="0">skip</a>
                                     </div>
                                 </div>
                                 <div class="period-form form-group">
@@ -387,9 +391,9 @@
                                                maxlength="3" size="3" value="120"/>
                                     </div>
                                     <div class=col-xs-4>
-                                        <a href="#" onclick="$('#shift-buzzer').val(0)">disable</a>
-                                        <a href="#" onclick="$('#shift-buzzer').val(90)">1:30</a>
-                                        <a href="#" onclick="$('#shift-buzzer').val(120)">2:00</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="0">disable</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="90">1:30</a>
+                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="120">2:00</a>
                                     </div>
                                 </div>
                             </form>

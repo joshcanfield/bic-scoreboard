@@ -1,0 +1,174 @@
+/* Modernized control UI styles (overrides legacy index.css) */
+
+:root {
+    --bg: #0b1020;
+    --bg-elev: #11182e;
+    --panel: #0f1530;
+    --text: #e6e9ef;
+    --muted: #a5b0c2;
+    /* Use original Bootstrap 3 primary blue */
+    --accent: #337ab7;
+    --accent-2: #337ab7;
+    --warn: #ffb703;
+    --danger: #ef476f;
+    --success: #06d6a0;
+    --led: #ff3b30;
+    --led-amber: #ffe66d;
+    --glass: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.12);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+html, body {
+    background: radial-gradient(1200px 800px at 20% 10%, #10224a, var(--bg));
+    color: var(--text);
+}
+
+/* Buzzer visual pulse */
+body.buzzer {
+    animation: buzzerPulse 0.6s ease-in-out 0s infinite alternate;
+}
+@keyframes buzzerPulse {
+    from { background-color: #2b0b0b; }
+    to { background-color: #5b1010; }
+}
+
+/* App container */
+.container {
+    background: linear-gradient(180deg, var(--glass), transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 20px 24px 28px;
+}
+
+/* Navbar refresh */
+.navbar.navbar-default {
+    background: linear-gradient(180deg, #0f1530, #0c1228);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.navbar-default .navbar-brand,
+.navbar-default .navbar-nav>li>a,
+.navbar-default .navbar-btn {
+    color: var(--text);
+}
+/* Clear legacy background so brand/logo doesn't change on hover */
+.navbar.navbar-default .navbar-brand,
+.navbar.navbar-default .navbar-nav>li>a { background: transparent !important; }
+/* Improve logo rendering/alignment */
+img.navbar-brand { display: block; height: 97px; width: auto; }
+.navbar-btn#buzzer { background: var(--warn); border: none; color: #1b1b1b; font-weight: 700; }
+/* Base primary button styling via tokens to reduce duplication */
+.btn.btn-primary {
+    background: linear-gradient(180deg, var(--btn-primary-bg, var(--accent)), var(--btn-primary-bg-2, var(--accent-2)));
+    border: none;
+    box-shadow: var(--btn-primary-shadow, 0 6px 14px rgba(76,201,240,0.25));
+}
+/* Navbar primary is flatter to minimize visual noise in the bar */
+.navbar .btn.btn-primary,
+.navbar-btn.btn-primary {
+    --btn-primary-bg: var(--accent);
+    --btn-primary-bg-2: var(--accent);
+    --btn-primary-shadow: none;
+    font-weight: 700;
+}
+
+/* Power switch modern look using existing markup */
+.onoffswitch { width: 260px; margin-top: 12px; }
+.onoffswitch-label { border: 1px solid var(--border); border-radius: 40px; background: var(--panel); }
+.onoffswitch-inner:before { content: "Scoreboard ON"; background: linear-gradient(180deg, #1a2e5a, #14244a); }
+.onoffswitch-inner:after { content: "Scoreboard OFF"; background: #1b243b; }
+.onoffswitch-switch { width: 38px; background: #e9edf5; border-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+/* Layout: home | clock | away */
+#home, #away, #clock_box { padding: 8px 10px; }
+
+h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+
+/* Score cards */
+.score { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+
+/* LED digits refresh */
+.digits { background: #04070f; border: 1px solid rgba(255,255,255,0.08); box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 20px rgba(76,201,240,0.05); }
+#clock_box .clock .digit, #home .score .digit, #away .score .digit, #period .digits .digit { text-shadow: 0 0 12px rgba(255,100,100,0.45), 0 0 3px rgba(255,255,255,0.15); }
+#clock_box .clock .digit { color: var(--led); }
+#home .score .digit, #away .score .digit { color: var(--led-amber); }
+
+/* Clock area */
+#clock_box .clock { margin-top: 12px; }
+#clock-actions .btn { color: var(--text); background: #1d2540; border: 1px solid var(--border); border-radius: 12px; padding: 6px 10px; }
+
+/* Period block */
+#period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; color: var(--muted); }
+#period-block a { color: var(--accent); }
+
+/* Penalties table */
+.penalties .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.penalties .table > tbody > tr > td, .penalties .table > thead > tr > th { border-color: rgba(255,255,255,0.06); }
+/* Penalties action uses flat accent */
+.penalties a.btn.btn-primary {
+    --btn-primary-bg: var(--accent);
+    --btn-primary-bg-2: var(--accent);
+    --btn-primary-shadow: none;
+}
+
+/* Console removed */
+
+.progress { background: rgba(255,255,255,0.06); border-radius: 10px; border: 1px solid var(--border); }
+.progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 0 12px rgba(76,201,240,0.45); }
+
+/* Modal polish (Bootstrap 3 overrides) */
+/* Backdrop: dim + slight blur to separate from background */
+.modal { background: rgba(7,10,20,0.72); backdrop-filter: blur(3px) saturate(88%); }
+.modal-open { overflow: hidden; }
+
+/* Elevation and contrast for the dialog */
+.modal-content {
+    background: #101838;
+    color: var(--text);
+    border: 1px solid var(--border);
+    /* Accent edge to pop against background */
+    border-top: 3px solid var(--accent);
+    border-radius: 16px;
+    /* Stronger elevation with a subtle outline for clarity */
+    box-shadow: 0 18px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+}
+.modal-header, .modal-footer { border-color: rgba(255,255,255,0.08); }
+.modal-header { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)); border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.modal-header .close { color: var(--text); text-shadow: none; opacity: .8; font-size: 28px; line-height: 1; padding: 4px 8px; margin-top: -6px; }
+.modal-header .close:hover, .modal-header .close:focus { color: #fff; opacity: 1; outline: none; }
+.modal .btn-primary { /* inherits base primary styles */ }
+.modal .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
+
+/* Friendly enter motion: slight lift + fade in */
+.modal.fade .modal-dialog { transform: translateY(8px) scale(0.985); opacity: 0; transition: transform .18s cubic-bezier(.2,.7,.2,1), opacity .18s ease; }
+.modal.in .modal-dialog { transform: translateY(0) scale(1); opacity: 1; }
+
+/* Tabs */
+.nav-tabs>li>a { background: #1b2446; border: 1px solid var(--border); color: var(--muted); }
+.nav-tabs>li.active>a { background: #242f5c !important; color: var(--text) !important; }
+
+/* Power control */
+#power-control { display: flex; align-items: center; gap: 10px; }
+
+/* Responsive tweaks */
+@media (max-width: 992px) {
+    .navbar-brand { transform: scale(0.8); transform-origin: left center; }
+}
+
+/* Connection overlay */
+#conn-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999; }
+#conn-overlay .overlay-bg { position: absolute; inset: 0; background: rgba(7,10,20,0.85); backdrop-filter: blur(2px); }
+#conn-overlay .overlay-card { position: relative; z-index: 1; background: #101838; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 22px 28px; min-width: 320px; text-align: center; }
+#conn-overlay .overlay-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+#conn-overlay .overlay-text { color: var(--muted); }
+#conn-overlay .overlay-note { margin-top: 8px; font-size: 12px; color: #9aa6bf; }
+#conn-overlay[data-state="reconnecting"] .overlay-title { color: #ffb703; }
+#conn-overlay[data-state="down"] .overlay-title { color: #ef476f; }
+
+/* Port list in connect dialog */
+#connect-portNames { display: flex; flex-wrap: wrap; gap: 8px; }
+#connect-portNames .port-pill { background: #1b2446; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+#connect-portNames .port-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#connect-portNames .port-pill.tried { opacity: 0.6; }
