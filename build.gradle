@@ -182,6 +182,8 @@ tasks.register('jpackageFullJre', Exec) {
             '--java-options', '-Dscoreboard.showDialog=true',
             '--icon', iconPath,
             '--arguments', 'start',
+            // Show a console window on Windows to surface errors during startup
+            '--win-console',
             '--dest', file("${buildDir}/jpackage").absolutePath
     )
 

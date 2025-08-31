@@ -67,6 +67,14 @@ public class ServiceMain {
             SwingUtilities.invokeLater(() -> {
                 try {
                     JFrame frame = new JFrame("BIA Scoreboard");
+                    // Try to set a nicer window icon so the taskbar shows branding
+                    try {
+                        java.io.File iconFile = new java.io.File("web/img/bic-logo.png");
+                        if (iconFile.exists()) {
+                            Image img = Toolkit.getDefaultToolkit().getImage(iconFile.getAbsolutePath());
+                            frame.setIconImage(img);
+                        }
+                    } catch (Exception ignored) {}
                     frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
                     JPanel panel = new JPanel();
                     panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
