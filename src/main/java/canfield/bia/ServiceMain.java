@@ -27,6 +27,7 @@ public class ServiceMain {
             // only try to start if we're already started
             if (hockeyGameServer == null) {
                 printBanner();
+                normalizeAppWorkingDir();
                 maybeShowStartupWindow();
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
                 hockeyGameServer = objectGraph.get(HockeyGameServer.class);
@@ -72,6 +73,32 @@ public class ServiceMain {
         }
     }
 
+    private static void normalizeAppWorkingDir() {
+        try {
+            java.net.URL loc = ServiceMain.class.getProtectionDomain().getCodeSource().getLocation();
+            java.io.File jarOrDir = new java.io.File(loc.toURI());
+            java.io.File appDir = jarOrDir.getParentFile(); // .../scoreboard/app
+            if (appDir != null && appDir.getName().equalsIgnoreCase("app")) {
+                java.io.File root = appDir.getParentFile(); // .../scoreboard
+                if (root != null && root.isDirectory()) {
+                    // Point static resources to the packaged web folder
+                    java.io.File web = new java.io.File(root, "web");
+                    if (web.isDirectory()) {
+                        System.setProperty("RESOURCE_BASE", web.getAbsolutePath());
+                    }
+                    // Ensure logs directory exists for logback file appender
+                    java.io.File logs = new java.io.File(root, "logs");
+                    if (!logs.exists()) {
+                        try { logs.mkdirs(); } catch (Exception ignored) {}
+                    }
+                    // Set user.dir to root so relative paths (e.g., ./logs) resolve
+                    System.setProperty("user.dir", root.getAbsolutePath());
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private static void maybeShowStartupWindow() {
         String show = System.getProperty("scoreboard.showDialog", "false");
         if (!Boolean.parseBoolean(show)) return;
@@ -99,7 +126,6 @@ public class ServiceMain {
 
                     String html = "<html>" +
                             "<div style='margin-top:6px'>Server running on <b>http://localhost:8080/</b></div>" +
-                            "<div>REST <b>8080</b>, WebSocket <b>8081</b></div>" +
                             "<div style='margin-top:6px;color:#555'>This window is informational and can be closed.</div>" +
                             "</html>";
                     JLabel info = new JLabel(html);

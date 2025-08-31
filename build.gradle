@@ -180,7 +180,7 @@ tasks.register('jpackageFullJre', Exec) {
                 '--java-options', '-Dscoreboard.showDialog=true',
                 '--icon', iconPath,
                 '--arguments', 'start',
-                '--win-console',
+//                '--win-console',
                 '--dest', destDir.absolutePath
         )
     }
