@@ -173,6 +173,7 @@ tasks.register('jpackageFullJre', Exec) {
             '--main-class', application.mainClass,
             '--runtime-image', System.getenv('JAVA_HOME'),
             '--resource-dir', resourceDirPath,
+            '--java-options', '-Dscoreboard.showDialog=true',
             '--icon', iconPath,
             '--arguments', 'start',
             '--dest', file("${buildDir}/jpackage").absolutePath
