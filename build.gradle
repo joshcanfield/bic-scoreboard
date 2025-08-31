@@ -1,9 +1,14 @@
-description = "Bremerton Ice Arena ScoreBoard"
-
-apply plugin: "java"
-apply plugin: "idea"
-apply plugin: 'groovy'
-apply plugin: 'application'
+// Plugins (must be declared first)
+plugins {
+    id 'java'
+    id 'idea'
+    id 'groovy'
+    id 'application'
+    // For creating a custom runtime and Windows installers/app images
+    id 'org.beryx.jlink' version '3.1.1'
+    // For creating a fat JAR used by the fallback jpackage task
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
@@ -13,6 +18,7 @@ java {
     }
 }
 
+description = "Bremerton Ice Arena ScoreBoard"
 group = "canfield.josh"
 version = "1.1"
 
@@ -21,9 +27,10 @@ application {
 }
 
 project.ext {
-    jackson = [version: "1.9.9"]
-    jetty = [version: "8.1.12.v20130726"]
-    resteasy = [version: "3.0.4.Final"]
+    // Jetty 11 uses Jakarta Servlet API (required for RESTEasy 6)
+    jetty = [version: "11.0.24"]
+    // RESTEasy 6 uses Jakarta (jakarta.ws.rs)
+    resteasy = [version: "6.2.12.Final"]
 }
 
 repositories {
@@ -63,13 +70,21 @@ dependencies {
     implementation "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 
 
-    implementation ("org.jboss.resteasy:resteasy-jaxrs:${project.resteasy.version}" ) {
+    // RESTEasy 6 (Jakarta): core SPI + core + servlet integration + Jackson 2 provider
+    implementation ("org.jboss.resteasy:resteasy-core-spi:${project.resteasy.version}") {
         exclude group: 'org.slf4j'
     }
-    implementation "org.jboss.resteasy:resteasy-jackson-provider:${project.resteasy.version}"
-
-    implementation "org.codehaus.jackson:jackson-mapper-asl:${project.jackson.version}"
-    implementation "org.codehaus.jackson:jackson-jaxrs:${project.jackson.version}"
+    implementation ("org.jboss.resteasy:resteasy-core:${project.resteasy.version}") {
+        exclude group: 'org.slf4j'
+    }
+    implementation ("org.jboss.resteasy:resteasy-servlet-initializer:${project.resteasy.version}") {
+        exclude group: 'org.slf4j'
+    }
+    implementation "org.jboss.resteasy:resteasy-jackson2-provider:${project.resteasy.version}"
+    // FasterXML Jackson 2 core libs
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.17.2'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.17.2'
     implementation 'commons-io:commons-io:2.11.0'
 
     // Lightweight native WebSocket server for modern UI transport
@@ -113,4 +128,105 @@ tasks.named('run') {
 }
 tasks.named('wrapper') {
     gradleVersion = '8.7'
+}
+
+// Ensure the fat jar has the proper Main-Class and default args can be passed via launcher/installer
+tasks.named('shadowJar') {
+    archiveClassifier.set('all')
+    manifest {
+        attributes(
+                'Main-Class': application.mainClass.get()
+        )
+    }
+}
+
+// Fallback packaging: build a Windows EXE using jpackage with the full JRE from JAVA_HOME.
+// This bypasses jlink/JPMS issues from legacy RESTEasy modules at the cost of a larger runtime.
+tasks.register('jpackageFullJre', Exec) {
+    dependsOn tasks.named('shadowJar')
+
+    doFirst {
+        def javaHome = System.getenv('JAVA_HOME')
+        if (!javaHome) {
+            throw new GradleException('JAVA_HOME must be set to a JDK 21 path for jpackageFullJre.')
+        }
+        // Use Provider-based build directories (avoid deprecated buildDir)
+        def libsDir = layout.buildDirectory.dir('libs').get().asFile
+        if (!libsDir.exists()) libsDir.mkdirs()
+        // Clean any previous app image to allow jpackage to recreate it
+        def destDir = layout.buildDirectory.dir('jpackage').get().asFile
+        destDir.mkdirs()
+        def appImageDir = new File(destDir, 'scoreboard')
+        if (appImageDir.exists()) {
+            logger.lifecycle("Deleting previous app image: ${appImageDir}")
+            project.delete(appImageDir)
+        }
+
+        def mainJar = "${project.name}-${project.version}-all.jar"
+        def resourceDirPath = file('src/main/dist').absolutePath
+        def iconPath = file('src/main/resources/scoreboard.ico').absolutePath
+
+        // Build an app-image (no installer) with a custom icon and bundled full JRE
+        commandLine('jpackage',
+                '--type', 'app-image',
+                '--name', 'scoreboard',
+                '--app-version', project.version.toString(),
+                '--vendor', 'Bremerton Ice Arena',
+                '--input', libsDir.absolutePath,
+                '--main-jar', mainJar,
+                '--main-class', application.mainClass.get(),
+                '--runtime-image', javaHome,
+                '--resource-dir', resourceDirPath,
+                '--java-options', '-Dscoreboard.showDialog=true',
+                '--icon', iconPath,
+                '--arguments', 'start',
+                '--win-console',
+                '--dest', destDir.absolutePath
+        )
+    }
+
+    doLast {
+        // jpackage does not copy resourceDir content into app-image consistently across JDKs.
+        // Ensure our static assets (web, conf, bin) are present next to the launcher.
+        def appImageDir = new File(layout.buildDirectory.dir('jpackage').get().asFile, 'scoreboard')
+        copy {
+            from(file('src/main/dist'))
+            into(appImageDir)
+        }
+    }
+}
+
+// Create a trimmed runtime image and a Windows installer/app image via jpackage
+jlink {
+    imageName = 'scoreboard'
+    // Keep defaults minimal; plugin will infer required JDK modules for non-modular app
+
+    launcher {
+        name = 'scoreboard'
+        // Default CLI args for launching the app
+        args = ['start']
+    }
+
+    // Keep default merged-module behavior, but we will provide a fallback task
+    // below that uses the full JRE if needed.
+
+    // Trim the runtime image a bit
+    options = ['--strip-debug', '--no-header-files', '--no-man-pages']
+
+    // Package static assets (web UI, scripts, configs) next to the app image
+    jpackage {
+        // Produce a Windows EXE installer by default (no WiX required)
+        installerType = 'exe'
+
+        appVersion = project.version.toString()
+        vendor = 'Bremerton Ice Arena'
+        imageName = 'scoreboard'
+        installerName = "scoreboard-${project.version}"
+
+        // Copy everything from src/main/dist into the packaged app image/installation directory
+        resourceDir = file('src/main/dist')
+
+        // Common Windows niceties;
+        installerOptions = ['--win-shortcut', '--win-menu', '--win-console']
+    }
 }

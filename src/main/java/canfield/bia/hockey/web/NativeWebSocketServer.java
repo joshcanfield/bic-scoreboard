@@ -9,8 +9,8 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
@@ -33,7 +33,11 @@ public class NativeWebSocketServer extends WebSocketServer {
     private final SimpleGameManager gameManager;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Set<WebSocket> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ws-broadcast");
+        t.setDaemon(true);
+        return t;
+    });
 
     public NativeWebSocketServer(SimpleGameManager gameManager, int port) {
         super(new InetSocketAddress(port));

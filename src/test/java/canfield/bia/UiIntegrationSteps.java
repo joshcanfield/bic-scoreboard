@@ -8,7 +8,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -153,9 +153,9 @@ public class UiIntegrationSteps {
 
     @Then("the clock should count down")
     public void clockShouldCountDown() {
-        int afterStart = readClockMillis();
-        Assert.assertTrue(afterStart < initialTime, "Clock should count down when running");
-        initialTime = afterStart;
+        new WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(d -> readClockMillis() < initialTime);
+        initialTime = readClockMillis();
     }
 
     @When("I stop the clock")

@@ -2,9 +2,9 @@ package canfield.bia.rest;
 
 import canfield.bia.hockey.SimpleGameModule;
 import dagger.ObjectGraph;
-import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
+import org.jboss.resteasy.plugins.providers.jackson.ResteasyJackson2Provider;
 
-import javax.ws.rs.core.Application;
+import jakarta.ws.rs.core.Application;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +14,7 @@ import java.util.Set;
  */
 public class GameApplication extends Application {
 
-    private static final JacksonJsonProvider jacksonJsonProvider = new JacksonJsonProvider();
+    private static final ResteasyJackson2Provider jacksonJsonProvider = new ResteasyJackson2Provider();
     private static GameResource gameResource;
     private static ObjectGraph objectGraph;
 

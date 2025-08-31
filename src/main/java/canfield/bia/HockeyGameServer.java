@@ -7,7 +7,6 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.DefaultHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
@@ -62,10 +61,7 @@ public class HockeyGameServer {
     }
 
     private void startServer() {
-        server = new Server();
-        final SelectChannelConnector connector = new SelectChannelConnector();
-        connector.setPort(8080);
-        server.addConnector(connector);
+        server = new Server(8080);
 
         final ResourceHandler fileHandler = new ResourceHandler();
         fileHandler.setDirectoriesListed(true);
@@ -73,19 +69,22 @@ public class HockeyGameServer {
         String resourceBase = System.getProperty("RESOURCE_BASE", "web");
         fileHandler.setResourceBase(resourceBase);
 
-        final ServletContextHandler resteasyHandler = new ServletContextHandler();
+        final ServletContextHandler resteasyHandler = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
+        resteasyHandler.setContextPath("/");
         final ServletHolder servletHolder = resteasyHandler.addServlet(HttpServletDispatcher.class, "/api/*");
-        servletHolder.setInitParameter("javax.ws.rs.Application", GameApplication.class.getCanonicalName());
+        servletHolder.setInitParameter("jakarta.ws.rs.Application", GameApplication.class.getCanonicalName());
         servletHolder.setInitParameter("resteasy.servlet.mapping.prefix", "/api");
 
         final HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[]{resteasyHandler, fileHandler, new DefaultHandler()});
+        // Serve static files first, then REST API under /api/*, then default
+        handlers.setHandlers(new Handler[]{fileHandler, resteasyHandler, new DefaultHandler()});
         server.setHandler(handlers);
 
         try {
+            // Start Jetty asynchronously; do not join so the UI thread can manage lifecycle
+            server.setStopAtShutdown(true);
             server.start();
             log.info("Server waiting for requests...");
-            server.join(); // keeps this thread from exiting until the server shuts down
         } catch (Exception e) {
             throw new RuntimeException("Failed to start service.", e);
         }
