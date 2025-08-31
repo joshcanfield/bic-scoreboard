@@ -57,6 +57,8 @@ public class ServiceMain {
                     try { startupFrame.dispose(); } catch (Exception ignored) {}
                     startupFrame = null;
                 }
+                // Ensure we terminate even if some library threads linger
+                requestExit();
             } else {
                 log.warn("Unable to stop server: Service isn't running!");
             }
@@ -115,6 +117,7 @@ public class ServiceMain {
                             frame.setIconImage(img);
                         }
                     } catch (Exception ignored) {}
+                    // Manage close behavior ourselves to guarantee process exit
                     frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
                     JPanel panel = new JPanel();
                     panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -144,12 +147,7 @@ public class ServiceMain {
                         }
                     });
                     JButton close = new JButton("Close");
-                    close.addActionListener(e -> {
-                        try {
-                            if (hockeyGameServer != null) hockeyGameServer.stop();
-                        } catch (Exception ignored) {}
-                        System.exit(0);
-                    });
+                    close.addActionListener(e -> requestExit());
                     buttons.add(open);
                     buttons.add(close);
 
@@ -163,10 +161,7 @@ public class ServiceMain {
                     frame.setLocationRelativeTo(null);
                     frame.addWindowListener(new WindowAdapter() {
                         @Override public void windowClosing(WindowEvent e) {
-                            try {
-                                if (hockeyGameServer != null) hockeyGameServer.stop();
-                            } catch (Exception ignored) {}
-                            System.exit(0);
+                            requestExit();
                         }
                         @Override public void windowClosed(WindowEvent e) { startupFrame = null; }
                     });
@@ -190,7 +185,42 @@ public class ServiceMain {
                 try {
                     if (startupFrame != null) startupFrame.dispose();
                 } catch (Exception ignored) {}
+                // Do not touch Swing from shutdown hook; avoid invokeAndWait deadlocks
+                try {
+                    ch.qos.logback.classic.LoggerContext ctx =
+                            (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+                    ctx.stop();
+                } catch (Throwable ignored) {}
             }, "scoreboard-shutdown"));
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void requestExit() {
+        // Start watchdog before initiating shutdown
+        try {
+            if (hockeyGameServer != null) hockeyGameServer.stop();
+        } catch (Exception ignored) {}
+        try {
+            if (startupFrame != null) startupFrame.dispose();
+        } catch (Exception ignored) {}
+        try { disposeAllWindows(); } catch (Exception ignored) {}
+        try {
+            ch.qos.logback.classic.LoggerContext ctx =
+                    (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+            ctx.stop();
+        } catch (Throwable ignored) {}
+
+        // Call System.exit off the EDT to avoid blocking UI thread while hooks run
+        new Thread(() -> System.exit(0), "exit-invoker").start();
+    }
+
+    private static void disposeAllWindows() {
+        try {
+            for (Window w : Window.getWindows()) {
+                try { w.setVisible(false); } catch (Exception ignored) {}
+                try { w.dispose(); } catch (Exception ignored) {}
+            }
         } catch (Throwable ignored) {
         }
     }

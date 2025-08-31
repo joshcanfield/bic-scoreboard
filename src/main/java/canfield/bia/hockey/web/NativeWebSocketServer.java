@@ -33,7 +33,11 @@ public class NativeWebSocketServer extends WebSocketServer {
     private final SimpleGameManager gameManager;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Set<WebSocket> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ws-broadcast");
+        t.setDaemon(true);
+        return t;
+    });
 
     public NativeWebSocketServer(SimpleGameManager gameManager, int port) {
         super(new InetSocketAddress(port));

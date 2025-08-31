@@ -81,9 +81,10 @@ public class HockeyGameServer {
         server.setHandler(handlers);
 
         try {
+            // Start Jetty asynchronously; do not join so the UI thread can manage lifecycle
+            server.setStopAtShutdown(true);
             server.start();
             log.info("Server waiting for requests...");
-            server.join(); // keeps this thread from exiting until the server shuts down
         } catch (Exception e) {
             throw new RuntimeException("Failed to start service.", e);
         }

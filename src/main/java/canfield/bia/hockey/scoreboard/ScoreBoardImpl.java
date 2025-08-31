@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -35,8 +36,15 @@ public class ScoreBoardImpl implements ScoreBoard {
 
   private final List<EventListener> listeners = new ArrayList<>();
 
+  private final ScheduledExecutorService executorService;
+
   public ScoreBoardImpl() {
-    final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    ThreadFactory tf = r -> {
+      Thread t = new Thread(r, "scoreboard-loop");
+      t.setDaemon(true); // do not keep JVM alive on close
+      return t;
+    };
+    this.executorService = Executors.newSingleThreadScheduledExecutor(tf);
 
     final Runnable gameLoop = () -> {
       if (gameClock == null) {
@@ -53,7 +61,7 @@ public class ScoreBoardImpl implements ScoreBoard {
     };
 
     // Run the loop 60 x per second
-    executorService.scheduleAtFixedRate(
+    this.executorService.scheduleAtFixedRate(
         gameLoop, 1000, 1000 / 60, TimeUnit.MILLISECONDS
     );
   }
