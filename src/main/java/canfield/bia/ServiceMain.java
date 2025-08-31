@@ -31,7 +31,20 @@ public class ServiceMain {
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
                 hockeyGameServer = objectGraph.get(HockeyGameServer.class);
                 addShutdownHook();
-                hockeyGameServer.start();
+                try {
+                    hockeyGameServer.start();
+                } catch (Throwable t) {
+                    log.error("Failed to start service", t);
+                    SwingUtilities.invokeLater(() -> {
+                        try {
+                            JOptionPane.showMessageDialog(
+                                    startupFrame,
+                                    "Failed to start: " + String.valueOf(t.getMessage()),
+                                    "Scoreboard Error",
+                                    JOptionPane.ERROR_MESSAGE);
+                        } catch (Exception ignored) {}
+                    });
+                }
             } else {
                 log.info("Service already running...");
             }
