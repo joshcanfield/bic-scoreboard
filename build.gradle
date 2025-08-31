@@ -150,47 +150,45 @@ tasks.register('jpackageFullJre', Exec) {
         if (!javaHome) {
             throw new GradleException('JAVA_HOME must be set to a JDK 21 path for jpackageFullJre.')
         }
-        def inputDir = file("${buildDir}/libs")
-        if (!inputDir.exists()) inputDir.mkdirs()
+        // Use Provider-based build directories (avoid deprecated buildDir)
+        def libsDir = layout.buildDirectory.dir('libs').get().asFile
+        if (!libsDir.exists()) libsDir.mkdirs()
         // Clean any previous app image to allow jpackage to recreate it
-        def appImageDir = file("${buildDir}/jpackage/scoreboard")
+        def destDir = layout.buildDirectory.dir('jpackage').get().asFile
+        destDir.mkdirs()
+        def appImageDir = new File(destDir, 'scoreboard')
         if (appImageDir.exists()) {
             logger.lifecycle("Deleting previous app image: ${appImageDir}")
             project.delete(appImageDir)
         }
+
+        def mainJar = "${project.name}-${project.version}-all.jar"
+        def resourceDirPath = file('src/main/dist').absolutePath
+        def iconPath = file('src/main/resources/scoreboard.ico').absolutePath
+
+        // Build an app-image (no installer) with a custom icon and bundled full JRE
+        commandLine('jpackage',
+                '--type', 'app-image',
+                '--name', 'scoreboard',
+                '--app-version', project.version.toString(),
+                '--vendor', 'Bremerton Ice Arena',
+                '--input', libsDir.absolutePath,
+                '--main-jar', mainJar,
+                '--main-class', application.mainClass.get(),
+                '--runtime-image', javaHome,
+                '--resource-dir', resourceDirPath,
+                '--java-options', '-Dscoreboard.showDialog=true',
+                '--icon', iconPath,
+                '--arguments', 'start',
+                '--win-console',
+                '--dest', destDir.absolutePath
+        )
     }
-
-    def appName = 'scoreboard'
-    def versionStr = project.version.toString()
-    def inputDir = file("${buildDir}/libs").absolutePath
-    def mainJar = "${project.name}-${project.version}-all.jar"
-    def resourceDirPath = file('src/main/dist').absolutePath
-    def iconPath = file('src/main/resources/scoreboard.ico').absolutePath
-
-    // jpackage command line
-    // Build an app-image (no installer) with a custom icon and bundled full JRE
-    commandLine('jpackage',
-            '--type', 'app-image',
-            '--name', appName,
-            '--app-version', versionStr,
-            '--vendor', 'Bremerton Ice Arena',
-            '--input', inputDir,
-            '--main-jar', mainJar,
-            '--main-class', application.mainClass.get(),
-            '--runtime-image', System.getenv('JAVA_HOME'),
-            '--resource-dir', resourceDirPath,
-            '--java-options', '-Dscoreboard.showDialog=true',
-            '--icon', iconPath,
-            '--arguments', 'start',
-            // Show a console window on Windows to surface errors during startup
-            '--win-console',
-            '--dest', file("${buildDir}/jpackage").absolutePath
-    )
 
     doLast {
         // jpackage does not copy resourceDir content into app-image consistently across JDKs.
         // Ensure our static assets (web, conf, bin) are present next to the launcher.
-        def appImageDir = file("${buildDir}/jpackage/${appName}")
+        def appImageDir = new File(layout.buildDirectory.dir('jpackage').get().asFile, 'scoreboard')
         copy {
             from(file('src/main/dist'))
             into(appImageDir)
