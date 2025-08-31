@@ -135,7 +135,7 @@ tasks.named('shadowJar') {
     archiveClassifier.set('all')
     manifest {
         attributes(
-                'Main-Class': application.mainClass
+                'Main-Class': application.mainClass.get()
         )
     }
 }
@@ -152,6 +152,12 @@ tasks.register('jpackageFullJre', Exec) {
         }
         def inputDir = file("${buildDir}/libs")
         if (!inputDir.exists()) inputDir.mkdirs()
+        // Clean any previous app image to allow jpackage to recreate it
+        def appImageDir = file("${buildDir}/jpackage/scoreboard")
+        if (appImageDir.exists()) {
+            logger.lifecycle("Deleting previous app image: ${appImageDir}")
+            project.delete(appImageDir)
+        }
     }
 
     def appName = 'scoreboard'
@@ -170,7 +176,7 @@ tasks.register('jpackageFullJre', Exec) {
             '--vendor', 'Bremerton Ice Arena',
             '--input', inputDir,
             '--main-jar', mainJar,
-            '--main-class', application.mainClass,
+            '--main-class', application.mainClass.get(),
             '--runtime-image', System.getenv('JAVA_HOME'),
             '--resource-dir', resourceDirPath,
             '--java-options', '-Dscoreboard.showDialog=true',
@@ -178,6 +184,16 @@ tasks.register('jpackageFullJre', Exec) {
             '--arguments', 'start',
             '--dest', file("${buildDir}/jpackage").absolutePath
     )
+
+    doLast {
+        // jpackage does not copy resourceDir content into app-image consistently across JDKs.
+        // Ensure our static assets (web, conf, bin) are present next to the launcher.
+        def appImageDir = file("${buildDir}/jpackage/${appName}")
+        copy {
+            from(file('src/main/dist'))
+            into(appImageDir)
+        }
+    }
 }
 
 // Create a trimmed runtime image and a Windows installer/app image via jpackage

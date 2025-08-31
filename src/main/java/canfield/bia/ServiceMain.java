@@ -19,7 +19,7 @@ import java.io.InputStream;
 public class ServiceMain {
     private static HockeyGameServer hockeyGameServer;
     private static final Logger log = LoggerFactory.getLogger(ServiceMain.class);
-    private static volatile JDialog startupDialog;
+    private static volatile JFrame startupFrame;
 
     public static void main(String[] args) {
 
@@ -27,9 +27,10 @@ public class ServiceMain {
             // only try to start if we're already started
             if (hockeyGameServer == null) {
                 printBanner();
-                maybeShowStartupDialog();
+                maybeShowStartupWindow();
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
                 hockeyGameServer = objectGraph.get(HockeyGameServer.class);
+                addShutdownHook();
                 hockeyGameServer.start();
             } else {
                 log.info("Service already running...");
@@ -38,9 +39,9 @@ public class ServiceMain {
             if (hockeyGameServer != null) {
                 log.info("Stopping server...");
                 hockeyGameServer.stop();
-                if (startupDialog != null) {
-                    try { startupDialog.dispose(); } catch (Exception ignored) {}
-                    startupDialog = null;
+                if (startupFrame != null) {
+                    try { startupFrame.dispose(); } catch (Exception ignored) {}
+                    startupFrame = null;
                 }
             } else {
                 log.warn("Unable to stop server: Service isn't running!");
@@ -58,15 +59,15 @@ public class ServiceMain {
         }
     }
 
-    private static void maybeShowStartupDialog() {
+    private static void maybeShowStartupWindow() {
         String show = System.getProperty("scoreboard.showDialog", "false");
         if (!Boolean.parseBoolean(show)) return;
         if (GraphicsEnvironment.isHeadless()) return;
         try {
             SwingUtilities.invokeLater(() -> {
                 try {
-                    JDialog dialog = new JDialog((Frame) null, "BIA Scoreboard", false);
-                    dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+                    JFrame frame = new JFrame("BIA Scoreboard");
+                    frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
                     JPanel panel = new JPanel();
                     panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
                     panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -96,7 +97,12 @@ public class ServiceMain {
                         }
                     });
                     JButton close = new JButton("Close");
-                    close.addActionListener(e -> dialog.dispose());
+                    close.addActionListener(e -> {
+                        try {
+                            if (hockeyGameServer != null) hockeyGameServer.stop();
+                        } catch (Exception ignored) {}
+                        System.exit(0);
+                    });
                     buttons.add(open);
                     buttons.add(close);
 
@@ -105,21 +111,40 @@ public class ServiceMain {
                     panel.add(info);
                     panel.add(Box.createVerticalStrut(12));
                     panel.add(buttons);
-                    dialog.setContentPane(panel);
-                    dialog.pack();
-                    dialog.setLocationRelativeTo(null);
-                    dialog.setAlwaysOnTop(true);
-                    dialog.addWindowListener(new WindowAdapter() {
-                        @Override public void windowClosed(WindowEvent e) { startupDialog = null; }
+                    frame.setContentPane(panel);
+                    frame.pack();
+                    frame.setLocationRelativeTo(null);
+                    frame.addWindowListener(new WindowAdapter() {
+                        @Override public void windowClosing(WindowEvent e) {
+                            try {
+                                if (hockeyGameServer != null) hockeyGameServer.stop();
+                            } catch (Exception ignored) {}
+                            System.exit(0);
+                        }
+                        @Override public void windowClosed(WindowEvent e) { startupFrame = null; }
                     });
-                    startupDialog = dialog;
-                    dialog.setVisible(true);
+                    startupFrame = frame;
+                    frame.setVisible(true);
                 } catch (Exception ex) {
                     log.debug("Startup dialog suppressed due to error", ex);
                 }
             });
         } catch (Throwable t) {
             log.debug("Startup dialog unsupported", t);
+        }
+    }
+
+    private static void addShutdownHook() {
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    if (hockeyGameServer != null) hockeyGameServer.stop();
+                } catch (Exception ignored) {}
+                try {
+                    if (startupFrame != null) startupFrame.dispose();
+                } catch (Exception ignored) {}
+            }, "scoreboard-shutdown"));
+        } catch (Throwable ignored) {
         }
     }
 }
