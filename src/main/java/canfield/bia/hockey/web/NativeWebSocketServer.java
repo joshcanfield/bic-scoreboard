@@ -103,6 +103,14 @@ public class NativeWebSocketServer extends WebSocketServer {
                 Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
                 Team team = Team.valueOf(data.get("team"));
                 gameManager.setScore(team, gameManager.getScore(team) - 1);
+            } else if ("shot".equals(event)) {
+                Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
+                Team team = Team.valueOf(data.get("team"));
+                gameManager.addShot(team);
+            } else if ("undo_shot".equals(event)) {
+                Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
+                Team team = Team.valueOf(data.get("team"));
+                gameManager.removeShot(team);
             } else if ("set_period".equals(event)) {
                 Map<String, Integer> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Integer>>(){});
                 Integer p = data.get("period");
@@ -172,6 +180,7 @@ public class NativeWebSocketServer extends WebSocketServer {
             final HashMap<String, Object> o = new HashMap<>();
             o.put("score", gameManager.getScore(team));
             o.put("penalties", gameManager.getPenalties(team));
+            o.put("shots", gameManager.getShots(team));
             state.put(team.name(), o);
         }
         return state;

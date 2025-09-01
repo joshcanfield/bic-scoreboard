@@ -129,10 +129,16 @@ public class UiIntegrationSteps {
     public void theClockIsStopped() {
         driver.get("http://localhost:8080/");
         // the clock starts at 0 when the page loads - wait for it to load
-        // check the tens and minutes digit to be non-zero
+        // wait until the clock text is not 00:00
         new WebDriverWait(driver, Duration.ofSeconds(2)).until(
-                d -> !(d.findElement(By.cssSelector(".digit.minutes.tens")).getText().equals("0")
-                       && d.findElement(By.cssSelector(".digit.minutes.ones")).getText().equals("0"))
+                d -> {
+                    try {
+                        String t = d.findElement(By.id("clock-text")).getText().trim();
+                        return !"00:00".equals(t);
+                    } catch (org.openqa.selenium.NoSuchElementException e) {
+                        return false;
+                    }
+                }
         );
 
         // ensure the clock is stopped
@@ -211,18 +217,17 @@ public class UiIntegrationSteps {
     }
 
     private int readScore(String teamSelector) {
-        WebElement tens = driver.findElement(By.cssSelector(teamSelector + " .score .digit.tens"));
-        WebElement ones = driver.findElement(By.cssSelector(teamSelector + " .score .digit.ones"));
-        return Integer.parseInt(tens.getText()) * 10 + Integer.parseInt(ones.getText());
+        String id = teamSelector.replace("#", "").trim() + "-score"; // "#home" -> "home-score"
+        WebElement el = driver.findElement(By.id(id));
+        String txt = el.getText().trim();
+        return Integer.parseInt(txt);
     }
 
     private int readClockMillis() {
-        int minTens = Integer.parseInt(driver.findElement(By.cssSelector(".digit.minutes.tens")).getText());
-        int minOnes = Integer.parseInt(driver.findElement(By.cssSelector(".digit.minutes.ones")).getText());
-        int secTens = Integer.parseInt(driver.findElement(By.cssSelector(".digit.seconds.tens")).getText());
-        int secOnes = Integer.parseInt(driver.findElement(By.cssSelector(".digit.seconds.ones")).getText());
-        int minutes = minTens * 10 + minOnes;
-        int seconds = secTens * 10 + secOnes;
+        String txt = driver.findElement(By.id("clock-text")).getText().trim(); // mm:ss
+        String[] parts = txt.split(":");
+        int minutes = Integer.parseInt(parts[0]);
+        int seconds = Integer.parseInt(parts[1]);
         return (minutes * 60 + seconds) * 1000;
     }
 

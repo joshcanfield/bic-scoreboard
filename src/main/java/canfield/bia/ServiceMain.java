@@ -57,8 +57,6 @@ public class ServiceMain {
                     try { startupFrame.dispose(); } catch (Exception ignored) {}
                     startupFrame = null;
                 }
-                // Ensure we terminate even if some library threads linger
-                requestExit();
             } else {
                 log.warn("Unable to stop server: Service isn't running!");
             }

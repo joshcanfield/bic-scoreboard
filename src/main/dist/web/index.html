@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Scoreboard</title>
-    <!-- Using native ES modules; no jQuery/Bootstrap JS required -->
-    <script type="module" src="js/main.js"></script>
+  <title>Scoreboard</title>
+  <script type="module" src="js/main.js"></script>
 
-    <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-    <link href="css/index.css" rel="stylesheet" type="text/css"/>
-    <link href="css/modern.css" rel="stylesheet" type="text/css"/>
-
+  <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+  <link href="css/index.css" rel="stylesheet" type="text/css"/>
+  <link href="css/modern.css" rel="stylesheet" type="text/css"/>
+  <link href="v2/css/v2.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="conn-overlay" aria-live="polite" style="display:none">
@@ -18,397 +17,322 @@
     <div class="overlay-note">Please restart the Scoreboard application.</div>
   </div>
   <div class="overlay-bg"></div>
-</div>
+  </div>
+
 <div class="container">
-    <nav class="navbar navbar-default">
-        <div class="container-fluid">
-            <!-- Brand and toggle get grouped for better mobile display -->
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse"
-                        data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <img src="img/bic-logo.png" class="navbar-brand" width="265" height="97" alt="Bremerton Ice Center">
+  <nav class="navbar navbar-default">
+    <div class="container-fluid">
+      <div class="collapse navbar-collapse">
+        <ul class="nav navbar-nav navbar-left">
+          <li>
+            <div id="power-control" class="power-control">
+              <button type="button" id="power-btn" class="btn btn-primary navbar-btn power-btn" aria-label="Toggle scoreboard power" title="Toggle scoreboard power">
+                <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
+              </button>
+              <span id="power-status" class="label label-danger" aria-live="polite">Scoreboard Off</span>
             </div>
-
-            <!-- Collect the nav links, forms, and other content for toggling -->
-            <div class="collapse navbar-collapse">
-
-                <ul class="nav navbar-nav navbar-left">
-                    <li>
-                        <div id="power-control" class="power-control">
-                            <button type="button" id="power-btn" class="btn btn-primary navbar-btn">Turn On Scoreboard</button>
-                            <span id="power-status" class="label label-default" aria-live="polite">Off</span>
-                        </div>
-                    </li>
-                </ul>
-                <ul class="nav navbar-nav navbar-right">
-                    <li>
-                        <button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button>
-                    </li>
-                    <li>
-                        <button type="button" data-toggle="modal" href="#new-game-dialog"
-                                class="btn btn-primary navbar-btn">New Game
-                        </button>
-                    </li>
-                </ul>
-            </div><!-- /.navbar-collapse -->
-        </div><!-- /.container-fluid -->
-    </nav>
-    <div class="row">
-        <div id="home" class="col-md-4">
-            <h2>Home</h2>
-
-            <div class="score">
-                <div class="digits">
-                    <div class="digit tens">0</div>
-                    <div class="digit ones">0</div>
-                </div>
-                <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
-                <button data-team="home" class="score-up btn btn-primary btn-lg">+Goal</button>
-            </div>
-
-            <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">Penalty</a>
-
-                <table class="table table-condensed">
-                    <tr>
-                        <th>Period</th>
-                        <th>#</th>
-                        <th>Min</th>
-                        <th>Off Ice</th>
-                        <th>Start</th>
-                        <th>Remaining</th>
-                        <th>&nbsp;</th>
-                    </tr>
-                    <tbody class="list">
-
-                    </tbody>
-                    <tr>
-                        <td colspan="3"></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        <div id="clock_box" class="col-md-4">
-            <a data-toggle="modal" href="#set-clock">
-                <div class="clock">
-                    <div class="digits">
-                        <div class="digit minutes tens">0</div>
-                        <div class="digit minutes ones">0</div>
-                        <div class="digit seconds tens">0</div>
-                        <div class="digit seconds ones">0</div>
-                    </div>
-                </div>
-            </a>
-
-            <div id="clock-moment"></div>
-
-            <div id="clock-actions">
-                <a id="clock-start" class="btn"><span class="glyphicon glyphicon-play"></span></a>
-                <a id="clock-pause" class="btn"><span class="glyphicon glyphicon-pause"></span></a>
-            </div>
-
-            <div id="period-block">
-                <span>Period</span>
-                <div id="period">
-                    <div class="digits">
-                        <div class="digit">0</div>
-                    </div>
-                </div>
-                <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-chevron-up"></span></a>
-                <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-chevron-down"></span></a>
-            </div>
-        </div>
-        <div id="away" class="col-md-4">
-            <h2>Away</h2>
-
-            <div class="score">
-                <div class="digits">
-                    <div class="digit tens">0</div>
-                    <div class="digit ones">0</div>
-                </div>
-                <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
-                <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
-            </div>
-
-            <div class="penalties">
-                <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">Penalty</a>
-
-                <table class="table table-condensed">
-                    <tr>
-                        <th>Period</th>
-                        <th>#</th>
-                        <th>Min</th>
-                        <th>Off Ice</th>
-                        <th>Start</th>
-                        <th>Remaining</th>
-                        <th>&nbsp;</th>
-                    </tr>
-                    <tbody class="list">
-
-                    </tbody>
-                    <tr>
-                        <td colspan="3"></td>
-                    </tr>
-                </table>
-            </div>
-
-        </div>
+          </li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <li><button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button></li>
+          <li>
+            <button type="button" data-toggle="modal" href="#new-game-dialog" class="btn btn-primary navbar-btn">New Game</button>
+          </li>
+        </ul>
+      </div>
     </div>
-    <div class="row">
-        <div class="col-md-4">&nbsp;</div>
-        <div class="col-md-4">
+  </nav>
+
+  <div class="row">
+    <div id="home" class="col-md-4 team">
+      <h2>Home</h2>
+
+      <div class="metrics">
+        <div class="score">
+          <div class="section-label">Score</div>
+          <div class="digits">
+            <div id="home-score" class="score-text">00</div>
+          </div>
+          <div class="btn-row">
+            <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
+            <button data-team="home" class="score-up btn btn-primary btn-lg">+Goal</button>
+          </div>
         </div>
 
+        <div class="shots" aria-label="Home shots on goal">
+          <div class="section-label">Shots</div>
+          <div id="home-shots" class="shots-counter">0</div>
+          <div class="btn-row">
+            <button data-team="home" class="shots-down btn btn-default btn-sm">-</button>
+            <button data-team="home" class="shots-up btn btn-info">+Shot</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="penalties">
+        <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">Penalty</a>
+        <table class="table table-condensed">
+          <tr>
+            <th>Period</th><th>#</th><th>Min</th><th>Off Ice</th><th>Start</th><th>Remaining</th><th>&nbsp;</th>
+          </tr>
+          <tbody class="list"></tbody>
+          <tr><td colspan="3"></td></tr>
+        </table>
+      </div>
     </div>
 
+    <div id="clock_box" class="col-md-4">
+      <a data-toggle="modal" href="#set-clock">
+        <div class="clock">
+          <div class="digits"><div id="clock-text" class="clock-text">00:00</div></div>
+        </div>
+      </a>
+
+      <div id="clock-moment"></div>
+
+      <div id="clock-actions">
+        <button id="clock-toggle" class="btn btn-primary clock-cta">
+          <span class="glyphicon glyphicon-play"></span>
+          <span class="cta-text">Start</span>
+        </button>
+        <!-- legacy controls kept hidden for compatibility/tests -->
+        <a id="clock-start" class="btn" style="display:none"><span class="glyphicon glyphicon-play"></span></a>
+        <a id="clock-pause" class="btn" style="display:none"><span class="glyphicon glyphicon-pause"></span></a>
+      </div>
+
+      <div id="period-block">
+        <span>Period</span>
+        <div id="period"><div class="digits"><div class="digit">0</div></div></div>
+        <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-chevron-up"></span></a>
+        <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-chevron-down"></span></a>
+      </div>
+    </div>
+
+    <div id="away" class="col-md-4 team">
+      <h2>Away</h2>
+      <div class="metrics">
+        <div class="score">
+          <div class="section-label">Score</div>
+          <div class="digits">
+            <div id="away-score" class="score-text">00</div>
+          </div>
+          <div class="btn-row">
+            <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
+            <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
+          </div>
+        </div>
+        <div class="shots" aria-label="Away shots on goal">
+          <div class="section-label">Shots</div>
+          <div id="away-shots" class="shots-counter">0</div>
+          <div class="btn-row">
+            <button data-team="away" class="shots-down btn btn-default btn-sm">-</button>
+            <button data-team="away" class="shots-up btn btn-info">+Shot</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="penalties">
+        <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">Penalty</a>
+        <table class="table table-condensed">
+          <tr>
+            <th>Period</th><th>#</th><th>Min</th><th>Off Ice</th><th>Start</th><th>Remaining</th><th>&nbsp;</th>
+          </tr>
+          <tbody class="list"></tbody>
+          <tr><td colspan="3"></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
-<!--
-  -  Dialogs
-  -->
+
+<!-- Dialogs (exactly as before) -->
 <div class="modal fade" id="add-penalty">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">TEMP TITLE</h4>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">TEMP TITLE</h4>
+      </div>
+      <div class="modal-body">
+        <form class="form-horizontal">
+          <div class="penalty-player form-group">
+            <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
+            <div class="col-lg-3">
+              <input id="add-penalty-player" class="form-control input-sm" type="text" maxlength="2" size="1"/>
             </div>
-            <div class="modal-body">
-                <form class="form-horizontal">
-                    <div class="penalty-player form-group">
-                        <label for="add-penalty-player" class="col-lg-6 control-label">Player #</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-player"
-                                   class="form-control input-sm" type="text" maxlength="2" size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-serving form-group">
-                        <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-serving"
-                                   class="form-control input-sm" type="text" maxlength="2" size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-time form-group">
-                        <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-time" class="form-control input-sm" value="3:00"
-                                   type="text" size="1"/>
-                        </div>
-                    </div>
-                    <div class="penalty-clock form-group">
-                        <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
-
-                        <div class="col-lg-3">
-                            <input id="add-penalty-off_ice" class="form-control input-sm"/>
-                        </div>
-                    </div>
-                </form>
-
+          </div>
+          <div class="penalty-serving form-group">
+            <label for="add-penalty-player" class="col-lg-6 control-label">Serving Player #</label>
+            <div class="col-lg-3">
+              <input id="add-penalty-serving" class="form-control input-sm" type="text" maxlength="2" size="1"/>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
+          </div>
+          <div class="penalty-time form-group">
+            <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
+            <div class="col-lg-3">
+              <input id="add-penalty-time" class="form-control input-sm" value="3:00" type="text" size="1"/>
             </div>
-        </div>
+          </div>
+          <div class="penalty-clock form-group">
+            <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
+            <div class="col-lg-3">
+              <input id="add-penalty-off_ice" class="form-control input-sm"/>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        <button id="add-penalty-add" type="button" class="btn btn-primary">Add</button>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="modal fade" id="set-clock">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Set Clock</h4>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Set Clock</h4>
+      </div>
+      <div class="modal-body">
+        <div class="error"></div>
+        <div role="form" class="form-inline">
+          <div class="form-group">
+            <label for="custom-time" class="col-sm-2 control-label">Time</label>
+            <div class="col-sm-10">
+              <input id="custom-time" class="form-control input-sm"/>
             </div>
-            <div class="modal-body">
-                <div class="error"></div>
-                <div role="form" class="form-inline">
-                    <div class="form-group">
-                        <label for="custom-time" class="col-sm-2 control-label">Time</label>
-
-                        <div class="col-sm-10">
-                            <input id="custom-time" class="form-control input-sm"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="col-sm-offset-2 col-sm-10">
-                            <button type="submit" class="btn btn-default" id="save-custom-time">set</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="predefined-times form-group">
-                    <div class="col-sm-10">
-                        <button class="time btn btn-default" data-time="2000">20:00</button>
-                        <button class="time btn btn-default" data-time="1800">18:00</button>
-                        <button class="time btn btn-default" data-time="1500">15:00</button>
-                        <button class="time btn btn-default" data-time="1300">13:00</button>
-                        <button class="time btn btn-default" data-time="500">5:00</button>
-                    </div>
-                </div>
+          </div>
+          <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10">
+              <button type="submit" class="btn btn-default" id="save-custom-time">set</button>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-            </div>
+          </div>
         </div>
+        <div class="predefined-times form-group">
+          <div class="col-sm-10">
+            <button class="time btn btn-default" data-time="2000">20:00</button>
+            <button class="time btn btn-default" data-time="1800">18:00</button>
+            <button class="time btn btn-default" data-time="1500">15:00</button>
+            <button class="time btn btn-default" data-time="1300">13:00</button>
+            <button class="time btn btn-default" data-time="500">5:00</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="modal fade" id="scoreboard-connect">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Look up, is the Scoreboard on?</h4>
-            </div>
-            <div class="modal-body">
-                <div id="connect-portNames"></div>
-                <p id="connect-message" class="help-block" style="margin-top:8px;"></p>
-            </div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Look up, is the Scoreboard on?</h4>
+      </div>
+      <div class="modal-body">
+        <div id="connect-portNames"></div>
+        <p id="connect-message" class="help-block" style="margin-top:8px;"></p>
+      </div>
 
-            <div class="progress" style="display:none">
-                <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
-                    ... Updating ...
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="not-on" class="btn btn-default">Not On</button>
-                <button type="button" id="retry-ports" class="btn btn-primary" style="display:none">Retry</button>
-                <button type="button" id="give-up" class="btn btn-danger" style="display:none">Give Up</button>
-                <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
-            </div>
+      <div class="progress" style="display:none">
+        <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+          ... Updating ...
         </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="not-on" class="btn btn-default">Not On</button>
+        <button type="button" id="retry-ports" class="btn btn-primary" style="display:none">Retry</button>
+        <button type="button" id="give-up" class="btn btn-danger" style="display:none">Give Up</button>
+        <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="modal fade" id="new-game-dialog">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Create a new Game</h4>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Create a new Game</h4>
+        <p class="help-block">Enter the period length in minutes.</p>
+      </div>
+      <div class="modal-body">
+        <div role="tabpanel">
+          <!-- Nav tabs -->
+          <ul class="nav nav-tabs" role="tablist" id="game-tab">
+            <li role="presentation" class="active"><a href="#standard" aria-controls="standard" role="tab" data-toggle="tab">Standard</a></li>
+            <li role="presentation"><a href="#rec" aria-controls="rec" role="tab" data-toggle="tab">Rec</a></li>
+          </ul>
 
-                <p class="help-block">Enter the period length in minutes.</p>
-            </div>
-            <div class="modal-body">
-                <div role="tabpanel">
-
-                    <!-- Nav tabs -->
-                    <ul class="nav nav-tabs" role="tablist" id="game-tab">
-                        <li role="presentation" class="active"
-                        ><a href="#standard" aria-controls="standard" role="tab"
-                            data-toggle="tab">Standard</a></li>
-                        <li role="presentation"
-                        ><a href="#rec" aria-controls="rec" role="tab" data-toggle="tab">Rec</a>
-                        </li>
-                    </ul>
-
-                    <!-- Tab panes -->
-                    <div class="tab-content">
-                        <div role="tabpanel" class="tab-pane active" id="standard">
-                            <form class="form-horizontal">
-                                <div class="error"></div>
-                                <div class="period-form form-group">
-                                    <span class="col-lg-6 control-label">Period</span>
-
-                                    <div class="col-xs-2">
-                                        <span class="col-lg-6 control-label">Minutes</span>
-                                    </div>
-                                    <div class=col-xs-4>
-                                        &nbsp;
-                                    </div>
-                                </div>
-
-                                <div class="period-form form-group">
-                                    <label for="period-0" class="col-lg-6 control-label">warmup</label>
-
-                                    <div class="col-xs-2">
-                                        <input id="period-0" class="form-control input-sm" type="text" maxlength="2"
-                                               size="2" value="5"/>
-                                    </div>
-                                    <div class=col-xs-4>
-                        <a href="#" data-action="set-value" data-target="#period-0" data-value="0">skip</a>
-                                    </div>
-                                </div>
-                                <div class="period-form form-group">
-                                    <label for="period-1" class="col-lg-6 control-label">1</label>
-
-                                    <div class="col-lg-2">
-                                        <input id="period-1" class="form-control input-sm" type="text" maxlength="2"
-                                               size="2" value="20"/>
-                                    </div>
-                                </div>
-                                <div class="period-form form-group">
-                                    <label for="period-2" class="col-lg-6 control-label">2</label>
-
-                                    <div class="col-lg-2">
-                                        <input id="period-2" class="form-control input-sm" type="text" maxlength="2"
-                                               size="2" value="20"/>
-                                    </div>
-                                </div>
-                                <div class="period-form form-group">
-                                    <label for="period-3" class="col-lg-6 control-label">3</label>
-
-                                    <div class="col-lg-2">
-                                        <input id="period-3" class="form-control input-sm" type="text" maxlength="2"
-                                               size="2" value="20"/>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                                <button id="new-game" type="button" class="btn btn-primary">Create Game</button>
-                            </div>
-                        </div>
-                        <div role="tabpanel" class="tab-pane" id="rec">
-
-                            <form class="form-horizontal">
-                                <div class="error"></div>
-                                <p class="help-block">Rec Games run for the full clock length with a shift change
-                                    buzzer.</p>
-                                <div class="period-form form-group">
-                                    <label for="rec_minutes" class="col-lg-6 control-label">Game length in
-                                        Minutes</label>
-
-                                    <div class="col-lg-2">
-                                        <input id="rec_minutes" class="form-control input-sm" type="text"
-                                               maxlength="3" size="3" value="60"/>
-                                    </div>
-                                </div>
-                                <div class="period-form form-group">
-                                    <label for="shift-buzzer" class="col-lg-6 control-label">Shift Buzzer
-                                        in Seconds</label>
-
-                                    <div class="col-lg-2">
-                                        <input id="shift-buzzer" class="form-control input-sm" type="text"
-                                               maxlength="3" size="3" value="120"/>
-                                    </div>
-                                    <div class=col-xs-4>
-                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="0">disable</a>
-                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="90">1:30</a>
-                                        <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="120">2:00</a>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-                                <button id="new-rec-game" type="button" class="btn btn-primary">Create Game</button>
-                            </div>
-                        </div>
-                    </div>
-
+          <!-- Tab panes -->
+          <div class="tab-content">
+            <div role="tabpanel" class="tab-pane active" id="standard">
+              <form class="form-horizontal">
+                <div class="error"></div>
+                <div class="period-form form-group">
+                  <span class="col-lg-6 control-label">Period</span>
+                  <div class="col-xs-2"><span class="col-lg-6 control-label">Minutes</span></div>
+                  <div class="col-xs-4">&nbsp;</div>
                 </div>
+                <div class="period-form form-group">
+                  <label for="period-0" class="col-lg-6 control-label">warmup</label>
+                  <div class="col-xs-2"><input id="period-0" class="form-control input-sm" type="text" maxlength="2" size="2" value="5"/></div>
+                  <div class="col-xs-4"><a href="#" data-action="set-value" data-target="#period-0" data-value="0">skip</a></div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="period-1" class="col-lg-6 control-label">1</label>
+                  <div class="col-lg-2"><input id="period-1" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="period-2" class="col-lg-6 control-label">2</label>
+                  <div class="col-lg-2"><input id="period-2" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="period-3" class="col-lg-6 control-label">3</label>
+                  <div class="col-lg-2"><input id="period-3" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                </div>
+              </form>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button id="new-game" type="button" class="btn btn-primary">Create Game</button>
+              </div>
             </div>
-
+            <div role="tabpanel" class="tab-pane" id="rec">
+              <form class="form-horizontal">
+                <div class="error"></div>
+                <p class="help-block">Rec Games run for the full clock length with a shift change buzzer.</p>
+                <div class="period-form form-group">
+                  <label for="rec_minutes" class="col-lg-6 control-label">Game length in Minutes</label>
+                  <div class="col-lg-2"><input id="rec_minutes" class="form-control input-sm" type="text" maxlength="3" size="3" value="60"/></div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="shift-buzzer" class="col-lg-6 control-label">Shift Buzzer in Seconds</label>
+                  <div class="col-lg-2"><input id="shift-buzzer" class="form-control input-sm" type="text" maxlength="3" size="3" value="120"/></div>
+                  <div class="col-xs-4">
+                    <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="0">disable</a>
+                    <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="90">1:30</a>
+                    <a href="#" data-action="set-value" data-target="#shift-buzzer" data-value="120">2:00</a>
+                  </div>
+                </div>
+              </form>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                <button id="new-rec-game" type="button" class="btn btn-primary">Create Game</button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>
+
 </body>
 </html>

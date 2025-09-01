@@ -53,8 +53,8 @@ const State = {
   running: false,
   period: 0,
   periodLengthMillis: 0,
-  home: { score: 0, penalties: [] },
-  away: { score: 0, penalties: [] },
+  home: { score: 0, shots: 0, penalties: [] },
+  away: { score: 0, shots: 0, penalties: [] },
   scoreboardOn: false,
   buzzerOn: false,
   portNames: [],
@@ -135,6 +135,8 @@ const Server = {
   pauseClock: () => socket.emit('clock_pause'),
   goal: (data) => socket.emit('goal', data),
   undoGoal: (data) => socket.emit('undo_goal', data),
+  shot: (data) => socket.emit('shot', data),
+  undoShot: (data) => socket.emit('undo_shot', data),
   buzzer: () => socket.emit('buzzer'),
   powerOn: () => socket.emit('power_on'),
   powerOff: () => socket.emit('power_off'),
@@ -234,14 +236,10 @@ const renderUpdate = (data) => {
   if (homeTBody) homeTBody.innerHTML = formatPenalties('home', data.home.penalties);
   if (awayTBody) awayTBody.innerHTML = formatPenalties('away', data.away.penalties);
 
-  // clock digits
+  // clock update: text element only (mm:ss)
   const { minutes, seconds } = millisToMinSec(State.time);
-  const md = digits2(minutes);
-  const sd = digits2(seconds);
-  clockBox.querySelector('.digit.minutes.tens').textContent = md[0];
-  clockBox.querySelector('.digit.minutes.ones').textContent = md[1];
-  clockBox.querySelector('.digit.seconds.tens').textContent = sd[0];
-  clockBox.querySelector('.digit.seconds.ones').textContent = sd[1];
+  const clockText = document.getElementById('clock-text');
+  if (clockText) clockText.textContent = `${pad(minutes,2)}:${pad(seconds,2)}`;
 
   // elapsed phrase
   let elapsedText = '';
@@ -260,17 +258,36 @@ const renderUpdate = (data) => {
   // period
   $('#period .digit').textContent = State.period;
 
-  // play/pause toggle
-  $('#clock-pause').style.display = State.running ? '' : 'none';
-  $('#clock-start').style.display = State.running ? 'none' : '';
+  // play/pause toggle (legacy + big CTA if present)
+  // Keep legacy start/pause anchors hidden; do not toggle their display
+  const toggle = document.getElementById('clock-toggle');
+  if (toggle) {
+    const icon = toggle.querySelector('.glyphicon');
+    const label = toggle.querySelector('.cta-text');
+    if (State.running) {
+      if (icon) icon.className = 'glyphicon glyphicon-pause';
+      if (label) label.textContent = 'Pause';
+    } else {
+      if (icon) icon.className = 'glyphicon glyphicon-play';
+      if (label) label.textContent = 'Start';
+    }
+  }
 
-  // scores
+  // scores: update text elements (no split digits)
+  const homeScoreText = document.getElementById('home-score');
+  const awayScoreText = document.getElementById('away-score');
   const hd = digits2(data.home.score);
-  home.querySelector('.score .digit.tens').textContent = hd[0];
-  home.querySelector('.score .digit.ones').textContent = hd[1];
   const ad = digits2(data.away.score);
-  away.querySelector('.score .digit.tens').textContent = ad[0];
-  away.querySelector('.score .digit.ones').textContent = ad[1];
+  if (homeScoreText) homeScoreText.textContent = `${hd[0]}${hd[1]}`;
+  if (awayScoreText) awayScoreText.textContent = `${ad[0]}${ad[1]}`;
+
+  // shots (compact counter, no split digits)
+  const hs = data.home.shots || 0;
+  const as = data.away.shots || 0;
+  const homeShots = document.getElementById('home-shots');
+  const awayShots = document.getElementById('away-shots');
+  if (homeShots) homeShots.textContent = String(hs);
+  if (awayShots) awayShots.textContent = String(as);
 
   // power + buzzer visuals
   if (typeof updatePowerFromServer === 'function') {
@@ -416,6 +433,16 @@ const initEvents = () => {
     Server.undoGoal({ team });
   }));
 
+  // Shot buttons
+  $$('.shots-up').forEach(btn => btn.addEventListener('click', (e) => {
+    const team = e.currentTarget.dataset.team;
+    Server.shot({ team });
+  }));
+  $$('.shots-down').forEach(btn => btn.addEventListener('click', (e) => {
+    const team = e.currentTarget.dataset.team;
+    Server.undoShot({ team });
+  }));
+
   // Delete penalty (delegated)
   on(document, 'click', 'a[data-action="delete-penalty"]', (e, t) => {
     e.preventDefault();
@@ -423,7 +450,7 @@ const initEvents = () => {
     api.del(`${team}/penalty/${pid}`).catch(()=>{});
   });
 
-  // Power control button workflow (no device telemetry)
+  // Power control button workflow
   const powerBtn = $('#power-btn');
   const powerStatus = $('#power-status');
   let powerState = 'off'; // off | connecting | assumed | on | error
@@ -431,34 +458,24 @@ const initEvents = () => {
     powerState = state;
     switch (state) {
       case 'off':
-        powerBtn.disabled = false;
-        powerBtn.textContent = 'Turn On Scoreboard';
-        powerStatus.className = 'label label-danger';
-        powerStatus.textContent = 'Off';
+        if (powerBtn) powerBtn.disabled = false;
+        if (powerStatus) { powerStatus.className = 'label label-danger'; powerStatus.textContent = 'Scoreboard Off'; }
         break;
       case 'connecting':
-        powerBtn.disabled = true;
-        powerBtn.textContent = 'Connecting…';
-        powerStatus.className = 'label label-info';
-        powerStatus.textContent = text || 'Opening port…';
+        if (powerBtn) powerBtn.disabled = true;
+        if (powerStatus) { powerStatus.className = 'label label-info'; powerStatus.textContent = text || 'Opening port…'; }
         break;
       case 'assumed':
-        powerBtn.disabled = true;
-        powerBtn.textContent = 'Connecting…';
-        powerStatus.className = 'label label-warning';
-        powerStatus.textContent = 'Assumed On — confirm';
+        if (powerBtn) powerBtn.disabled = true;
+        if (powerStatus) { powerStatus.className = 'label label-warning'; powerStatus.textContent = 'Assumed On — confirm'; }
         break;
       case 'on':
-        powerBtn.disabled = false;
-        powerBtn.textContent = 'Turn Off Scoreboard';
-        powerStatus.className = 'label label-success';
-        powerStatus.textContent = 'On' + (State.currentPort ? ` — ${State.currentPort}` : '');
+        if (powerBtn) powerBtn.disabled = false;
+        if (powerStatus) { powerStatus.className = 'label label-success'; powerStatus.textContent = 'Scoreboard On'; }
         break;
       case 'error':
-        powerBtn.disabled = false;
-        powerBtn.textContent = 'Retry Turn On';
-        powerStatus.className = 'label label-danger';
-        powerStatus.textContent = text || 'Error';
+        if (powerBtn) powerBtn.disabled = false;
+        if (powerStatus) { powerStatus.className = 'label label-danger'; powerStatus.textContent = text || 'Error'; }
         break;
     }
   };
@@ -469,7 +486,7 @@ const initEvents = () => {
   };
   setPowerUI(State.scoreboardOn ? 'on' : 'off');
 
-  powerBtn.addEventListener('click', async () => {
+  if (powerBtn) powerBtn.addEventListener('click', async () => {
     if (powerState === 'on') {
       // Turn off
       setPowerUI('connecting', 'Turning off…');
@@ -498,6 +515,14 @@ const initEvents = () => {
       setConnectMessage('No serial ports detected. Check USB/power and try again.');
     }
   });
+
+  // Big clock toggle (if present)
+  const clockToggle = document.getElementById('clock-toggle');
+  if (clockToggle) {
+    clockToggle.addEventListener('click', () => {
+      if (State.running) Server.pauseClock(); else Server.startClock();
+    });
+  }
 
   // Confirmation from modal
   on(document, 'click', '#confirm-on', (e) => {
