@@ -43,6 +43,7 @@ public class GameResource {
       final HashMap<String, Object> o = new HashMap<String, Object>();
       o.put("score", game.getScore(team));
       o.put("penalties", game.getPenalties(team));
+      o.put("shots", game.getShots(team));
       state.put(team.name(), o);
     }
 
@@ -121,6 +122,22 @@ public class GameResource {
       default:
         return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
     }
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/{team}/shot")
+  public Response addShot(
+      @PathParam("team") Team team
+  ) {
+    game.addShot(team);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("/{team}/shot")
+  public Response undoShot(@PathParam("team") Team team) {
+    game.removeShot(team);
     return Response.ok().build();
   }
 

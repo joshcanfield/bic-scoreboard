@@ -26,6 +26,8 @@ public class SimpleGameManager {
   private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
   private Integer shiftLengthSeconds;
   private int lastShiftBuzzer = 0;
+  private int homeShots = 0;
+  private int awayShots = 0;
 
 
   @Inject
@@ -135,6 +137,32 @@ public class SimpleGameManager {
         break;
       case away:
         scoreBoard.setAwayScore(score);
+        break;
+    }
+  }
+
+  public int getShots(Team team) {
+    return team == Team.home ? homeShots : awayShots;
+  }
+
+  public void addShot(Team team) {
+    switch (team) {
+      case home:
+        homeShots += 1;
+        break;
+      case away:
+        awayShots += 1;
+        break;
+    }
+  }
+
+  public void removeShot(Team team) {
+    switch (team) {
+      case home:
+        if (homeShots > 0) homeShots -= 1;
+        break;
+      case away:
+        if (awayShots > 0) awayShots -= 1;
         break;
     }
   }
@@ -293,6 +321,8 @@ public class SimpleGameManager {
     setPeriod(0);
     setScore(Team.home, 0);
     setScore(Team.away, 0);
+    homeShots = 0;
+    awayShots = 0;
     setTime((int) TimeUnit.MINUTES.toMillis(getPeriodLength()));
   }
 
