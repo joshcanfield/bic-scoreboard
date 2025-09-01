@@ -28,6 +28,37 @@ const millisToMinSec = (millis) => ({
   seconds: Math.floor((millis / 1000) % 60)
 });
 
+// ---------- Rec time math (exposed for client-side tests) ----------
+const gcd = (a, b) => {
+  a = Math.abs(a || 0); b = Math.abs(b || 0);
+  while (b !== 0) { const t = b; b = a % b; a = t; }
+  return a;
+};
+const lcm = (a, b) => Math.abs(a * b) / (gcd(a, b) || 1);
+const minutesStepForShift = (shiftSec) => {
+  if (shiftSec <= 0) return 15;
+  const g = gcd(60, shiftSec);
+  const stepA = shiftSec / (g || 1);
+  const step = lcm(15, stepA);
+  return Math.max(15, step);
+};
+const __getShiftTotalForNormalize = () => {
+  // Try to read current UI value if present; fallback 0
+  const sel = typeof document !== 'undefined' ? document.getElementById('shift-select') : null;
+  const enabled = typeof window !== 'undefined' ? (window.shiftEnabled ?? true) : true;
+  const v = sel ? (parseInt(sel.value || '0', 10) || 0) : 0;
+  return enabled ? v : 0;
+};
+const normalizeMinutes = (m, shiftOverride) => {
+  const shift = typeof shiftOverride === 'number' ? shiftOverride : __getShiftTotalForNormalize();
+  const step = minutesStepForShift(shift);
+  if (step <= 0) return m;
+  const floored = Math.floor(m / step) * step; // do not extend time
+  return Math.max(step, floored);
+};
+
+try { window.__test = { minutesStepForShift, normalizeMinutes }; } catch(_) {}
+
 // ---------- HTTP helpers ----------
 const api = {
   request: async (method, endpoint, body) => {
@@ -634,20 +665,300 @@ const initEvents = () => {
     Modals.hide($('#new-game-dialog'));
   });
 
+  // Rec inputs: duration <-> ends-at bi-directional sync
+  const recMinutesGroup = $('#rec_minutes_group');
+  const recEndsGroup = $('#rec_ends_group');
+  const recMinutesField = $('#rec_minutes');
+  const recEndsField = $('#rec_ends_at');
+  let recSyncing = false;
+  let lastRawMinutes = 0;
+  // Shift controls: declare early so helpers can use them
+  const shiftSelectEl = document.getElementById('shift-select');
+  const shiftToggleBtn = document.getElementById('shift-toggle');
+  let shiftEnabled = true;
+  let lastShiftNonZero = 120; // default 2:00
+  const getShiftTotal = () => {
+    const v = shiftSelectEl ? parseInt(shiftSelectEl.value || '0', 10) || 0 : 0;
+    return shiftEnabled ? v : 0;
+  };
+  // Constraints and helper display
+  const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a || 0);
+  const lcm = (a, b) => Math.abs(a * b) / (gcd(a, b) || 1);
+  const minutesStepForShift = (shiftSec) => {
+    if (shiftSec <= 0) return 15;
+    const g = gcd(60, shiftSec);
+    const stepA = shiftSec / g; // minutes granularity to align with shift
+    return lcm(15, stepA);
+  };
+  // Shift-only minute step (no quarter-hour constraint)
+  const minutesStepForShiftOnly = (shiftSec) => {
+    if (shiftSec <= 0) return 1;
+    const g = gcd(60, shiftSec);
+    return shiftSec / g;
+  };
+  const normalizeMinutes = (m) => {
+    const step = minutesStepForShift(getShiftTotal());
+    if (step <= 0) return m;
+    const floored = Math.floor(m / step) * step; // do not extend time
+    return Math.max(step, floored);
+  };
+  const updateRecHelper = () => {
+    const el = document.getElementById('rec-helper'); if (!el) return;
+    const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
+    const shift = getShiftTotal();
+    if (!minutes) { el.textContent = ''; return; }
+    if (shift <= 0) { el.textContent = `Game: ${minutes} min • Shifts: disabled`; return; }
+    const totalSec = minutes * 60;
+    const count = Math.floor(totalSec / shift);
+    const sm = Math.floor(shift / 60); const ss = shift % 60;
+    el.textContent = `Game: ${minutes} min • Shifts: ${count} × ${pad(sm,2)}:${pad(ss,2)}`;
+  };
+  const computeRecPeriods = (minutes, shift) => {
+    const res = [];
+    const stepMin = minutesStepForShift(shift);
+    const maxChunk = Math.max(stepMin, Math.floor(99 / stepMin) * stepMin) || 99;
+    let remaining = minutes;
+    while (remaining > 0) {
+      const chunk = Math.min(remaining, maxChunk);
+      res.push(chunk);
+      remaining -= chunk;
+    }
+    return res;
+  };
+  const updateSplitHint = () => {
+    const hint = document.getElementById('rec-split-hint'); if (!hint) return;
+    const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
+    const shift = getShiftTotal();
+    if (!minutes) { hint.textContent = ''; return; }
+    const parts = computeRecPeriods(minutes, shift);
+    if (parts.length <= 1) { hint.textContent = ''; return; }
+    hint.textContent = `Periods: ${parts.join(' + ')}`;
+  };
+  const updateDivisibleHint = () => {
+    const hint = document.getElementById('rec-divisible-hint');
+    if (!hint) return;
+    const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
+    const shift = getShiftTotal();
+    if (minutes <= 0 || shift <= 0) { hint.textContent = ''; return; }
+    const stepOnly = minutesStepForShiftOnly(shift);
+    const minDown = Math.floor(minutes / stepOnly) * stepOnly;
+    const isDivisible = ((minutes * 60) % shift) === 0;
+    if (isDivisible) { hint.textContent = ''; return; }
+    const totalShifts = Math.floor((minDown * 60) / shift);
+    const sm = Math.floor(shift / 60); const ss = shift % 60;
+    hint.textContent = `Rounding to ${minDown} min for shift length (${totalShifts} × ${pad(sm,2)}:${pad(ss,2)})`;
+  };
+  // Quarter-hour helpers and options for ends-at select
+  const pad2 = (n) => pad(n, 2);
+  const roundUpToQuarter = (d) => {
+    const dt = new Date(d);
+    dt.setSeconds(0, 0);
+    const m = dt.getMinutes();
+    const rounded = Math.ceil(m / 15) * 15;
+    if (rounded === 60) { dt.setHours(dt.getHours() + 1); dt.setMinutes(0); }
+    else dt.setMinutes(rounded);
+    return dt;
+  };
+  const endsOptionValue = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const endsOptionLabel12 = (d) => {
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    return `${h}:${pad2(m)} ${ampm}`;
+  };
+  const populateEndsOptions = (targetDate) => {
+    if (!recEndsField) return;
+    const now = new Date();
+    const start = roundUpToQuarter(now);
+    const vals = [];
+    const hoursSpan = 12; // next 12 hours of quarter-hour increments
+    for (let i=0;i<hoursSpan*4;i++) {
+      const dt = new Date(start.getTime() + i*15*60000);
+      vals.push(endsOptionValue(dt));
+    }
+    recEndsField.innerHTML = Array.from({length: vals.length}).map((_, idx) => {
+      const dt = new Date(start.getTime() + idx*15*60000);
+      const v = endsOptionValue(dt);
+      const label = endsOptionLabel12(dt);
+      return `<option value="${v}">${label}</option>`;
+    }).join('');
+    if (targetDate) {
+      const v = endsOptionValue(targetDate);
+      if (!vals.includes(v)) recEndsField.insertAdjacentHTML('afterbegin', `<option value="${v}">${endsOptionLabel12(targetDate)}</option>`);
+      recEndsField.value = v;
+    } else {
+      recEndsField.value = vals[0] || '';
+    }
+  };
+  const setEndsFromMinutes = () => {
+    if (!recMinutesField || !recEndsField) return;
+    let mRaw = parseInt(recMinutesField.value || '0', 10);
+    if (!mRaw) return;
+    const mAdj = mRaw;
+    recSyncing = true;
+    const now = new Date();
+    let end = new Date(now.getTime() + mAdj * 60000);
+    end = roundUpToQuarter(end);
+    populateEndsOptions(end);
+    recSyncing = false;
+    if (typeof updateRecHelper === 'function') updateRecHelper();
+    if (typeof updateDivisibleHint === 'function') updateDivisibleHint();
+    if (typeof updateSplitHint === 'function') updateSplitHint();
+  };
+  const setMinutesFromEnds = () => {
+    if (!recMinutesField || !recEndsField) return;
+    if (recSyncing) return;
+    const v = recEndsField.value || '';
+    const parts = v.split(':');
+    if (parts.length < 2) return;
+    const hh = parseInt(parts[0], 10);
+    const mm = parseInt(parts[1], 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(hh, mm, 0, 0);
+    if (end.getTime() <= now.getTime()) end.setDate(end.getDate() + 1);
+    const minutesRaw = Math.max(1, Math.floor((end.getTime() - now.getTime()) / 60000));
+    lastRawMinutes = minutesRaw;
+    const minutesAdj = minutesRaw;
+    recSyncing = true;
+    recMinutesField.value = String(minutesAdj);
+    recSyncing = false;
+    if (typeof updateRecHelper === 'function') updateRecHelper();
+    if (typeof updateDivisibleHint === 'function') updateDivisibleHint();
+    if (typeof updateSplitHint === 'function') updateSplitHint();
+  };
+  if (recMinutesField) recMinutesField.addEventListener('input', () => { setEndsFromMinutes(); updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
+  if (recEndsField) recEndsField.addEventListener('change', () => { setMinutesFromEnds(); updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
+  // Initialize defaults: end time ~1 hour from now, derive minutes from it
+  (function initRecDefaultsOnLoad(){
+    const now = new Date();
+    const target = roundUpToQuarter(new Date(now.getTime() + 60*60000));
+    populateEndsOptions(target);
+    setMinutesFromEnds();
+    updateDivisibleHint();
+    updateSplitHint();
+  })();
+  // On change, accept minutes as entered; just update end and helpers
+  if (recMinutesField) recMinutesField.addEventListener('change', () => { setEndsFromMinutes(); if (typeof updateRecHelper==='function') updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
+
+  // Shift controls: select + toggle
+  const setShiftTotal = (total) => {
+    if (!shiftSelectEl) return;
+    if (total > 0) {
+      // pick closest option value
+      let best = parseInt(shiftSelectEl.options[0].value, 10);
+      let bestD = Math.abs(total - best);
+      for (const opt of shiftSelectEl.options) {
+        const val = parseInt(opt.value, 10);
+        const d = Math.abs(total - val);
+        if (d < bestD) { best = val; bestD = d; }
+      }
+      shiftSelectEl.value = String(best);
+      lastShiftNonZero = best;
+      shiftEnabled = true;
+    } else {
+      shiftEnabled = false;
+    }
+  };
+  const updateShiftDisabledUI = () => {
+    if (shiftSelectEl) shiftSelectEl.disabled = !shiftEnabled;
+    if (shiftToggleBtn) shiftToggleBtn.textContent = shiftEnabled ? 'Disable' : 'Enable';
+  };
+  if (shiftSelectEl) shiftSelectEl.addEventListener('change', () => {
+    lastShiftNonZero = parseInt(shiftSelectEl.value || '0', 10) || lastShiftNonZero;
+    onShiftChanged();
+  });
+  if (shiftToggleBtn) shiftToggleBtn.addEventListener('click', () => {
+    shiftEnabled = !shiftEnabled;
+    if (shiftEnabled && lastShiftNonZero > 0) setShiftTotal(lastShiftNonZero);
+    updateShiftDisabledUI();
+    onShiftChanged();
+  });
+  const onShiftChanged = () => {
+    const shift = getShiftTotal();
+    if (!recMinutesField || !recEndsField) return;
+    // Do not change end time. Recompute minutes from current end, then adjust by shift.
+    const v = (recEndsField.value || '').trim();
+    const parts = v.split(':');
+    if (parts.length >= 2) {
+      const hh = parseInt(parts[0], 10); const mm = parseInt(parts[1], 10);
+      if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
+        const now = new Date(); const end = new Date(now);
+        end.setHours(hh, mm, 0, 0); if (end.getTime() <= now.getTime()) end.setDate(end.getDate() + 1);
+        let minutesRaw = Math.max(1, Math.floor((end.getTime() - now.getTime()) / 60000));
+        lastRawMinutes = minutesRaw;
+        // Keep game length as raw minutes; show suggestion via hint instead of auto-adjusting
+        recMinutesField.value = String(minutesRaw);
+      }
+    }
+    updateRecHelper();
+    updateDivisibleHint();
+    updateSplitHint();
+    updateShiftDisabledUI();
+  };
+  // Initial helper render
+  updateRecHelper();
+  updateShiftDisabledUI();
+
   // New game (rec)
   $('#new-rec-game').addEventListener('click', () => {
-    const minutesField = $('#rec_minutes');
-    const shiftField = $('#shift-buzzer');
-    const minutes = parseInt(minutesField.value, 10);
-    if (!minutes) { minutesField.closest('.form-group').classList.add('has-error'); return; }
-    const shift = parseInt(shiftField.value, 10) || 0;
-    Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: [0, minutes] });
+    const errorBox = $('#rec .error');
+    if (errorBox) errorBox.textContent = '';
+    $$('#rec .form-group').forEach(g => g.classList.remove('has-error'));
+    // Always recompute minutes from end time if provided to avoid drift
+    const endsField = recEndsField;
+    let minutes = 0;
+    const v = (endsField && endsField.value) || '';
+    const parts = v.split(':');
+    if (parts.length >= 2) {
+      const hh = parseInt(parts[0], 10);
+      const mm = parseInt(parts[1], 10);
+      if (Number.isNaN(hh) || Number.isNaN(mm)) { if (endsField) endsField.closest('.form-group').classList.add('has-error'); if (errorBox) errorBox.textContent = 'Please enter a valid end time (HH:MM).'; return; }
+      const now = new Date();
+      const end = new Date(now);
+      end.setHours(hh, mm, 0, 0);
+      if (end.getTime() <= now.getTime()) end.setDate(end.getDate() + 1);
+      minutes = Math.max(1, Math.round((end.getTime() - now.getTime()) / 60000));
+      if (recMinutesField) recMinutesField.value = String(minutes);
+    } else {
+      minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10);
+      if (!minutes) { if (recMinutesField) recMinutesField.closest('.form-group').classList.add('has-error'); if (errorBox) errorBox.textContent = 'Please enter game length in minutes.'; return; }
+    }
+    const shift = getShiftTotal();
+    // Round down to nearest value divisible by shift length (do not block)
+    let minutesForGame = minutes;
+    if (shift > 0) {
+      const stepOnly = minutesStepForShiftOnly(shift);
+      minutesForGame = Math.floor(minutes / stepOnly) * stepOnly;
+      minutesForGame = Math.max(1, minutesForGame);
+    }
+    // Split long rec games into multiple periods to keep per-period clock <= 99 minutes
+    const periods = [0];
+    const stepMin = minutesStepForShift(shift); // minutes granularity compatible with shift and 15-min rule
+    const maxChunk = Math.max(stepMin, Math.floor(99 / stepMin) * stepMin) || 99; // safeguard
+    let remaining = minutesForGame;
+    while (remaining > 0) {
+      const chunk = Math.min(remaining, maxChunk);
+      periods.push(chunk);
+      remaining -= chunk;
+    }
+    Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: periods });
     Modals.hide($('#new-game-dialog'));
   });
 
   // Clean errors when opening dialogs
   on(document, 'click', 'a[href="#new-game-dialog"][data-toggle="modal"]', () => {
     $$('#new-game-dialog .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
+    // Reset Rec defaults each time the dialog opens: choose ~1 hour from now
+    const now = new Date();
+    const target = roundUpToQuarter(new Date(now.getTime() + 60*60000));
+    populateEndsOptions(target);
+    setMinutesFromEnds();
+    updateRecHelper();
+    updateDivisibleHint();
+    updateSplitHint();
   });
 
   // Penalty dialog open
@@ -694,6 +1005,15 @@ const initEvents = () => {
     const input = $(targetSel);
     if (input) input.value = String(val);
   });
+  // Set all period lengths (1-3) to a value
+  on(document, 'click', 'a[data-action="set-periods"]', (e, t) => {
+    e.preventDefault();
+    const val = t.dataset.value || '';
+    ['#period-1', '#period-2', '#period-3'].forEach(sel => {
+      const input = $(sel);
+      if (input) input.value = String(val);
+    });
+  });
 
   // Tabs for new game dialog
   const gameTab = $('#game-tab');
@@ -709,6 +1029,8 @@ const initEvents = () => {
       $(target).classList.add('active');
     });
   }
+  // Expose helper functions for client-side tests
+  try { window.__test = { minutesStepForShift, normalizeMinutes }; } catch (_) {}
 };
 
 // ---------- Socket events ----------
