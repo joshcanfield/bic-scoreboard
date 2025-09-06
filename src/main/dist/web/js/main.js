@@ -27,6 +27,7 @@ const millisToMinSec = (millis) => ({
   minutes: Math.floor(millis / 1000 / 60),
   seconds: Math.floor((millis / 1000) % 60)
 });
+const roundToSecond = (millis) => Math.floor((Number(millis)||0 + 999) / 1000) * 1000;
 
 // ---------- Rec time math (exposed for client-side tests) ----------
 const gcd = (a, b) => {
@@ -230,19 +231,54 @@ const Modals = (() => {
 const formatPenalties = (team, penalties) => {
   return penalties.map(p => {
     const remaining = p.startTime > 0 ? Math.max(0, p.time - p.elapsed) : p.time;
+    const rem = millisToMinSec(remaining);
     const off = millisToMinSec(p.offIceTime);
     const st = millisToMinSec(p.startTime);
-    const rem = millisToMinSec(remaining);
+    const durM = Math.floor(p.time/60000), durS = Math.floor((p.time/1000)%60);
+    const detailsAttrs = `data-action="penalty-details" data-team="${team}" data-pid="${p.id}"
+      data-player="${p.playerNumber}"
+      data-period="${p.period}"
+      data-duration="${formatClock(durM, durS)}"
+      data-off="${formatClock(off.minutes, off.seconds)}"
+      data-start="${formatClock(st.minutes, st.seconds)}"
+      data-remaining="${formatClock(rem.minutes, rem.seconds)}"`;
+    const offender = String(p.playerNumber);
+    const serving = (p.servingPlayerNumber != null && p.servingPlayerNumber !== undefined) ? String(p.servingPlayerNumber) : offender;
+    const pnHtml = (serving && serving !== offender)
+      ? `<span class="pn" data-serving="${serving}">${offender}</span>`
+      : `<span class="pn">${offender}</span>`;
     return `<tr>
       <td>${p.period}</td>
-      <td>${p.playerNumber}</td>
-      <td>${formatClock(Math.floor(p.time/60000), Math.floor((p.time/1000)%60))}</td>
-      <td>${formatClock(off.minutes, off.seconds)}</td>
-      <td>${formatClock(st.minutes, st.seconds)}</td>
+      <td>${pnHtml}</td>
       <td>${formatClock(rem.minutes, rem.seconds)}</td>
-      <td><a href="#" data-action="delete-penalty" data-team="${team}" data-pid="${p.id}">x</a></td>
+      <td>
+        <a href="#" ${detailsAttrs} title="Details">Details</a>
+        &nbsp;|&nbsp;
+        <a href="#" data-action="delete-penalty" data-team="${team}" data-pid="${p.id}">x</a>
+      </td>
     </tr>`;
   }).join('');
+};
+
+const formatPenaltyPlaceholders = (count) => {
+  if (count <= 0) return '';
+  // 4 columns: Period, #, Remaining, action
+  const mkCells = () => ['—','—','—','—'].map(txt => `<td>${txt}</td>`).join('');
+  const emptyRow = () => `<tr class="placeholder">${mkCells()}</tr>`;
+  return Array.from({ length: count }).map(emptyRow).join('');
+};
+
+const renderPenaltyTable = (teamElem, teamKey, penalties) => {
+  const listTBody = teamElem && teamElem.querySelector('tbody.list');
+  const phTBody = teamElem && teamElem.querySelector('tbody.placeholders');
+  const filtered = (penalties || []).filter(p => {
+    const remaining = (p && p.startTime > 0) ? (p.time - p.elapsed) : p.time;
+    return (remaining || 0) > 0;
+  });
+  if (listTBody) listTBody.innerHTML = formatPenalties(teamKey, filtered);
+  const actual = filtered.length;
+  const needed = Math.max(0, 2 - actual);
+  if (phTBody) phTBody.innerHTML = formatPenaltyPlaceholders(needed);
 };
 
 const renderUpdate = (data) => {
@@ -262,10 +298,8 @@ const renderUpdate = (data) => {
   const clockBox = $('#clock_box');
 
   // penalties
-  const homeTBody = home.querySelector('tbody.list');
-  const awayTBody = away.querySelector('tbody.list');
-  if (homeTBody) homeTBody.innerHTML = formatPenalties('home', data.home.penalties);
-  if (awayTBody) awayTBody.innerHTML = formatPenalties('away', data.away.penalties);
+  renderPenaltyTable(home, 'home', data.home.penalties);
+  renderPenaltyTable(away, 'away', data.away.penalties);
 
   // clock update: text element only (mm:ss)
   const { minutes, seconds } = millisToMinSec(State.time);
@@ -479,6 +513,22 @@ const initEvents = () => {
     e.preventDefault();
     const team = t.dataset.team; const pid = t.dataset.pid;
     api.del(`${team}/penalty/${pid}`).catch(()=>{});
+  });
+
+  // Penalty details popup (delegated)
+  on(document, 'click', 'a[data-action="penalty-details"]', (e, t) => {
+    e.preventDefault();
+    const dlg = $('#penalty-details');
+    if (!dlg) return;
+    const set = (sel, val) => { const el = sel ? dlg.querySelector(sel) : null; if (el) el.textContent = String(val || ''); };
+    set('#pd-team', (t.dataset.team || '').toUpperCase());
+    set('#pd-period', t.dataset.period || '—');
+    set('#pd-player', t.dataset.player || '—');
+    set('#pd-duration', t.dataset.duration || '—');
+    set('#pd-off', t.dataset.off || '—');
+    set('#pd-start', t.dataset.start || '—');
+    set('#pd-remaining', t.dataset.remaining || '—');
+    Modals.show(dlg);
   });
 
   // Power control button workflow
@@ -748,15 +798,15 @@ const initEvents = () => {
     const sm = Math.floor(shift / 60); const ss = shift % 60;
     hint.textContent = `Rounding to ${minDown} min for shift length (${totalShifts} × ${pad(sm,2)}:${pad(ss,2)})`;
   };
-  // Quarter-hour helpers and options for ends-at select
+  // 5-minute rounding helpers and options for ends-at select
   const pad2 = (n) => pad(n, 2);
-  const roundUpToQuarter = (d) => {
+  const roundToNearestFive = (d) => {
     const dt = new Date(d);
     dt.setSeconds(0, 0);
     const m = dt.getMinutes();
-    const rounded = Math.ceil(m / 15) * 15;
-    if (rounded === 60) { dt.setHours(dt.getHours() + 1); dt.setMinutes(0); }
-    else dt.setMinutes(rounded);
+    const r = Math.round(m / 5) * 5;
+    if (r === 60) { dt.setHours(dt.getHours() + 1); dt.setMinutes(0); }
+    else dt.setMinutes(r);
     return dt;
   };
   const endsOptionValue = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
@@ -767,18 +817,40 @@ const initEvents = () => {
     h = h % 12; if (h === 0) h = 12;
     return `${h}:${pad2(m)} ${ampm}`;
   };
+  const updateLastBuzzerHint = () => {
+    const el = document.getElementById('rec-last-buzzer');
+    if (!el) return;
+    const shift = getShiftTotal();
+    if (shift <= 0) { el.textContent = ''; return; }
+    const v = (recEndsField && recEndsField.value) || '';
+    const parts = v.split(':');
+    if (parts.length < 2) { el.textContent = ''; return; }
+    const hh = parseInt(parts[0], 10); const mm = parseInt(parts[1], 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) { el.textContent = ''; return; }
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(hh, mm, 0, 0);
+    if (end.getTime() <= now.getTime()) end.setDate(end.getDate() + 1);
+    const durationSec = Math.floor((end.getTime() - now.getTime()) / 1000);
+    let k = Math.floor(durationSec / shift);
+    if (k <= 0) { el.textContent = 'Last buzzer: none before end'; return; }
+    if (durationSec % shift === 0) k = k - 1; // ensure strictly before end
+    if (k <= 0) { el.textContent = 'Last buzzer: none before end'; return; }
+    const last = new Date(now.getTime() + k * shift * 1000);
+    el.textContent = `Last buzzer: ${endsOptionLabel12(last)}`;
+  };
   const populateEndsOptions = (targetDate) => {
     if (!recEndsField) return;
     const now = new Date();
-    const start = roundUpToQuarter(now);
+    const start = roundToNearestFive(now);
     const vals = [];
-    const hoursSpan = 12; // next 12 hours of quarter-hour increments
-    for (let i=0;i<hoursSpan*4;i++) {
-      const dt = new Date(start.getTime() + i*15*60000);
+    const hoursSpan = 12; // next 12 hours of 5-minute increments
+    for (let i=0;i<hoursSpan*12;i++) {
+      const dt = new Date(start.getTime() + i*5*60000);
       vals.push(endsOptionValue(dt));
     }
     recEndsField.innerHTML = Array.from({length: vals.length}).map((_, idx) => {
-      const dt = new Date(start.getTime() + idx*15*60000);
+      const dt = new Date(start.getTime() + idx*5*60000);
       const v = endsOptionValue(dt);
       const label = endsOptionLabel12(dt);
       return `<option value="${v}">${label}</option>`;
@@ -799,25 +871,36 @@ const initEvents = () => {
     recSyncing = true;
     const now = new Date();
     let end = new Date(now.getTime() + mAdj * 60000);
-    end = roundUpToQuarter(end);
+    end = roundToNearestFive(end);
     populateEndsOptions(end);
     recSyncing = false;
     if (typeof updateRecHelper === 'function') updateRecHelper();
     if (typeof updateDivisibleHint === 'function') updateDivisibleHint();
     if (typeof updateSplitHint === 'function') updateSplitHint();
+    updateLastBuzzerHint();
   };
   const setMinutesFromEnds = () => {
     if (!recMinutesField || !recEndsField) return;
     if (recSyncing) return;
-    const v = recEndsField.value || '';
+    // Snap to nearest 5-minute boundary
+    let v = recEndsField.value || '';
     const parts = v.split(':');
     if (parts.length < 2) return;
     const hh = parseInt(parts[0], 10);
     const mm = parseInt(parts[1], 10);
     if (Number.isNaN(hh) || Number.isNaN(mm)) return;
     const now = new Date();
-    const end = new Date(now);
-    end.setHours(hh, mm, 0, 0);
+    const end0 = new Date(now);
+    end0.setHours(hh, mm, 0, 0);
+    const end = roundToNearestFive(end0);
+    const snapped = endsOptionValue(end);
+    if (snapped !== v) {
+      recSyncing = true;
+      const exists = Array.from(recEndsField.options).some(o => o.value === snapped);
+      if (!exists) recEndsField.insertAdjacentHTML('afterbegin', `<option value="${snapped}">${endsOptionLabel12(end)}</option>`);
+      recEndsField.value = snapped;
+      recSyncing = false;
+    }
     if (end.getTime() <= now.getTime()) end.setDate(end.getDate() + 1);
     const minutesRaw = Math.max(1, Math.floor((end.getTime() - now.getTime()) / 60000));
     lastRawMinutes = minutesRaw;
@@ -828,17 +911,19 @@ const initEvents = () => {
     if (typeof updateRecHelper === 'function') updateRecHelper();
     if (typeof updateDivisibleHint === 'function') updateDivisibleHint();
     if (typeof updateSplitHint === 'function') updateSplitHint();
+    updateLastBuzzerHint();
   };
   if (recMinutesField) recMinutesField.addEventListener('input', () => { setEndsFromMinutes(); updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
-  if (recEndsField) recEndsField.addEventListener('change', () => { setMinutesFromEnds(); updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
-  // Initialize defaults: end time ~1 hour from now, derive minutes from it
+  if (recEndsField) recEndsField.addEventListener('change', () => { setMinutesFromEnds(); updateRecHelper(); updateDivisibleHint(); updateSplitHint(); updateLastBuzzerHint(); });
+  // Initialize defaults: end time ~90 minutes from now (rounded to 5), derive minutes from it
   (function initRecDefaultsOnLoad(){
     const now = new Date();
-    const target = roundUpToQuarter(new Date(now.getTime() + 60*60000));
+    const target = roundToNearestFive(new Date(now.getTime() + 90*60000));
     populateEndsOptions(target);
     setMinutesFromEnds();
     updateDivisibleHint();
     updateSplitHint();
+    updateLastBuzzerHint();
   })();
   // On change, accept minutes as entered; just update end and helpers
   if (recMinutesField) recMinutesField.addEventListener('change', () => { setEndsFromMinutes(); if (typeof updateRecHelper==='function') updateRecHelper(); updateDivisibleHint(); updateSplitHint(); });
@@ -896,6 +981,7 @@ const initEvents = () => {
     updateRecHelper();
     updateDivisibleHint();
     updateSplitHint();
+    updateLastBuzzerHint();
     updateShiftDisabledUI();
   };
   // Initial helper render
@@ -951,14 +1037,15 @@ const initEvents = () => {
   // Clean errors when opening dialogs
   on(document, 'click', 'a[href="#new-game-dialog"][data-toggle="modal"]', () => {
     $$('#new-game-dialog .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
-    // Reset Rec defaults each time the dialog opens: choose ~1 hour from now
+    // Reset Rec defaults each time the dialog opens: choose ~90 minutes from now (rounded to 5)
     const now = new Date();
-    const target = roundUpToQuarter(new Date(now.getTime() + 60*60000));
+    const target = roundToNearestFive(new Date(now.getTime() + 90*60000));
     populateEndsOptions(target);
     setMinutesFromEnds();
     updateRecHelper();
     updateDivisibleHint();
     updateSplitHint();
+    updateLastBuzzerHint();
   });
 
   // Penalty dialog open
@@ -969,6 +1056,8 @@ const initEvents = () => {
     dlg.querySelector('.modal-title').textContent = `${team} Penalty`;
     const { minutes, seconds } = millisToMinSec(State.time);
     $('#add-penalty-off_ice').value = formatClock(minutes, seconds);
+    // Default penalty duration to 2 minutes on open
+    $('#add-penalty-time').value = '2:00';
     $('#add-penalty-serving').value = '';
     $('#add-penalty-player').value = '';
     $$('#add-penalty .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
@@ -997,6 +1086,37 @@ const initEvents = () => {
     api.post(`${team}/penalty`, penalty).catch(()=>{});
     Modals.hide(dlg);
   });
+
+  // Add 2+10 (minor + misconduct) helper
+  const add2plus10 = () => {
+    const dlg = $('#add-penalty');
+    const team = dlg.dataset.team;
+    const playerField = $('#add-penalty-player');
+    const servingField = $('#add-penalty-serving');
+    const offField = $('#add-penalty-off_ice');
+    $$('#add-penalty .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
+
+    let error = false;
+    const player = playerField.value.trim();
+    if (!player) { playerField.closest('.form-group').classList.add('has-error'); error = true; }
+    const serving = servingField.value.trim();
+    if (!serving) { servingField.closest('.form-group').classList.add('has-error'); error = true; }
+    const off = parseClockMillis(offField.value.trim());
+    if (!off) { offField.closest('.form-group').classList.add('has-error'); error = true; }
+    if (error) return;
+
+    const base = { period: State.period, playerNumber: player };
+    // 2-minute minor: served by the serving player
+    const p2 = Object.assign({}, base, { servingPlayerNumber: serving, time: 2 * 60 * 1000, offIceTime: off });
+    // 10-minute misconduct: served by the original offender
+    // Start immediately to run concurrently with the 2
+    const p10 = Object.assign({}, base, { servingPlayerNumber: player, time: 10 * 60 * 1000, offIceTime: off, startTime: roundToSecond(State.time) });
+    api.post(`${team}/penalty`, p2).catch(()=>{});
+    api.post(`${team}/penalty`, p10).catch(()=>{});
+    Modals.hide(dlg);
+  };
+  const btn2plus10 = document.getElementById('add-penalty-2plus10');
+  if (btn2plus10) btn2plus10.addEventListener('click', (e) => { e.preventDefault(); add2plus10(); });
 
   // Generic set-value anchors
   on(document, 'click', 'a[data-action="set-value"]', (e, t) => {

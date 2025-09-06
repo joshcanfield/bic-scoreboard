@@ -374,7 +374,8 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
           b[index++] = (byte) 0xFF;
           b[index++] = (byte) 0xFF;
         } else {
-          int player = penalty.getPlayerNumber();
+          int serving = penalty.getServingPlayerNumber();
+          int player = serving != 0 ? serving : penalty.getPlayerNumber();
           b[index++] = digit(10, player, ZERO_VALUE_EMPTY);
           b[index++] = digit(1, player);
         }
