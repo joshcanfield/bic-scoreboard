@@ -71,10 +71,11 @@
         <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">Penalty</a>
         <table class="table table-condensed">
           <tr>
-            <th>Period</th><th>#</th><th>Min</th><th>Off Ice</th><th>Start</th><th>Remaining</th><th>&nbsp;</th>
+            <th>Period</th><th>Player #</th><th>Remaining</th><th>&nbsp;</th>
           </tr>
           <tbody class="list"></tbody>
-          <tr><td colspan="3"></td></tr>
+          <tbody class="placeholders"></tbody>
+          <tr><td colspan="4"></td></tr>
         </table>
       </div>
     </div>
@@ -101,8 +102,8 @@
       <div id="period-block">
         <span>Period</span>
         <div id="period"><div class="digits"><div class="digit">0</div></div></div>
-        <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-chevron-up"></span></a>
-        <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-chevron-down"></span></a>
+        <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-plus"></span></a>
+        <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-minus"></span></a>
       </div>
     </div>
 
@@ -123,8 +124,8 @@
           <div class="section-label">Shots</div>
           <div id="away-shots" class="shots-counter">0</div>
           <div class="btn-row">
-            <button data-team="away" class="shots-down btn btn-default btn-sm">-</button>
             <button data-team="away" class="shots-up btn btn-info">+Shot</button>
+            <button data-team="away" class="shots-down btn btn-default btn-sm">-</button>
           </div>
         </div>
       </div>
@@ -133,10 +134,11 @@
         <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">Penalty</a>
         <table class="table table-condensed">
           <tr>
-            <th>Period</th><th>#</th><th>Min</th><th>Off Ice</th><th>Start</th><th>Remaining</th><th>&nbsp;</th>
+            <th>Period</th><th>Player #</th><th>Remaining</th><th>&nbsp;</th>
           </tr>
           <tbody class="list"></tbody>
-          <tr><td colspan="3"></td></tr>
+          <tbody class="placeholders"></tbody>
+          <tr><td colspan="4"></td></tr>
         </table>
       </div>
     </div>
@@ -144,6 +146,33 @@
 </div>
 
 <!-- Dialogs (exactly as before) -->
+<div class="modal fade" id="penalty-details">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Penalty Details</h4>
+      </div>
+      <div class="modal-body">
+        <table class="table table-condensed">
+          <tbody>
+          <tr><th>Team</th><td id="pd-team"></td></tr>
+          <tr><th>Period</th><td id="pd-period"></td></tr>
+          <tr><th>Player #</th><td id="pd-player"></td></tr>
+          <tr><th>Duration</th><td id="pd-duration"></td></tr>
+          <tr><th>Off Ice</th><td id="pd-off"></td></tr>
+          <tr><th>Start</th><td id="pd-start"></td></tr>
+          <tr><th>Remaining</th><td id="pd-remaining"></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
 <div class="modal fade" id="add-penalty">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -168,7 +197,14 @@
           <div class="penalty-time form-group">
             <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
             <div class="col-lg-3">
-              <input id="add-penalty-time" class="form-control input-sm" value="3:00" type="text" size="1"/>
+              <input id="add-penalty-time" class="form-control input-sm" value="2:00" type="text" size="1"/>
+            </div>
+            <div class="col-lg-12" style="margin-top:6px">
+              <a href="#" class="btn btn-default btn-xs" data-action="set-value" data-target="#add-penalty-time" data-value="2:00">2:00</a>
+              <a href="#" class="btn btn-default btn-xs" data-action="set-value" data-target="#add-penalty-time" data-value="5:00">5:00</a>
+              <a href="#" class="btn btn-default btn-xs" data-action="set-value" data-target="#add-penalty-time" data-value="10:00">10:00</a>
+              <span class="help-inline" style="margin-left:8px"></span>
+              <a href="#" class="btn btn-info btn-xs" id="add-penalty-2plus10" title="Add a 2-minute minor plus a 10-minute misconduct">2+10</a>
             </div>
           </div>
           <div class="penalty-clock form-group">
@@ -349,20 +385,21 @@
                 <!-- Ends at time-of-day input (primary) -->
                 <div id="rec_ends_group" class="period-form form-group">
                   <label for="rec_ends_at" class="col-lg-6 control-label">Ice Time Ends At</label>
-                  <div class="col-lg-12"><span class="help-block" style="margin:0">Quarter-hour increments (rounded up)</span></div>
-                  <div class="col-lg-6 col-lg-offset-6">
+                  <div class="col-lg-6">
                     <select id="rec_ends_at" class="form-control input-sm"></select>
                   </div>
+                  <div class="col-lg-12"><span class="help-block" style="margin:0">What time are you off the ice?</span></div>
+                  <div class="col-lg-12"><div id="rec-last-buzzer" class="help-block" style="margin:0"></div></div>
                 </div>
 
                 <!-- Duration minutes input (derived; editable) -->
                 <div id="rec_minutes_group" class="period-form form-group">
                   <label for="rec_minutes" class="col-lg-6 control-label">Game length in Minutes</label>
+                  <div class="col-lg-2"><input id="rec_minutes" class="form-control input-sm" type="text" maxlength="3" size="3" value="90"/></div>
                   <div class="col-lg-12">
                     <div id="rec-divisible-hint" class="help-block" style="margin:0"></div>
                     <div id="rec-split-hint" class="help-block" style="margin:0"></div>
                   </div>
-                  <div class="col-lg-2 col-lg-offset-6"><input id="rec_minutes" class="form-control input-sm" type="text" maxlength="3" size="3" value="60"/></div>
                 </div>
 
                 <!-- Shift buzzer: minutes + seconds with +/- controls -->

@@ -24,7 +24,9 @@ const updatePenalties = (team, penalties) => {
       let remaining = p.time;
       if (p.startTime > 0) remaining = p.time - p.elapsed;
       if (remaining > 0) {
-        const pd = digits2(Number(p.playerNumber) || 0);
+        const serving = (p.servingPlayerNumber != null && p.servingPlayerNumber !== undefined && Number(p.servingPlayerNumber) !== 0)
+          ? Number(p.servingPlayerNumber) : Number(p.playerNumber);
+        const pd = digits2(serving || 0);
         $('.digit.tens', player).textContent = pd[0];
         $('.digit.ones', player).textContent = pd[1];
 
