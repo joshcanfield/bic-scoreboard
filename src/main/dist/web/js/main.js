@@ -479,6 +479,19 @@ const beginPortStepper = async () => {
 
 // ---------- Wire up events ----------
 const initEvents = () => {
+  // Team color pickers in header
+  const applyTeamColors = () => {
+    const hc = document.getElementById('home-color');
+    const ac = document.getElementById('away-color');
+    if (hc && hc.value) document.documentElement.style.setProperty('--home-color', hc.value);
+    if (ac && ac.value) document.documentElement.style.setProperty('--away-color', ac.value);
+  };
+  const homePicker = document.getElementById('home-color');
+  const awayPicker = document.getElementById('away-color');
+  if (homePicker) homePicker.addEventListener('input', applyTeamColors);
+  if (awayPicker) awayPicker.addEventListener('input', applyTeamColors);
+  // Initialize from default values
+  applyTeamColors();
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
   $('#clock-start').addEventListener('click', () => Server.startClock());

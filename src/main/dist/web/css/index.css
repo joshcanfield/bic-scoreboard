@@ -99,6 +99,8 @@ img.navbar-brand {
     --glass: rgba(255,255,255,0.06);
     --border: rgba(255,255,255,0.12);
     --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    --home-color: #2e86de; /* default blue */
+    --away-color: #e74c3c; /* default red */
 }
 
 html, body { background: radial-gradient(1200px 800px at 20% 10%, #10224a, var(--bg)); color: var(--text); }
@@ -114,10 +116,20 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
 .btn.btn-primary { background: linear-gradient(180deg, var(--btn-primary-bg, var(--accent)), var(--btn-primary-bg-2, var(--accent-2))); border: none; box-shadow: var(--btn-primary-shadow, 0 6px 14px rgba(76,201,240,0.25)); }
 .navbar .btn.btn-primary, .navbar-btn.btn-primary { --btn-primary-bg: var(--accent); --btn-primary-bg-2: var(--accent); --btn-primary-shadow: none; font-weight: 700; }
 
+/* Team color picker minor tweaks */
+.team-color-picker input[type="color"] { appearance: none; -webkit-appearance: none; border-radius: 6px; overflow: hidden; }
+.team-color-picker label { color: var(--muted) !important; }
+
 /* Layout & cards */
 #home, #away, #clock_box { padding: 8px 10px; }
 h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.team h2 { font-weight: 800; }
+#home h2 { color: var(--home-color); }
+#away h2 { color: var(--away-color); }
 .score, .shots { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+/* Team accent borders */
+#home .score, #home .shots, #home .penalties .table { border-top: 3px solid var(--home-color); }
+#away .score, #away .shots, #away .penalties .table { border-top: 3px solid var(--away-color); }
 .section-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
 /* Digits look */

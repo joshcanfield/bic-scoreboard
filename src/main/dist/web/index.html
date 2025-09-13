@@ -32,6 +32,12 @@
           </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
+          <li class="navbar-form team-color-picker" role="form" style="display:flex;align-items:center;gap:8px;margin-right:10px;">
+            <label for="home-color" class="control-label" style="margin:0;color:#a5b0c2;font-size:12px;">Home</label>
+            <input id="home-color" type="color" value="#2e86de" title="Home color" style="width:32px;height:32px;border:none;background:transparent;padding:0;cursor:pointer"/>
+            <label for="away-color" class="control-label" style="margin:0 0 0 8px;color:#a5b0c2;font-size:12px;">Away</label>
+            <input id="away-color" type="color" value="#e74c3c" title="Away color" style="width:32px;height:32px;border:none;background:transparent;padding:0;cursor:pointer"/>
+          </li>
           <li><button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button></li>
           <li>
             <button type="button" data-toggle="modal" href="#new-game-dialog" class="btn btn-primary navbar-btn">New Game</button>
