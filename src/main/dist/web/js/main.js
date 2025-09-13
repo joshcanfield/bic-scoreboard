@@ -479,13 +479,14 @@ const beginPortStepper = async () => {
 
 // ---------- Wire up events ----------
 const initEvents = () => {
-  // Team color palettes (rainbow swatches + custom input in modal)
-  const DEFAULT_COLORS = ['#e74c3c','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#ec407a','#95a5a6','#ffffff'];
+  // Team color palettes (inline in header)
+  // Predefined: black, white, red, dark blue, teal, green
+  const DEFAULT_COLORS = ['#000000','#ffffff','#e74c3c','#0d47a1','#1abc9c','#2ecc71'];
   const getCssVar = (name, fallback) => {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name);
     return (v && v.trim()) || fallback || '';
   };
-  const renderPalette = (containerId, cssVarName, inputId) => {
+  const renderPalette = (containerId, cssVarName) => {
     const el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = '';
@@ -502,37 +503,13 @@ const initEvents = () => {
         // update selection state
         [...el.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
         sw.classList.add('selected');
-        // sync input if present
-        const input = inputId ? document.getElementById(inputId) : null;
-        if (input) input.value = color;
       });
       el.appendChild(sw);
     });
   };
-  // Open Team Colors modal: render palettes and hook custom inputs
-  on(document, 'click', 'a[href="#team-colors"][data-toggle="modal"], button[href="#team-colors"][data-toggle="modal"], button[data-toggle="modal"][href="#team-colors"]', () => {
-    // Initialize inputs from current CSS vars
-    const hc = document.getElementById('home-color-input');
-    const ac = document.getElementById('away-color-input');
-    if (hc) hc.value = getCssVar('--home-color', '#2e86de');
-    if (ac) ac.value = getCssVar('--away-color', '#e74c3c');
-    // Render swatches
-    renderPalette('home-color-palette', '--home-color', 'home-color-input');
-    renderPalette('away-color-palette', '--away-color', 'away-color-input');
-  });
-  const bindColorInput = (inputId, cssVarName, paletteId) => {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    input.addEventListener('input', () => {
-      const val = input.value;
-      if (val) document.documentElement.style.setProperty(cssVarName, val);
-      // clear selection highlight when picking custom
-      const pal = document.getElementById(paletteId);
-      if (pal) [...pal.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
-    });
-  };
-  bindColorInput('home-color-input', '--home-color', 'home-color-palette');
-  bindColorInput('away-color-input', '--away-color', 'away-color-palette');
+  // Render inline palettes on load
+  renderPalette('home-color-palette', '--home-color');
+  renderPalette('away-color-palette', '--away-color');
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
   $('#clock-start').addEventListener('click', () => Server.startClock());
