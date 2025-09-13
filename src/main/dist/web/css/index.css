@@ -138,6 +138,9 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
     border-radius: 4px;
     background: #ccc; /* will be overridden via JS */
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    padding: 0; margin: 0;
+    line-height: 18px; vertical-align: middle;
+    cursor: pointer;
 }
 .team-chip-label { color: var(--muted); font-size: 12px; }
 
