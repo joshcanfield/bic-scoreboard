@@ -265,12 +265,13 @@ h2 {
 #connect-portNames {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 8px; /* modern browsers */
     margin: 8px 0 4px;
 }
 .port-pill {
     display: inline-block;
     padding: 4px 10px;
+    margin: 0 8px 8px 0; /* fallback spacing when gap unsupported */
     border-radius: 999px;
     background: rgba(255,255,255,0.06);
     border: 1px solid var(--border);
