@@ -482,15 +482,36 @@ const initEvents = () => {
   // Team color chips + modal palettes
   // Presets: black, white, red, dark blue, teal, green
   const DEFAULT_COLORS = ['#000000','#ffffff','#e74c3c','#0d47a1','#1abc9c','#2ecc71'];
+  const LS_HOME = 'scoreboard.homeColor';
+  const LS_AWAY = 'scoreboard.awayColor';
+  const colorKeyForVar = (cssVarName) => cssVarName === '--home-color' ? LS_HOME : LS_AWAY;
+  const sanitizeHex = (val) => (typeof val === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(val.trim())) ? val.trim() : '';
   const getCssVar = (name, fallback) => {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name);
     return (v && v.trim()) || fallback || '';
+  };
+  const applyColor = (cssVarName, color) => {
+    const c = sanitizeHex(color);
+    if (!c) return;
+    document.documentElement.style.setProperty(cssVarName, c);
+    // persist
+    try { localStorage.setItem(colorKeyForVar(cssVarName), c); } catch (_) {}
+    // refresh chips
+    updateColorChips();
   };
   const updateColorChips = () => {
     const hc = document.getElementById('home-color-chip');
     const ac = document.getElementById('away-color-chip');
     if (hc) hc.style.backgroundColor = getCssVar('--home-color', '#2e86de');
     if (ac) ac.style.backgroundColor = getCssVar('--away-color', '#e74c3c');
+  };
+  const loadStoredTeamColors = () => {
+    try {
+      const h = sanitizeHex(localStorage.getItem(LS_HOME));
+      const a = sanitizeHex(localStorage.getItem(LS_AWAY));
+      if (h) document.documentElement.style.setProperty('--home-color', h);
+      if (a) document.documentElement.style.setProperty('--away-color', a);
+    } catch (_) {}
   };
 
   const renderPalette = (containerId, cssVarName, inputId) => {
@@ -505,27 +526,26 @@ const initEvents = () => {
       sw.style.backgroundColor = color;
       sw.title = color;
       sw.setAttribute('aria-label', color);
-      sw.addEventListener('click', () => {
-        document.documentElement.style.setProperty(cssVarName, color);
-        // update selection state
-        [...el.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
-        sw.classList.add('selected');
-        // sync input and chips
+       sw.addEventListener('click', () => {
+         applyColor(cssVarName, color);
+         // update selection state
+         [...el.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
+         sw.classList.add('selected');
+        // sync input
         if (inputId) {
           const input = document.getElementById(inputId); if (input) input.value = color;
         }
-        updateColorChips();
-      });
-      el.appendChild(sw);
-    });
-  };
+       });
+       el.appendChild(sw);
+     });
+   };
   // Open Team Colors modal and render palettes
   on(document, 'click', 'a[href="#team-colors"][data-toggle="modal"]', (e, t) => {
     // Initialize inputs from current CSS vars
     const hc = document.getElementById('home-color-input');
     const ac = document.getElementById('away-color-input');
-    if (hc) hc.value = getCssVar('--home-color', '#2e86de');
-    if (ac) ac.value = getCssVar('--away-color', '#e74c3c');
+    if (hc) hc.value = getCssVar('--home-color', sanitizeHex(localStorage.getItem(LS_HOME)) || '#2e86de');
+    if (ac) ac.value = getCssVar('--away-color', sanitizeHex(localStorage.getItem(LS_AWAY)) || '#e74c3c');
     // Render swatches
     renderPalette('home-color-palette', '--home-color', 'home-color-input');
     renderPalette('away-color-palette', '--away-color', 'away-color-input');
@@ -543,16 +563,16 @@ const initEvents = () => {
     if (!input) return;
     input.addEventListener('input', () => {
       const val = input.value;
-      if (val) document.documentElement.style.setProperty(cssVarName, val);
+      if (val) applyColor(cssVarName, val);
       // clear selection highlight when picking custom
       const pal = document.getElementById(paletteId);
       if (pal) [...pal.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
-      updateColorChips();
     });
   };
   bindColorInput('home-color-input', '--home-color', 'home-color-palette');
   bindColorInput('away-color-input', '--away-color', 'away-color-palette');
-  // Initial chip paint
+  // Load stored colors then paint chips
+  loadStoredTeamColors();
   updateColorChips();
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
