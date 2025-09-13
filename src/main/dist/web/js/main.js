@@ -479,19 +479,35 @@ const beginPortStepper = async () => {
 
 // ---------- Wire up events ----------
 const initEvents = () => {
-  // Team color pickers in header
-  const applyTeamColors = () => {
-    const hc = document.getElementById('home-color');
-    const ac = document.getElementById('away-color');
-    if (hc && hc.value) document.documentElement.style.setProperty('--home-color', hc.value);
-    if (ac && ac.value) document.documentElement.style.setProperty('--away-color', ac.value);
+  // Team color palettes in header (rainbow swatches)
+  const DEFAULT_COLORS = ['#e74c3c','#f39c12','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#ec407a','#95a5a6','#ffffff'];
+  const getCssVar = (name, fallback) => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (v && v.trim()) || fallback || '';
   };
-  const homePicker = document.getElementById('home-color');
-  const awayPicker = document.getElementById('away-color');
-  if (homePicker) homePicker.addEventListener('input', applyTeamColors);
-  if (awayPicker) awayPicker.addEventListener('input', applyTeamColors);
-  // Initialize from default values
-  applyTeamColors();
+  const renderPalette = (containerId, cssVarName) => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    const current = getCssVar(cssVarName);
+    DEFAULT_COLORS.forEach((color) => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'color-swatch' + (color.toLowerCase() === (current||'').toLowerCase() ? ' selected' : '');
+      sw.style.backgroundColor = color;
+      sw.title = color;
+      sw.setAttribute('aria-label', color);
+      sw.addEventListener('click', () => {
+        document.documentElement.style.setProperty(cssVarName, color);
+        // update selection state
+        [...el.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
+        sw.classList.add('selected');
+      });
+      el.appendChild(sw);
+    });
+  };
+  renderPalette('home-color-palette', '--home-color');
+  renderPalette('away-color-palette', '--away-color');
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
   $('#clock-start').addEventListener('click', () => Server.startClock());

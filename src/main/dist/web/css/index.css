@@ -117,8 +117,19 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
 .navbar .btn.btn-primary, .navbar-btn.btn-primary { --btn-primary-bg: var(--accent); --btn-primary-bg-2: var(--accent); --btn-primary-shadow: none; font-weight: 700; }
 
 /* Team color picker minor tweaks */
-.team-color-picker input[type="color"] { appearance: none; -webkit-appearance: none; border-radius: 6px; overflow: hidden; }
 .team-color-picker label { color: var(--muted) !important; }
+.team-color-picker .color-palette { display: flex; align-items: center; gap: 6px; }
+.team-color-picker .color-swatch {
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    cursor: pointer;
+}
+.team-color-picker .color-swatch { margin-right: 6px; }
+.team-color-picker .color-swatch:last-child { margin-right: 0; }
+.team-color-picker .color-swatch.selected {
+    outline: 2px solid #fff; outline-offset: 1px;
+}
 
 /* Layout & cards */
 #home, #away, #clock_box { padding: 8px 10px; }
