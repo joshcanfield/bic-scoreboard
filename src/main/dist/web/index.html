@@ -32,11 +32,9 @@
           </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
-          <li class="navbar-form team-color-picker" role="form" style="display:flex;align-items:center;gap:8px;margin-right:10px;">
-            <label class="control-label" style="margin:0;color:#a5b0c2;font-size:12px;">Home</label>
-            <div id="home-color-palette" class="color-palette" aria-label="Home colors"></div>
-            <label class="control-label" style="margin:0 0 0 8px;color:#a5b0c2;font-size:12px;">Away</label>
-            <div id="away-color-palette" class="color-palette" aria-label="Away colors"></div>
+          <li class="navbar-form" role="form" style="display:flex;align-items:center;gap:10px;margin-right:10px;">
+            <a href="#team-colors" data-toggle="modal" id="home-color-chip" class="color-chip" aria-label="Edit Home color" title="Home color"></a>
+            <a href="#team-colors" data-toggle="modal" id="away-color-chip" class="color-chip" aria-label="Edit Away color" title="Away color"></a>
           </li>
           <li><button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button></li>
           <li>
@@ -435,6 +433,40 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Team Colors modal -->
+<div class="modal fade" id="team-colors">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Team Colors</h4>
+        <p class="help-block" style="margin:0">Choose a preset or pick a custom color.</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-horizontal">
+          <div class="form-group">
+            <label class="col-lg-2 control-label">Home</label>
+            <div class="col-lg-10">
+              <div id="home-color-palette" class="color-palette" aria-label="Home colors" style="margin-bottom:8px"></div>
+              <input id="home-color-input" type="color" value="#2e86de" title="Home custom color" class="form-control input-sm" style="max-width:120px"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-lg-2 control-label">Away</label>
+            <div class="col-lg-10">
+              <div id="away-color-palette" class="color-palette" aria-label="Away colors" style="margin-bottom:8px"></div>
+              <input id="away-color-input" type="color" value="#e74c3c" title="Away custom color" class="form-control input-sm" style="max-width:120px"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
