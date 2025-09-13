@@ -261,3 +261,25 @@ h2 {
 #new-game-dialog .help-block { white-space: normal; }
 
 
+/* --- Ports list styling --- */
+#connect-portNames {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0 4px;
+}
+.port-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.port-pill.active { background: var(--success); color: #0b1020; border-color: transparent; }
+.port-pill.tried { opacity: 0.6; }
+
+
