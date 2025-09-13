@@ -29,3 +29,4 @@ build/
 local/
 
 /out/
+/src/main/dist/scoreboard.properties
