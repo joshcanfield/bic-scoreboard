@@ -101,6 +101,8 @@ img.navbar-brand {
     --shadow: 0 10px 30px rgba(0,0,0,0.35);
     --home-color: #2e86de; /* default blue */
     --away-color: #e74c3c; /* default red */
+    --home-fg: #ffffff;    /* default fg for home pill */
+    --away-fg: #ffffff;    /* default fg for away pill */
 }
 
 html, body { background: radial-gradient(1200px 800px at 20% 10%, #10224a, var(--bg)); color: var(--text); }
@@ -123,21 +125,31 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
     border: 1px solid var(--border);
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
     cursor: pointer;
+    position: relative;
 }
 .color-swatch { margin-right: 6px; }
 .color-swatch:last-child { margin-right: 0; }
 .color-swatch.selected {
     outline: 2px solid #fff; outline-offset: 1px;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.55);
+}
+.color-swatch.selected::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+    pointer-events: none;
 }
 
 /* Navbar color chips */
 .color-chip {
     display: inline-block;
     width: 18px; height: 18px;
-    border: 1px solid var(--border);
+    border: 2px solid #ffffff;
     border-radius: 4px;
     background: #ccc; /* will be overridden via JS */
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.08);
     padding: 0; margin: 0;
     line-height: 18px; vertical-align: middle;
     cursor: pointer;
@@ -147,9 +159,31 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
 /* Layout & cards */
 #home, #away, #clock_box { padding: 8px 10px; }
 h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
-.team h2 { font-weight: 800; }
-#home h2 { color: var(--home-color); }
-#away h2 { color: var(--away-color); }
+.team h2 { font-weight: 800; text-align: center; }
+/* Team headers as pills with auto-contrast foreground */
+#home h2, #away h2 { color: #fff; }
+#home h2 {
+    display: block;
+    width: 100%;
+    margin: 0 0 8px;
+    background: var(--home-color);
+    color: var(--home-fg);
+    padding: 3px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset;
+}
+#away h2 {
+    display: block;
+    width: 100%;
+    margin: 0 0 8px;
+    background: var(--away-color);
+    color: var(--away-fg);
+    padding: 3px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.25);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.12) inset;
+}
 .score, .shots { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
 /* Team accent borders */
 #home .score, #home .shots, #home .penalties .table { border-top: 3px solid var(--home-color); }
@@ -246,6 +280,21 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 #set-clock .modal-dialog {
     width: 500px;
 }
+
+/* Team Colors modal: widen slightly to fit more swatches per row */
+#team-colors .modal-dialog {
+    width: 630px;
+    max-width: 90vw;
+}
+#team-colors .modal-body {
+    /* Slightly lighter than the base panel, but still dark */
+    background: #151d3a;
+    color: var(--text);
+    border-radius: 4px;
+    padding: 8px 12px; /* tighter: no extra space around chips */
+}
+/* Stronger swatch borders in the dialog so black stands out */
+#team-colors .color-swatch { border-color: rgba(255,255,255,0.35); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
 
 #set-clock .predefined-times {
     padding:15px 0;

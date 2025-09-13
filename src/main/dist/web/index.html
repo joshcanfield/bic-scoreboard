@@ -450,20 +450,16 @@
         <p class="help-block" style="margin:0">Choose a preset or pick a custom color.</p>
       </div>
       <div class="modal-body">
-        <div class="form-horizontal">
-          <div class="form-group">
-            <label class="col-lg-2 control-label">Home</label>
-            <div class="col-lg-10">
-              <div id="home-color-palette" class="color-palette" aria-label="Home colors" style="margin-bottom:8px"></div>
-              <input id="home-color-input" type="color" value="#2e86de" title="Home custom color" class="form-control input-sm" style="max-width:120px"/>
-            </div>
+        <div class="row" style="display:flex; gap:16px;">
+          <div class="col-sm-6">
+            <label class="control-label" style="display:block; margin-bottom:6px;">Home</label>
+            <div id="home-color-palette" class="color-palette" aria-label="Home colors" style="margin-bottom:8px"></div>
+            <input id="home-color-input" type="color" value="#2e86de" title="Home custom color" class="form-control input-sm" style="max-width:140px"/>
           </div>
-          <div class="form-group">
-            <label class="col-lg-2 control-label">Away</label>
-            <div class="col-lg-10">
-              <div id="away-color-palette" class="color-palette" aria-label="Away colors" style="margin-bottom:8px"></div>
-              <input id="away-color-input" type="color" value="#e74c3c" title="Away custom color" class="form-control input-sm" style="max-width:120px"/>
-            </div>
+          <div class="col-sm-6">
+            <label class="control-label" style="display:block; margin-bottom:6px;">Away</label>
+            <div id="away-color-palette" class="color-palette" aria-label="Away colors" style="margin-bottom:8px"></div>
+            <input id="away-color-input" type="color" value="#e74c3c" title="Away custom color" class="form-control input-sm" style="max-width:140px"/>
           </div>
         </div>
       </div>

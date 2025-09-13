@@ -480,8 +480,9 @@ const beginPortStepper = async () => {
 // ---------- Wire up events ----------
 const initEvents = () => {
   // Team color chips + modal palettes
-  // Presets: black, white, red, dark blue, teal, green
-  const DEFAULT_COLORS = ['#000000','#ffffff','#e74c3c','#0d47a1','#1abc9c','#2ecc71'];
+  // Presets: rainbow + black and white
+  // red, orange, yellow, green, blue, indigo, violet, plus black and white
+  const DEFAULT_COLORS = ['#000000','#ffffff','#e74c3c','#f39c12','#f1c40f','#2ecc71','#3498db','#3f51b5','#9b59b6'];
   const LS_HOME = 'scoreboard.homeColor';
   const LS_AWAY = 'scoreboard.awayColor';
   const colorKeyForVar = (cssVarName) => cssVarName === '--home-color' ? LS_HOME : LS_AWAY;
@@ -490,10 +491,22 @@ const initEvents = () => {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name);
     return (v && v.trim()) || fallback || '';
   };
+  const relLuminance = (hex) => {
+    const h = hex.replace('#','');
+    const v = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+    const r = parseInt(v.slice(0,2),16)/255, g = parseInt(v.slice(2,4),16)/255, b = parseInt(v.slice(4,6),16)/255;
+    const toLin = (c) => (c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+    const R = toLin(r), G = toLin(g), B = toLin(b);
+    return 0.2126*R + 0.7152*G + 0.0722*B;
+  };
   const applyColor = (cssVarName, color) => {
     const c = sanitizeHex(color);
     if (!c) return;
     document.documentElement.style.setProperty(cssVarName, c);
+    // set contrasting foreground var
+    const fg = relLuminance(c) < 0.5 ? '#ffffff' : '#101218';
+    const fgVar = cssVarName === '--home-color' ? '--home-fg' : '--away-fg';
+    document.documentElement.style.setProperty(fgVar, fg);
     // persist
     try { localStorage.setItem(colorKeyForVar(cssVarName), c); } catch (_) {}
     // refresh chips
@@ -502,15 +515,17 @@ const initEvents = () => {
   const updateColorChips = () => {
     const hc = document.getElementById('home-color-chip');
     const ac = document.getElementById('away-color-chip');
-    if (hc) hc.style.backgroundColor = getCssVar('--home-color', '#2e86de');
-    if (ac) ac.style.backgroundColor = getCssVar('--away-color', '#e74c3c');
+    const hCol = getCssVar('--home-color', '#2e86de');
+    const aCol = getCssVar('--away-color', '#e74c3c');
+    if (hc) { hc.style.background = hCol; hc.style.backgroundColor = hCol; hc.title = `Home ${hCol}`; }
+    if (ac) { ac.style.background = aCol; ac.style.backgroundColor = aCol; ac.title = `Away ${aCol}`; }
   };
   const loadStoredTeamColors = () => {
     try {
       const h = sanitizeHex(localStorage.getItem(LS_HOME));
       const a = sanitizeHex(localStorage.getItem(LS_AWAY));
-      if (h) document.documentElement.style.setProperty('--home-color', h);
-      if (a) document.documentElement.style.setProperty('--away-color', a);
+      if (h) applyColor('--home-color', h); else applyColor('--home-color', getCssVar('--home-color', '#2e86de'));
+      if (a) applyColor('--away-color', a); else applyColor('--away-color', getCssVar('--away-color', '#e74c3c'));
     } catch (_) {}
   };
 
@@ -539,8 +554,8 @@ const initEvents = () => {
        el.appendChild(sw);
      });
    };
-  // Open Team Colors modal and render palettes
-  on(document, 'click', 'a[href="#team-colors"][data-toggle="modal"]', (e, t) => {
+  // Open Team Colors modal and render palettes (support anchors or buttons)
+  on(document, 'click', '[data-toggle="modal"][href="#team-colors"]', (e, t) => {
     // Initialize inputs from current CSS vars
     const hc = document.getElementById('home-color-input');
     const ac = document.getElementById('away-color-input');
