@@ -1,5 +1,6 @@
 package canfield.bia.hockey;
 
+import canfield.bia.config.AppConfig;
 import canfield.bia.hockey.scoreboard.Clock;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 public class SimpleGameManager {
   private final ScoreBoard scoreBoard;
   private final ScoreboardAdapter scoreboardAdapter;
+  private final AppConfig appConfig;
 
   private final List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
   private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
@@ -31,9 +33,10 @@ public class SimpleGameManager {
 
 
   @Inject
-  public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter) {
+  public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter, AppConfig appConfig) {
     this.scoreBoard = scoreBoard;
     this.scoreboardAdapter = scoreboardAdapter;
+    this.appConfig = appConfig;
 
     scoreBoard.addListener(
         event -> {
@@ -345,6 +348,8 @@ public class SimpleGameManager {
       scoreboardAdapter.stop();
       scoreboardAdapter.start();
     }
+    // Persist selected port
+    appConfig.setCommPort(portName);
   }
 
   public void stopUpdates() {

@@ -1,6 +1,7 @@
 package canfield.bia.hockey;
 
 import canfield.bia.HockeyGameServer;
+import canfield.bia.config.AppConfig;
 import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
@@ -24,8 +25,14 @@ public class SimpleGameModule {
 
     @Provides
     @Singleton
-    ScoreboardAdapter provideSerialUpdater(ScoreBoard scoreBoard) {
-        String port = System.getProperty("scoreboard.commport", "usb.ttyserial");
+    AppConfig provideAppConfig() {
+        return new AppConfig();
+    }
+
+    @Provides
+    @Singleton
+    ScoreboardAdapter provideSerialUpdater(ScoreBoard scoreBoard, AppConfig config) {
+        String port = config.getCommPort();
         return new ScoreboardAdapterImpl(scoreBoard, port);
     }
 
