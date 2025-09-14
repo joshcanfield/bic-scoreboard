@@ -36,6 +36,7 @@
 - Include context: what changed, why, and any follow‑ups.
 - PRs: clear description, linked issues, test plan (commands and expected results), and screenshots/GIFs for UI changes (`src/main/dist/web/**`).
 - CI/readability: ensure `./gradlew build` passes and no new warnings before requesting review.
+- Squash policy: Always squash commits before opening a PR. Keep feature branches to a clean, minimal commit history; if you made multiple WIP commits, squash locally before pushing or use GitHub's "Squash and merge" when merging.
 
 ## Security & Configuration Tips
 - Runtime ports: REST `8080`, WebSocket `8082` (configurable via `-Dws.port=`). Avoid committing secrets; local logging config under `src/main/dist/conf/logback.xml`.
