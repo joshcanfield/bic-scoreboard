@@ -50,6 +50,11 @@ public class SimpleGameManager {
     reset();
   }
 
+  // Convenience constructor for tests and simple wiring
+  public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter) {
+    this(scoreBoard, scoreboardAdapter, new AppConfig());
+  }
+
   private void handleShiftBuzzer() {
     if (shiftLengthSeconds == null) {
       return;

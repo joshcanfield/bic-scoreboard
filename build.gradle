@@ -104,6 +104,11 @@ dependencies {
     testImplementation 'io.cucumber:cucumber-testng:7.14.0'
 }
 
+// Show deprecated API usage details during compilation
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-Xlint:deprecation'
+}
+
 distributions {
     main {
         distributionBaseName = 'scoreboard'
