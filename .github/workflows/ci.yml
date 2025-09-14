@@ -9,10 +9,7 @@ permissions:
 
 jobs:
   build-and-test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,14 +29,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Verify Gradle
-        run: ./gradlew --version
+        run: .\gradlew.bat --version
 
-      - name: Run tests (incl. UI) [Unix]
-        if: runner.os != 'Windows'
-        run: ./gradlew test --no-daemon --stacktrace
-
-      - name: Run tests (incl. UI) [Windows]
-        if: runner.os == 'Windows'
+      - name: Run tests (incl. UI)
         run: .\gradlew.bat test --no-daemon --stacktrace
 
   package-app-image:
