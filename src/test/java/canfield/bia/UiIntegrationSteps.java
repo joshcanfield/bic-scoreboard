@@ -259,26 +259,55 @@ public class UiIntegrationSteps {
 
     @When("I add a penalty for player {int} to the home team")
     public void addPenalty(int player) throws InterruptedException {
-        jsClick("#home .penalties a.penalty");
-        Thread.sleep(100);
+        // Open the dialog via the same selector the app binds to
+        jsClick("#home .penalties a[href=\\\"#add-penalty\\\"][data-toggle=\\\"modal\\\"]");
+        // Wait for modal to be visible
+        new WebDriverWait(driver, Duration.ofSeconds(3)).until(d -> {
+            try {
+                WebElement m = d.findElement(By.id("add-penalty"));
+                String cls = m.getAttribute("class");
+                String disp = (String) ((JavascriptExecutor) d).executeScript(
+                        "var el=document.getElementById('add-penalty'); return el? getComputedStyle(el).display : '';"
+                );
+                return cls != null && cls.contains("in") && "block".equals(disp);
+            } catch (org.openqa.selenium.NoSuchElementException e) {
+                return false;
+            }
+        });
+
+        // Fill fields after modal init code resets them
         JavascriptExecutor js = (JavascriptExecutor) driver;
         js.executeScript("document.getElementById('add-penalty-player').value='" + player + "';");
         js.executeScript("document.getElementById('add-penalty-serving').value='" + player + "';");
         js.executeScript("document.getElementById('add-penalty-time').value='2:00';");
         js.executeScript("document.getElementById('add-penalty-off_ice').value='2:00';");
+        // Submit
         jsClick("#add-penalty-add");
-        new WebDriverWait(driver, Duration.ofSeconds(5)).until(
-                d -> !d.findElements(By.cssSelector("#home .penalties tbody.list tr")).isEmpty());
+
+        // Wait for table to update via WebSocket update render
+        new WebDriverWait(driver, Duration.ofSeconds(8))
+                .ignoring(StaleElementReferenceException.class)
+                .until(d -> !d.findElements(By.cssSelector("#home .penalties tbody.list tr")).isEmpty());
     }
 
     @Then("the home team penalties list should contain {int} penalty for player {int}")
     public void verifyPenalty(int count, int player) {
-        List<WebElement> rows = driver.findElements(By.cssSelector("#home .penalties tbody.list tr"));
-        Assert.assertEquals(rows.size(), count);
-        WebElement first = rows.getFirst();
-        List<WebElement> cells = first.findElements(By.tagName("td"));
-        int playerNum = Integer.parseInt(cells.get(1).getText());
-        Assert.assertEquals(playerNum, player);
+        // The table updates dynamically; re-query elements and tolerate DOM refreshes.
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(8));
+        boolean ok = wait.ignoring(StaleElementReferenceException.class).until(d -> {
+            List<WebElement> rows = d.findElements(By.cssSelector("#home .penalties tbody.list tr"));
+            if (rows.size() != count) {
+                return false;
+            }
+            try {
+                List<WebElement> cells = rows.getFirst().findElements(By.tagName("td"));
+                int playerNum = Integer.parseInt(cells.get(1).getText().trim());
+                return playerNum == player;
+            } catch (StaleElementReferenceException | NumberFormatException e) {
+                return false;
+            }
+        });
+        Assert.assertTrue(ok, "Expected " + count + " penalty row(s) for player " + player);
     }
 
     private int readScore(String teamSelector) {

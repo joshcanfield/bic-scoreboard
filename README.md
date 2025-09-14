@@ -69,3 +69,41 @@ You can override socket host/port used by the UIs via URL params, e.g.:
 http://localhost:8080/index.html?socketHost=example.com&socketPort=9090
 ```
 
+## Deployment
+
+We now deploy using a Windows app image (bundled runtime). Zip/tar distributions are disabled.
+
+**Prerequisites**
+- Open inbound ports `8080` (HTTP) and `8082` (WebSocket) on the host firewall if other devices connect.
+
+**Windows App Image (bundled runtime)**
+- Build locally with jpackage (requires JDK 21 with jpackage; Temurin 21 recommended):
+  - PowerShell:
+    - `$env:JAVA_HOME="C:\\Path\\To\\Temurin\\jdk-21.x"`
+    - `$env:PATH="$env:JAVA_HOME\\bin;$env:PATH"`
+    - `./gradlew jpackageFullJre`
+  - Output app image: `build/jpackage/scoreboard/`
+- Deploy by copying the `scoreboard/` folder to the target machine and running `scoreboard.exe`.
+- A small launcher dialog appears (Close exits cleanly). Click “Open Scoreboard” to launch the UI.
+
+Zip for handoff
+- Create a portable zip of the app image: `./gradlew appImageZip`
+- Output: `build/artifacts/scoreboard-<version>-app-image.zip`
+
+Installer note
+- Creating an MSI/EXE installer requires WiX on PATH; the app image above is sufficient for most installs.
+
+**Start/Stop Helpers**
+- Stop any running packaged instance from the repo: `./gradlew stopPackaged`
+- Run UI tests against the packaged app (headless Chrome): `./gradlew uiTestPackaged`
+
+**Service Management (optional)**
+- Windows (auto-start): Use Task Scheduler to run `scoreboard.exe` at logon, or wrap with NSSM.
+
+**Runtime Tweaks**
+- JVM properties:
+  - `-Dws.port=8082` to change WebSocket port.
+  - `-DRESOURCE_BASE=/path/to/web` to override static file root.
+  - `-Dscoreboard.showDialog=true` to show the launcher dialog on startup (enabled in packaged app).
+
+

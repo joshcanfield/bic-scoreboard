@@ -41,3 +41,30 @@ jobs:
       - name: Run tests (incl. UI) [Windows]
         if: runner.os == 'Windows'
         run: .\gradlew.bat test --no-daemon --stacktrace
+
+  package-app-image:
+    needs: build-and-test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build app image zip
+        run: .\gradlew.bat appImageZip --no-daemon --stacktrace
+
+      - name: Upload app image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scoreboard-app-image-${{ replace(github.ref_name, '/', '-') }}-${{ github.sha }}
+          path: build/artifacts/*.zip
+          if-no-files-found: error
+          retention-days: 14
