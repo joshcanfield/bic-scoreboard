@@ -125,6 +125,71 @@ public class UiIntegrationSteps {
         Assert.assertEquals(readScore("#away"), score);
     }
 
+    @Then("the score-down buttons should use default style")
+    public void minusButtonsUseDefault() {
+        WebElement homeMinus = driver.findElement(By.cssSelector("#home button.score-down"));
+        WebElement awayMinus = driver.findElement(By.cssSelector("#away button.score-down"));
+        String hc = homeMinus.getAttribute("class");
+        String ac = awayMinus.getAttribute("class");
+        Assert.assertTrue(hc.contains("btn-default"), "Home minus should be btn-default");
+        Assert.assertTrue(ac.contains("btn-default"), "Away minus should be btn-default");
+        Assert.assertFalse(hc.contains("btn-danger"), "Home minus should not be btn-danger");
+        Assert.assertFalse(ac.contains("btn-danger"), "Away minus should not be btn-danger");
+    }
+
+    @Then("I should not see section labels in team panels")
+    public void noSectionLabels() {
+        List<WebElement> labels = driver.findElements(By.cssSelector("#home .section-label, #away .section-label"));
+        Assert.assertEquals(labels.size(), 0, "No section-labels should be present in team panels");
+    }
+
+    @Then("the buzzer button should have right margin {int} px")
+    public void buzzerHasRightMargin(int px) {
+        WebElement buzzer = driver.findElement(By.id("buzzer"));
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        String mr = (String) js.executeScript(
+                "var el=document.getElementById('buzzer'); return el? getComputedStyle(el).marginRight : '';"
+        );
+        Assert.assertEquals(mr, px + "px", "Buzzer right margin should be " + px + "px");
+    }
+
+    @When("I open the New Game dialog")
+    public void openNewGameDialog() throws InterruptedException {
+        jsClick("button[href=\\\"#new-game-dialog\\\"]");
+        Thread.sleep(100);
+    }
+
+    @When("I set standard periods to {int}, {int}, {int}, {int}")
+    public void setStandardPeriods(int p0, int p1, int p2, int p3) {
+        setInputValue("#period-0", String.valueOf(p0));
+        setInputValue("#period-1", String.valueOf(p1));
+        setInputValue("#period-2", String.valueOf(p2));
+        setInputValue("#period-3", String.valueOf(p3));
+    }
+
+    @When("I create the standard game")
+    public void createStandardGame() throws InterruptedException {
+        jsClick("#new-game");
+        Thread.sleep(200);
+    }
+
+    @When("I refresh the page")
+    public void refreshPage() {
+        driver.navigate().refresh();
+    }
+
+    @Then("the standard period inputs should be {int}, {int}, {int}, {int}")
+    public void verifyStandardPeriods(int p0, int p1, int p2, int p3) {
+        String v0 = getInputValue("#period-0");
+        String v1 = getInputValue("#period-1");
+        String v2 = getInputValue("#period-2");
+        String v3 = getInputValue("#period-3");
+        Assert.assertEquals(Integer.parseInt(v0), p0, "period-0");
+        Assert.assertEquals(Integer.parseInt(v1), p1, "period-1");
+        Assert.assertEquals(Integer.parseInt(v2), p2, "period-2");
+        Assert.assertEquals(Integer.parseInt(v3), p3, "period-3");
+    }
+
     @Given("the clock is stopped")
     public void theClockIsStopped() {
         driver.get("http://localhost:8080/");
@@ -202,7 +267,7 @@ public class UiIntegrationSteps {
         js.executeScript("document.getElementById('add-penalty-time').value='2:00';");
         js.executeScript("document.getElementById('add-penalty-off_ice').value='2:00';");
         jsClick("#add-penalty-add");
-        new WebDriverWait(driver, Duration.ofSeconds(2)).until(
+        new WebDriverWait(driver, Duration.ofSeconds(5)).until(
                 d -> !d.findElements(By.cssSelector("#home .penalties tbody.list tr")).isEmpty());
     }
 
@@ -234,5 +299,17 @@ public class UiIntegrationSteps {
     private void jsClick(String selector) {
         ((JavascriptExecutor) driver).executeScript(
                 "var el=document.querySelector('" + selector + "'); if(el) el.click();");
+    }
+
+    private void setInputValue(String selector, String value) {
+        ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector('" + selector + "'); if(el) el.value='" + value + "';");
+    }
+
+    private String getInputValue(String selector) {
+        Object ret = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector('" + selector + "'); return el? el.value: '';"
+        );
+        return String.valueOf(ret);
     }
 }

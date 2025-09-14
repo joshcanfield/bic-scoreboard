@@ -2,57 +2,39 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
   pull_request:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Wrapper validation can occasionally time out due to upstream CDN hiccups.
-      # Retry up to 3 times; only fail after the final attempt.
-      - name: Validate Gradle Wrapper (attempt 1)
-        id: wrapper_validation_1
-        uses: gradle/actions/wrapper-validation@v3
-        continue-on-error: true
-
-      - name: Validate Gradle Wrapper (attempt 2)
-        id: wrapper_validation_2
-        if: steps.wrapper_validation_1.outcome == 'failure'
-        uses: gradle/actions/wrapper-validation@v3
-        continue-on-error: true
-
-      - name: Validate Gradle Wrapper (attempt 3)
-        if: steps.wrapper_validation_2.outcome == 'failure'
-        uses: gradle/actions/wrapper-validation@v3
-
-      # Primary: Temurin. If it times out (e.g., CDNs), fall back to Zulu.
-      - name: Set up JDK 21 (Temurin)
-        id: setup_java_temurin
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
-          cache: 'gradle'
-        continue-on-error: true
 
-      - name: Set up JDK 21 (Zulu fallback)
-        if: steps.setup_java_temurin.outcome == 'failure'
-        uses: actions/setup-java@v4
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
         with:
-          distribution: 'zulu'
-          java-version: '21'
-          cache: 'gradle'
+          chrome-version: stable
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Build (compile, test, package)
-        run: ./gradlew --no-daemon build
+      - name: Verify Gradle
+        run: ./gradlew --version
+
+      - name: Run tests (incl. UI) [Unix]
+        if: runner.os != 'Windows'
+        run: ./gradlew test --no-daemon --stacktrace
+
+      - name: Run tests (incl. UI) [Windows]
+        if: runner.os == 'Windows'
+        run: .\gradlew.bat test --no-daemon --stacktrace

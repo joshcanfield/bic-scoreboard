@@ -821,6 +821,10 @@ const initEvents = () => {
       else { periods[i] = n; }
     }
     if (error) return;
+    // Persist last used standard settings (period lengths only)
+    try {
+      localStorage.setItem('scoreboard.standard.periods', JSON.stringify(periods));
+    } catch(_) {}
     Server.createGame({ periodLengths: periods });
     Modals.hide($('#new-game-dialog'));
   });
@@ -1140,22 +1144,66 @@ const initEvents = () => {
       periods.push(chunk);
       remaining -= chunk;
     }
+    // Persist last used rec settings (minutes and shift only)
+    try {
+      localStorage.setItem('scoreboard.rec.minutes', String(minutes));
+      localStorage.setItem('scoreboard.rec.shiftEnabled', JSON.stringify(!!shiftEnabled));
+      localStorage.setItem('scoreboard.rec.shiftSeconds', String(getShiftTotal() || lastShiftNonZero || 0));
+    } catch(_) {}
     Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: periods });
     Modals.hide($('#new-game-dialog'));
   });
 
   // Clean errors when opening dialogs
-  on(document, 'click', 'a[href="#new-game-dialog"][data-toggle="modal"]', () => {
+  on(document, 'click', '[data-toggle="modal"][href="#new-game-dialog"]', () => {
     $$('#new-game-dialog .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
-    // Reset Rec defaults each time the dialog opens: choose ~90 minutes from now (rounded to 5)
-    const now = new Date();
-    const target = roundToNearestFive(new Date(now.getTime() + 90*60000));
-    populateEndsOptions(target);
-    setMinutesFromEnds();
-    updateRecHelper();
-    updateDivisibleHint();
-    updateSplitHint();
-    updateLastBuzzerHint();
+    // Load last-used settings from localStorage if available
+
+    // Standard periods
+    try {
+      const raw = localStorage.getItem('scoreboard.standard.periods');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          for (let i=0;i<=3;i++) {
+            const field = document.getElementById(`period-${i}`);
+            if (field && typeof arr[i] === 'number') field.value = String(arr[i]);
+          }
+        }
+      }
+    } catch(_) {}
+
+    // Rec: minutes and shift settings (do not restore endsAt; ends derives from minutes)
+    (function loadRec(){
+      let minutes = '';
+      let shiftSecs = '';
+      let shiftEn = null;
+      try {
+        minutes = localStorage.getItem('scoreboard.rec.minutes') || '';
+        shiftSecs = localStorage.getItem('scoreboard.rec.shiftSeconds') || '';
+        const se = localStorage.getItem('scoreboard.rec.shiftEnabled');
+        if (se != null) shiftEn = JSON.parse(se);
+      } catch(_) {}
+      // Populate options around now, then set ends from minutes if present
+      const now = new Date();
+      const defaultTarget = roundToNearestFive(new Date(now.getTime() + 90*60000));
+      populateEndsOptions(defaultTarget);
+      if (minutes && recMinutesField) {
+        recMinutesField.value = String(parseInt(minutes,10) || 0);
+        setEndsFromMinutes(); // endsAt = now + minutes
+      } else {
+        setMinutesFromEnds(); // keep defaults
+      }
+      // Apply shift
+      const secs = parseInt(shiftSecs || '0', 10) || 0;
+      if (shiftEn === false) { shiftEnabled = false; }
+      if (secs > 0) setShiftTotal(secs);
+      updateShiftDisabledUI();
+      updateRecHelper();
+      updateDivisibleHint();
+      updateSplitHint();
+      updateLastBuzzerHint();
+    })();
   });
 
   // Penalty dialog open
