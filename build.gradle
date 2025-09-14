@@ -20,7 +20,7 @@ java {
 
 description = "Bremerton Ice Arena ScoreBoard"
 group = "canfield.josh"
-version = "1.1"
+version = "2.0"
 
 application {
     mainClass = 'canfield.bia.ServiceMain'
@@ -118,6 +118,13 @@ distributions {
     }
 }
 
+// Disable legacy zip/tar distributions; prefer jpackage app-image
+gradle.afterProject {
+    tasks.matching { it.name in [
+            'distZip','distTar','shadowDistZip','shadowDistTar','startShadowScripts'
+    ] }.configureEach { enabled = false }
+}
+
 test {
     useTestNG()
 
@@ -149,6 +156,13 @@ tasks.register('jpackageFullJre', Exec) {
     dependsOn tasks.named('shadowJar')
 
     doFirst {
+        // Normalize version for Windows FILEVERSION (requires 3-4 numeric parts)
+        def rawVersion = project.version.toString()
+        def parts = rawVersion.tokenize('.')
+        while (parts.size() < 3) { parts << '0' }
+        if (parts.size() > 4) { parts = parts.take(4) }
+        def winVersion = parts.join('.')
+
         def javaHome = System.getenv('JAVA_HOME')
         if (!javaHome) {
             throw new GradleException('JAVA_HOME must be set to a JDK 21 path for jpackageFullJre.')
@@ -173,17 +187,13 @@ tasks.register('jpackageFullJre', Exec) {
         commandLine('jpackage',
                 '--type', 'app-image',
                 '--name', 'scoreboard',
-                '--app-version', project.version.toString(),
                 '--vendor', 'Bremerton Ice Arena',
                 '--input', libsDir.absolutePath,
                 '--main-jar', mainJar,
                 '--main-class', application.mainClass.get(),
                 '--runtime-image', javaHome,
-                '--resource-dir', resourceDirPath,
                 '--java-options', '-Dscoreboard.showDialog=true',
                 '--icon', iconPath,
-                '--arguments', 'start',
-                '--win-console',
                 '--dest', destDir.absolutePath
         )
     }
@@ -199,6 +209,92 @@ tasks.register('jpackageFullJre', Exec) {
     }
 }
 
+// Zip the jpackage app-image for distribution
+tasks.register('appImageZip', Zip) {
+    group = 'distribution'
+    description = 'Creates a zip of the jpackage app-image for handoff.'
+    dependsOn tasks.named('jpackageFullJre')
+
+    from(layout.buildDirectory.dir('jpackage/scoreboard'))
+    archiveFileName.set("scoreboard-${project.version}-app-image.zip")
+    destinationDirectory.set(layout.buildDirectory.dir('artifacts'))
+}
+
+// Run UI tests against the packaged executable (app-image)
+tasks.register('uiTestPackaged', Test) {
+    group = 'verification'
+    description = 'Runs Cucumber UI tests against the packaged app-image.'
+
+    useTestNG()
+    shouldRunAfter tasks.named('test')
+    dependsOn tasks.named('jpackageFullJre')
+
+    // Only run the UI integration tests
+    filter {
+        includeTestsMatching 'canfield.bia.UiIntegrationTest'
+    }
+
+    // Keep a handle to the external process
+    def procRef = [null]
+
+    doFirst {
+        def appDir = layout.buildDirectory.dir('jpackage/scoreboard').get().asFile
+        def exe = new File(appDir, 'scoreboard.exe')
+        if (!exe.exists()) {
+            throw new GradleException("Packaged executable not found: ${exe}")
+        }
+
+        logger.lifecycle("Starting packaged scoreboard: ${exe}")
+        def pb = new ProcessBuilder(exe.absolutePath)
+        pb.directory(appDir)
+        pb.redirectErrorStream(true)
+        // Inherit environment; ensure headless behavior by default
+        pb.environment().put('JAVA_TOOL_OPTIONS', (pb.environment().get('JAVA_TOOL_OPTIONS') ?: '') + ' -Djava.awt.headless=true')
+        def p = pb.start()
+        procRef[0] = p
+
+        // Async reader to avoid process blocking on output buffer
+        Thread.startDaemon('scoreboard-stdout') {
+            p.inputStream.withReader { it.eachLine { /* swallow */ } }
+        }
+
+        // Wait for server readiness
+        def url = new URL('http://localhost:8080/')
+        long deadline = System.currentTimeMillis() + 30000
+        boolean up = false
+        while (System.currentTimeMillis() < deadline && !up) {
+            try {
+                def conn = url.openConnection()
+                conn.setConnectTimeout(500)
+                conn.setReadTimeout(500)
+                conn.getInputStream().close()
+                up = true
+            } catch (IOException ignored) {
+                Thread.sleep(200)
+            }
+        }
+        if (!up) {
+            // If it failed to start, dump a hint and abort
+            try { p.destroyForcibly() } catch (Throwable ignored) {}
+            throw new GradleException('Server failed to start on http://localhost:8080 within 30s')
+        }
+        logger.lifecycle('Packaged server is up on http://localhost:8080')
+    }
+
+    doLast {
+        def p = procRef[0]
+        if (p != null) {
+            logger.lifecycle('Stopping packaged scoreboard process')
+            try {
+                p.destroy()
+                if (!p.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                    p.destroyForcibly()
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
+}
+
 // Create a trimmed runtime image and a Windows installer/app image via jpackage
 jlink {
     imageName = 'scoreboard'
@@ -208,7 +304,44 @@ jlink {
         name = 'scoreboard'
         // Default CLI args for launching the app
         args = ['start']
+}
+
+// Stop any running packaged scoreboard app-image processes
+tasks.register('stopPackaged') {
+    group = 'application'
+    description = 'Stops running scoreboard.exe processes from the packaged app-image in build/jpackage.'
+
+    doLast {
+        def appDir = layout.buildDirectory.dir('jpackage/scoreboard').get().asFile
+        def appRoot = appDir.absolutePath.replace('\\','/').toLowerCase()
+        def pids = [] as Set
+        ProcessHandle.allProcesses().forEach { ph ->
+            try {
+                def info = ph.info()
+                def cmd = info.command().orElse("")
+                def cmdLine = info.commandLine().orElse("")
+                def cmdL = cmd.replace('\\','/').toLowerCase()
+                def clL = cmdLine.replace('\\','/').toLowerCase()
+                boolean match = false
+                if (cmdL.endsWith('/scoreboard.exe') && cmdL.contains(appRoot)) match = true
+                if (!match && clL.contains(appRoot)) match = true
+                if (!match && clL.contains('scoreboard-') && clL.contains('-all.jar')) match = true
+                if (match) {
+                    // Try graceful then forceful termination
+                    try { if (ph.supportsNormalTermination()) ph.destroy() } catch (Throwable ignored) {}
+                    try { ph.onExit().get(2, java.util.concurrent.TimeUnit.SECONDS) } catch (Throwable ignored) {}
+                    try { if (ph.isAlive()) ph.destroyForcibly() } catch (Throwable ignored) {}
+                    pids.add(ph.pid())
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (pids.isEmpty()) {
+            logger.lifecycle('No packaged scoreboard process found to stop.')
+        } else {
+            logger.lifecycle("Stopped packaged scoreboard processes: ${pids}")
+        }
     }
+}
 
     // Keep default merged-module behavior, but we will provide a fallback task
     // below that uses the full JRE if needed.

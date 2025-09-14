@@ -195,22 +195,28 @@ public class ServiceMain {
     }
 
     private static void requestExit() {
-        // Start watchdog before initiating shutdown
-        try {
-            if (hockeyGameServer != null) hockeyGameServer.stop();
-        } catch (Exception ignored) {}
-        try {
-            if (startupFrame != null) startupFrame.dispose();
-        } catch (Exception ignored) {}
-        try { disposeAllWindows(); } catch (Exception ignored) {}
-        try {
-            ch.qos.logback.classic.LoggerContext ctx =
-                    (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
-            ctx.stop();
-        } catch (Throwable ignored) {}
+        // Perform shutdown and exit off the EDT to avoid blocking UI
+        Thread exitThread = new Thread(() -> {
+            try { if (hockeyGameServer != null) hockeyGameServer.stop(); } catch (Exception ignored) {}
+            try { if (startupFrame != null) startupFrame.dispose(); } catch (Exception ignored) {}
+            try { disposeAllWindows(); } catch (Exception ignored) {}
+            try {
+                ch.qos.logback.classic.LoggerContext ctx =
+                        (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+                ctx.stop();
+            } catch (Throwable ignored) {}
+            System.exit(0);
+        }, "exit-invoker");
+        exitThread.setDaemon(false);
+        exitThread.start();
 
-        // Call System.exit off the EDT to avoid blocking UI thread while hooks run
-        new Thread(() -> System.exit(0), "exit-invoker").start();
+        // Watchdog to forcefully terminate the process if it doesn't exit promptly
+        Thread watchdog = new Thread(() -> {
+            try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+            try { Runtime.getRuntime().halt(0); } catch (Throwable ignored) {}
+        }, "exit-watchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
     }
 
     private static void disposeAllWindows() {
