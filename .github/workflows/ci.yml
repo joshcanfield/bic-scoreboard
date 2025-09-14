@@ -34,6 +34,18 @@ jobs:
       - name: Run tests (incl. UI)
         run: .\gradlew.bat test --no-daemon --stacktrace
 
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.run_id }}
+          path: |
+            build/reports/**
+            build/test-results/**
+            build/logs/**
+          if-no-files-found: warn
+          retention-days: 7
+
   package-app-image:
     needs: build-and-test
     runs-on: windows-latest
