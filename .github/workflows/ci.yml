@@ -64,7 +64,7 @@ jobs:
       - name: Upload app image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: scoreboard-app-image-${{ github.ref_name }}-${{ github.sha }}
+          name: scoreboard-app-image-${{ replace(github.ref_name, '/', '-') }}-${{ github.sha }}
           path: build/artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
