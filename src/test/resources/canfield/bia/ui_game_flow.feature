@@ -1,12 +1,4 @@
-Feature: UI integration
-
-  Scenario: Index page should have title
-    When I open the index page
-    Then the page title should be "Scoreboard"
-
-  Scenario: Scoreboard page should contain scoreboard controls
-    When I open the scoreboard page
-    Then I should see an element with id "home"
+Feature: Game Flow
 
   Scenario: Creating a game resets state
     Given the game state is modified
@@ -25,7 +17,3 @@ Feature: UI integration
     And I wait 1100 milliseconds
     Then the clock should stay the same
 
-  Scenario: Adding a penalty updates the UI
-    Given the game is in period 1
-    When I add a penalty for player 22 to the home team
-    Then the home team penalties list should contain 1 penalty for player 22

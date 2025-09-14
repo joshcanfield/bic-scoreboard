@@ -33,6 +33,7 @@ public class GameApplication extends Application {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // jakarta.ws.rs.core.Application#getSingletons is deprecated in JAX-RS 3.1+
     public Set<Object> getSingletons() {
         if (gameResource == null) {
             ObjectGraph graph = getObjectGraph();

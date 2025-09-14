@@ -479,6 +479,116 @@ const beginPortStepper = async () => {
 
 // ---------- Wire up events ----------
 const initEvents = () => {
+  // Team color chips + modal palettes
+  // Presets: rainbow + black and white
+  // red, orange, yellow, green, blue, indigo, violet, plus black and white
+  const DEFAULT_COLORS = ['#000000','#ffffff','#e74c3c','#f39c12','#f1c40f','#2ecc71','#3498db','#3f51b5','#9b59b6'];
+  const LS_HOME = 'scoreboard.homeColor';
+  const LS_AWAY = 'scoreboard.awayColor';
+  const colorKeyForVar = (cssVarName) => cssVarName === '--home-color' ? LS_HOME : LS_AWAY;
+  const sanitizeHex = (val) => (typeof val === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(val.trim())) ? val.trim() : '';
+  const getCssVar = (name, fallback) => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (v && v.trim()) || fallback || '';
+  };
+  const relLuminance = (hex) => {
+    const h = hex.replace('#','');
+    const v = h.length === 3 ? h.split('').map(c=>c+c).join('') : h;
+    const r = parseInt(v.slice(0,2),16)/255, g = parseInt(v.slice(2,4),16)/255, b = parseInt(v.slice(4,6),16)/255;
+    const toLin = (c) => (c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+    const R = toLin(r), G = toLin(g), B = toLin(b);
+    return 0.2126*R + 0.7152*G + 0.0722*B;
+  };
+  const applyColor = (cssVarName, color) => {
+    const c = sanitizeHex(color);
+    if (!c) return;
+    document.documentElement.style.setProperty(cssVarName, c);
+    // set contrasting foreground var
+    const fg = relLuminance(c) < 0.5 ? '#ffffff' : '#101218';
+    const fgVar = cssVarName === '--home-color' ? '--home-fg' : '--away-fg';
+    document.documentElement.style.setProperty(fgVar, fg);
+    // persist
+    try { localStorage.setItem(colorKeyForVar(cssVarName), c); } catch (_) {}
+    // refresh chips
+    updateColorChips();
+  };
+  const updateColorChips = () => {
+    const hc = document.getElementById('home-color-chip');
+    const ac = document.getElementById('away-color-chip');
+    const hCol = getCssVar('--home-color', '#2e86de');
+    const aCol = getCssVar('--away-color', '#e74c3c');
+    if (hc) { hc.style.background = hCol; hc.style.backgroundColor = hCol; hc.title = `Home ${hCol}`; }
+    if (ac) { ac.style.background = aCol; ac.style.backgroundColor = aCol; ac.title = `Away ${aCol}`; }
+  };
+  const loadStoredTeamColors = () => {
+    try {
+      const h = sanitizeHex(localStorage.getItem(LS_HOME));
+      const a = sanitizeHex(localStorage.getItem(LS_AWAY));
+      if (h) applyColor('--home-color', h); else applyColor('--home-color', getCssVar('--home-color', '#2e86de'));
+      if (a) applyColor('--away-color', a); else applyColor('--away-color', getCssVar('--away-color', '#e74c3c'));
+    } catch (_) {}
+  };
+
+  const renderPalette = (containerId, cssVarName, inputId) => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    const current = getCssVar(cssVarName);
+    DEFAULT_COLORS.forEach((color) => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'color-swatch' + (color.toLowerCase() === (current||'').toLowerCase() ? ' selected' : '');
+      sw.style.backgroundColor = color;
+      sw.title = color;
+      sw.setAttribute('aria-label', color);
+       sw.addEventListener('click', () => {
+         applyColor(cssVarName, color);
+         // update selection state
+         [...el.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
+         sw.classList.add('selected');
+        // sync input
+        if (inputId) {
+          const input = document.getElementById(inputId); if (input) input.value = color;
+        }
+       });
+       el.appendChild(sw);
+     });
+   };
+  // Open Team Colors modal and render palettes (support anchors or buttons)
+  on(document, 'click', '[data-toggle="modal"][href="#team-colors"]', (e, t) => {
+    // Initialize inputs from current CSS vars
+    const hc = document.getElementById('home-color-input');
+    const ac = document.getElementById('away-color-input');
+    if (hc) hc.value = getCssVar('--home-color', sanitizeHex(localStorage.getItem(LS_HOME)) || '#2e86de');
+    if (ac) ac.value = getCssVar('--away-color', sanitizeHex(localStorage.getItem(LS_AWAY)) || '#e74c3c');
+    // Render swatches
+    renderPalette('home-color-palette', '--home-color', 'home-color-input');
+    renderPalette('away-color-palette', '--away-color', 'away-color-input');
+    // Focus the relevant input if chip used
+    const team = t && t.id && t.id.indexOf('home') >= 0 ? 'home' : (t && t.id && t.id.indexOf('away') >= 0 ? 'away' : '');
+    setTimeout(() => {
+      if (team === 'home' && hc) hc.focus();
+      if (team === 'away' && ac) ac.focus();
+    }, 0);
+  });
+
+  // Bind native color inputs to CSS vars and chips
+  const bindColorInput = (inputId, cssVarName, paletteId) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const val = input.value;
+      if (val) applyColor(cssVarName, val);
+      // clear selection highlight when picking custom
+      const pal = document.getElementById(paletteId);
+      if (pal) [...pal.querySelectorAll('.color-swatch')].forEach(n => n.classList.remove('selected'));
+    });
+  };
+  bindColorInput('home-color-input', '--home-color', 'home-color-palette');
+  bindColorInput('away-color-input', '--away-color', 'away-color-palette');
+  // Load stored colors then paint chips
+  loadStoredTeamColors();
+  updateColorChips();
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
   $('#clock-start').addEventListener('click', () => Server.startClock());
@@ -711,6 +821,10 @@ const initEvents = () => {
       else { periods[i] = n; }
     }
     if (error) return;
+    // Persist last used standard settings (period lengths only)
+    try {
+      localStorage.setItem('scoreboard.standard.periods', JSON.stringify(periods));
+    } catch(_) {}
     Server.createGame({ periodLengths: periods });
     Modals.hide($('#new-game-dialog'));
   });
@@ -1030,22 +1144,66 @@ const initEvents = () => {
       periods.push(chunk);
       remaining -= chunk;
     }
+    // Persist last used rec settings (minutes and shift only)
+    try {
+      localStorage.setItem('scoreboard.rec.minutes', String(minutes));
+      localStorage.setItem('scoreboard.rec.shiftEnabled', JSON.stringify(!!shiftEnabled));
+      localStorage.setItem('scoreboard.rec.shiftSeconds', String(getShiftTotal() || lastShiftNonZero || 0));
+    } catch(_) {}
     Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: periods });
     Modals.hide($('#new-game-dialog'));
   });
 
   // Clean errors when opening dialogs
-  on(document, 'click', 'a[href="#new-game-dialog"][data-toggle="modal"]', () => {
+  on(document, 'click', '[data-toggle="modal"][href="#new-game-dialog"]', () => {
     $$('#new-game-dialog .modal-body .form-group').forEach(g => g.classList.remove('has-error'));
-    // Reset Rec defaults each time the dialog opens: choose ~90 minutes from now (rounded to 5)
-    const now = new Date();
-    const target = roundToNearestFive(new Date(now.getTime() + 90*60000));
-    populateEndsOptions(target);
-    setMinutesFromEnds();
-    updateRecHelper();
-    updateDivisibleHint();
-    updateSplitHint();
-    updateLastBuzzerHint();
+    // Load last-used settings from localStorage if available
+
+    // Standard periods
+    try {
+      const raw = localStorage.getItem('scoreboard.standard.periods');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          for (let i=0;i<=3;i++) {
+            const field = document.getElementById(`period-${i}`);
+            if (field && typeof arr[i] === 'number') field.value = String(arr[i]);
+          }
+        }
+      }
+    } catch(_) {}
+
+    // Rec: minutes and shift settings (do not restore endsAt; ends derives from minutes)
+    (function loadRec(){
+      let minutes = '';
+      let shiftSecs = '';
+      let shiftEn = null;
+      try {
+        minutes = localStorage.getItem('scoreboard.rec.minutes') || '';
+        shiftSecs = localStorage.getItem('scoreboard.rec.shiftSeconds') || '';
+        const se = localStorage.getItem('scoreboard.rec.shiftEnabled');
+        if (se != null) shiftEn = JSON.parse(se);
+      } catch(_) {}
+      // Populate options around now, then set ends from minutes if present
+      const now = new Date();
+      const defaultTarget = roundToNearestFive(new Date(now.getTime() + 90*60000));
+      populateEndsOptions(defaultTarget);
+      if (minutes && recMinutesField) {
+        recMinutesField.value = String(parseInt(minutes,10) || 0);
+        setEndsFromMinutes(); // endsAt = now + minutes
+      } else {
+        setMinutesFromEnds(); // keep defaults
+      }
+      // Apply shift
+      const secs = parseInt(shiftSecs || '0', 10) || 0;
+      if (shiftEn === false) { shiftEnabled = false; }
+      if (secs > 0) setShiftTotal(secs);
+      updateShiftDisabledUI();
+      updateRecHelper();
+      updateDivisibleHint();
+      updateSplitHint();
+      updateLastBuzzerHint();
+    })();
   });
 
   // Penalty dialog open

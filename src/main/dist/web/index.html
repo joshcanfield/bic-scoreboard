@@ -32,6 +32,12 @@
           </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
+          <li class="navbar-form" role="form" style="display:flex;align-items:center;gap:10px;margin-right:10px;">
+            <span class="team-chip-label">Home</span>
+            <button type="button" href="#team-colors" data-toggle="modal" id="home-color-chip" class="color-chip" aria-label="Edit Home color" title="Home color"></button>
+            <span class="team-chip-label">Away</span>
+            <button type="button" href="#team-colors" data-toggle="modal" id="away-color-chip" class="color-chip" aria-label="Edit Away color" title="Away color"></button>
+          </li>
           <li><button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button></li>
           <li>
             <button type="button" data-toggle="modal" href="#new-game-dialog" class="btn btn-primary navbar-btn">New Game</button>
@@ -47,18 +53,16 @@
 
       <div class="metrics">
         <div class="score">
-          <div class="section-label">Score</div>
           <div class="digits">
             <div id="home-score" class="score-text">00</div>
           </div>
           <div class="btn-row">
-            <button data-team="home" class="score-down btn btn-danger btn-sm">-</button>
+            <button data-team="home" class="score-down btn btn-default btn-sm">-</button>
             <button data-team="home" class="score-up btn btn-primary btn-lg">+Goal</button>
           </div>
         </div>
 
         <div class="shots" aria-label="Home shots on goal">
-          <div class="section-label">Shots</div>
           <div id="home-shots" class="shots-counter">0</div>
           <div class="btn-row">
             <button data-team="home" class="shots-down btn btn-default btn-sm">-</button>
@@ -68,7 +72,7 @@
       </div>
 
       <div class="penalties">
-        <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">Penalty</a>
+        <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">+Penalty</a>
         <table class="table table-condensed">
           <tr>
             <th>Period</th><th>Player #</th><th>Remaining</th><th>&nbsp;</th>
@@ -100,10 +104,9 @@
       </div>
 
       <div id="period-block">
-        <span>Period</span>
         <div id="period"><div class="digits"><div class="digit">0</div></div></div>
-        <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-plus"></span></a>
         <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-minus"></span></a>
+        <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-plus"></span></a>
       </div>
     </div>
 
@@ -111,17 +114,15 @@
       <h2>Away</h2>
       <div class="metrics">
         <div class="score">
-          <div class="section-label">Score</div>
           <div class="digits">
             <div id="away-score" class="score-text">00</div>
           </div>
           <div class="btn-row">
             <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
-            <button data-team="away" class="score-down btn btn-danger btn-sm">-</button>
+            <button data-team="away" class="score-down btn btn-default btn-sm">-</button>
           </div>
         </div>
         <div class="shots" aria-label="Away shots on goal">
-          <div class="section-label">Shots</div>
           <div id="away-shots" class="shots-counter">0</div>
           <div class="btn-row">
             <button data-team="away" class="shots-up btn btn-info">+Shot</button>
@@ -131,7 +132,7 @@
       </div>
 
       <div class="penalties">
-        <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">Penalty</a>
+        <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">+Penalty</a>
         <table class="table table-condensed">
           <tr>
             <th>Period</th><th>Player #</th><th>Remaining</th><th>&nbsp;</th>
@@ -434,6 +435,38 @@
     </div>
   </div>
 </div>
+
+<!-- Team Colors modal -->
+<div class="modal fade" id="team-colors">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Team Colors</h4>
+        <p class="help-block" style="margin:0">Choose a preset or pick a custom color.</p>
+      </div>
+      <div class="modal-body">
+        <div class="row" style="display:flex; gap:16px;">
+          <div class="col-sm-6">
+            <label class="control-label" style="display:block; margin-bottom:6px;">Home</label>
+            <div id="home-color-palette" class="color-palette" aria-label="Home colors" style="margin-bottom:8px"></div>
+            <input id="home-color-input" type="color" value="#2e86de" title="Home custom color" class="form-control input-sm" style="max-width:140px"/>
+          </div>
+          <div class="col-sm-6">
+            <label class="control-label" style="display:block; margin-bottom:6px;">Away</label>
+            <div id="away-color-palette" class="color-palette" aria-label="Away colors" style="margin-bottom:8px"></div>
+            <input id="away-color-input" type="color" value="#e74c3c" title="Away custom color" class="form-control input-sm" style="max-width:140px"/>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Team Colors modal removed in favor of inline header palettes -->
 
 </body>
 </html>

@@ -1,5 +1,7 @@
 # Bremerton Ice Arena Scoreboard
 
+[![CI](https://github.com/joshcanfield/bic-scoreboard/actions/workflows/ci.yml/badge.svg)](https://github.com/joshcanfield/bic-scoreboard/actions/workflows/ci.yml)
+
 This repository contains the Bremerton Ice Arena Scoreboard application.
 
 ## How It Works
