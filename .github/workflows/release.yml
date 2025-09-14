@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release-windows:
+    name: Build (Windows) and Publish Release
+    runs-on: windows-latest
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.configureondemand=true -Dorg.gradle.parallel=true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Verify Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Build distribution artifacts (skip tests)
+        shell: pwsh
+        run: |
+          ./gradlew.bat --version
+          ./gradlew.bat clean shadowJar jpackageFullJre appImageZip -x test --no-daemon --stacktrace
+
+      - name: Collect artifacts
+        id: artifacts
+        shell: pwsh
+        run: |
+          Write-Host "Listing built files:"
+          Get-ChildItem -Force build/libs -ErrorAction SilentlyContinue | Format-List || $true
+          Get-ChildItem -Force build/jpackage -ErrorAction SilentlyContinue | Format-List || $true
+          Get-ChildItem -Force build/artifacts -ErrorAction SilentlyContinue | Format-List || $true
+          $jar_all = (Get-ChildItem build/libs -Filter *-all.jar -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) -join ' '
+          $app_zip = (Get-ChildItem build/artifacts -Filter *.zip -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) -join ' '
+          $installer = (Get-ChildItem build/jpackage -Filter *.exe -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) -join ' '
+          "jar_all=$jar_all" >> $env:GITHUB_OUTPUT
+          "app_zip=$app_zip" >> $env:GITHUB_OUTPUT
+          "installer=$installer" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.artifacts.outputs.jar_all }}
+            ${{ steps.artifacts.outputs.app_zip }}
+            ${{ steps.artifacts.outputs.installer }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
