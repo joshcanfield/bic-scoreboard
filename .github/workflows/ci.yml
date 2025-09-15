@@ -70,10 +70,16 @@ jobs:
       - name: Build app image zip
         run: .\gradlew.bat appImageZip --no-daemon --stacktrace
 
+      - name: Sanitize ref name for artifact
+        shell: pwsh
+        run: |
+          $safe = $env:GITHUB_REF_NAME -replace '/', '-'
+          echo "REF_SAFE=$safe" >> $env:GITHUB_ENV
+
       - name: Upload app image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: scoreboard-app-image-${{ replace(github.ref_name, '/', '-') }}-${{ github.sha }}
+          name: scoreboard-app-image-${{ env.REF_SAFE }}-${{ github.sha }}
           path: build/artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
