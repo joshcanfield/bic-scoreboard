@@ -32,7 +32,11 @@ jobs:
         run: .\gradlew.bat --version
 
       - name: Run tests (incl. UI)
-        run: .\gradlew.bat test --no-daemon --stacktrace
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          .\gradlew.bat test --no-daemon --stacktrace --info *>&1 | Tee-Object -FilePath build\ci-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload test reports
         if: always()
@@ -43,6 +47,7 @@ jobs:
             build/reports/**
             build/test-results/**
             build/logs/**
+            build/ci-test.log
           if-no-files-found: warn
           retention-days: 7
 
