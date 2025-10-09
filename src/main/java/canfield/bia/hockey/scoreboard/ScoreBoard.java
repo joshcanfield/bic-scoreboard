@@ -44,7 +44,21 @@ public interface ScoreBoard {
 
     void advancePeriod();
 
+    int getLastPeriodNumber();
+
     void addListener(EventListener listener);
+
+    GameState getGameState();
+
+    void setGameState(GameState state);
+
+    enum GameState {
+        PRE_GAME,
+        IN_PROGRESS,
+        INTERMISSION,
+        READY_FOR_PERIOD,
+        GAME_OVER
+    }
 
     enum EventType {
         tick, end_of_period, buzzer

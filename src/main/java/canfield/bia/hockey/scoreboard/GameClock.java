@@ -49,7 +49,7 @@ public class GameClock implements Clock {
       long now = System.currentTimeMillis();
       int elapsed = (int) (now - clockStartMillis);
       final int actualRemaining = timeRemainingMillis - elapsed;
-      return actualRemaining < 0 ? 0 : actualRemaining;
+      return Math.max(actualRemaining, 0);
     }
     return timeRemainingMillis;
   }
@@ -82,6 +82,7 @@ public class GameClock implements Clock {
     long now = System.currentTimeMillis();
     long elapsed = now - clockStartMillis;
     clockStartMillis = 0;
+    // TODO fix this potential overflow
     timeRemainingMillis -= elapsed;
     if (timeRemainingMillis < 0) {
       timeRemainingMillis = 0;

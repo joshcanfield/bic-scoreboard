@@ -5,6 +5,8 @@ import canfield.bia.hockey.SimpleGameManager;
 import canfield.bia.hockey.Team;
 
 import javax.inject.Inject;
+
+import canfield.bia.hockey.scoreboard.ScoreBoard.GameState;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -33,14 +35,24 @@ public class GameResource {
   @GET
   @Path("/")
   public Response get() {
-    final HashMap<String, Object> state = new HashMap<String, Object>();
+    final HashMap<String, Object> state = new HashMap<>();
+
     state.put("time", game.getRemainingTimeMillis());
     state.put("running", game.isClockRunning());
     state.put("period", game.getPeriod());
     state.put("scoreboardOn", game.updatesRunning());
 
+    GameState gameState = game.getScoreBoard().getGameState();
+    state.put("gameState", gameState);
+
+    int periodLength = (gameState == GameState.INTERMISSION)
+        ? game.getIntermissionDurationMinutes()
+        : game.getPeriodLength();
+    state.put("periodLength", periodLength);
+
+
     for (Team team : Team.values()) {
-      final HashMap<String, Object> o = new HashMap<String, Object>();
+      final HashMap<String, Object> o = new HashMap<>();
       o.put("score", game.getScore(team));
       o.put("penalties", game.getPenalties(team));
       o.put("shots", game.getShots(team));

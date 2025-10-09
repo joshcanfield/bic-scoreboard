@@ -18,7 +18,8 @@ import javax.inject.Singleton;
         ScoreboardAdapterImpl.class,
         ScoreBoardImpl.class,
         GameResource.class,
-        HockeyGameServer.class
+        HockeyGameServer.class,
+        SimpleGameManager.class
     }
 )
 public class SimpleGameModule {
@@ -27,6 +28,16 @@ public class SimpleGameModule {
     @Singleton
     AppConfig provideAppConfig() {
         return new AppConfig();
+    }
+
+    @Provides
+    @Singleton
+    GameConfig provideGameConfig() {
+        // TODO: Load this from a config file
+        GameConfig config = new GameConfig();
+        // Default to 1 minute intermission; 0 disables intermission entirely
+        config.setIntermissionDurationMinutes(1);
+        return config;
     }
 
     @Provides
@@ -47,5 +58,11 @@ public class SimpleGameModule {
     NativeWebSocketServer provideNativeWebSocketServer(SimpleGameManager manager) {
         int port = Integer.parseInt(System.getProperty("ws.port", "8082"));
         return new NativeWebSocketServer(manager, port);
+    }
+
+    @Provides
+    @Singleton
+    SimpleGameManager provideSimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter, AppConfig appConfig, GameConfig gameConfig) {
+        return new SimpleGameManager(scoreBoard, scoreboardAdapter, appConfig, gameConfig);
     }
 }

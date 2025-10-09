@@ -16,6 +16,11 @@ public class GameConfig {
   private List<Integer> periodLengths;
 
   /**
+   * Length of the intermission in minutes.
+   */
+  private Integer intermissionDurationMinutes;
+
+  /**
    * Shift buzzer for rec games
    */
   private Integer buzzerIntervalSeconds;
@@ -34,6 +39,14 @@ public class GameConfig {
 
   public void setPeriodLengths(List<Integer> periodLengths) {
     this.periodLengths = periodLengths;
+  }
+
+  public Integer getIntermissionDurationMinutes() {
+    return intermissionDurationMinutes;
+  }
+
+  public void setIntermissionDurationMinutes(Integer intermissionDurationMinutes) {
+    this.intermissionDurationMinutes = intermissionDurationMinutes;
   }
 
   public boolean isStopClock() {

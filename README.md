@@ -1,109 +1,52 @@
-# Bremerton Ice Arena Scoreboard
+# BIC Scoreboard
 
-[![CI](https://github.com/joshcanfield/bic-scoreboard/actions/workflows/ci.yml/badge.svg)](https://github.com/joshcanfield/bic-scoreboard/actions/workflows/ci.yml)
+This project provides a local service and web UI for operating a hockey scoreboard, with REST and WebSocket control surfaces and end‑to‑end UI tests.
 
-This repository contains the Bremerton Ice Arena Scoreboard application.
+## Build, Run, and Test
 
-## How It Works
+- Build: `./gradlew build`
+- Run locally: `./gradlew run` (working dir `src/main/dist`, default args `start`)
+- Tests: `./gradlew test`
+- Clean: `./gradlew clean`
 
-The scoreboard server manages game state for hockey matches and communicates with
-both hardware and browser clients:
+Java 21 is required. The repo ships a tools JDK for convenience on some machines, but you can also use a system JDK 21.
 
-* **Jetty + RESTEasy** expose a REST API on port `8080` for querying and
-  updating the game clock, scores, penalties, and buzzer.
-* Native WebSocket server on port `8082` pushes
-  real‑time score and clock updates to connected web clients.
-* **PureJavaComm** connects to the physical scoreboard over a serial port so
-  on-ice displays mirror the server state.
-* **Dagger** wires these components together and produces singletons for the
-  scoreboard state and services.
+## Test Environment (Windows/WSL and Linux)
 
-## Technologies
+UI tests use Selenium with headless Chrome. For a smooth setup:
 
-The project is written in **Java 21** and built with **Gradle**. It also uses:
+- Preferred: install Google Chrome and let WebDriverManager manage Chromedriver.
+  - Linux/WSL (Ubuntu):
+    - Add Google repo and install Chrome (one‑time):
+      - `sudo install -d -m 0755 /etc/apt/keyrings`
+      - `curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-linux-signing-keyring.gpg`
+      - `echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null`
+      - `sudo apt-get update && sudo apt-get install -y google-chrome-stable`
+- JDK 21: either use your system JDK 21 or the bundled tools JDK.
 
-* **Joda-Time** for time calculations
-* **SLF4J/Logback** for logging
-* **TestNG** and **Mockito** for testing
+### Running tests on WSL/Linux
 
-## Building
+Option A (with system JDK 21 on PATH):
 
-Use the Gradle wrapper to build the project:
+- Ensure Java 21 is available: `sudo apt-get install -y openjdk-21-jdk-headless`
+- Run tests: `./gradlew --no-daemon test`
 
-```sh
-./gradlew build
-```
+Option B (using bundled tools JDK):
 
-## Testing
+- Use helper script `scripts/test-wsl.sh` which:
+  - Prepends `tools/temurin-21/jdk-21.0.8+9/bin` to PATH
+  - Unsets `JAVA_HOME`
+  - Runs `./gradlew --no-daemon test`
 
-Run the test suite with:
+### Notes
 
-```sh
-./gradlew test
-```
+- Do not set `JAVA_HOME` when invoking the Gradle wrapper in WSL if it points to a Windows path; prefer putting the desired JDK first on `PATH`.
+- WebDriverManager in `UiHooks` automatically provisions a matching Chromedriver for the installed Chrome and respects proxy settings via `https_proxy`.
+- Headless flags are configured for CI/containers/WSL: `--headless=new --no-sandbox --disable-dev-shm-usage`.
 
-## Running
+## Intermission Configuration
 
-Start the scoreboard service:
-
-```sh
-./gradlew run --args 'start'
-```
-
-Default ports and endpoints:
-
-- HTTP API and static files: http://localhost:8080/
-  - Control UI: http://localhost:8080/index.html
-  - Display UI: http://localhost:8080/scoreboard.html
-- Native WebSocket: ws://localhost:8082/ws
-
-Runtime configuration (JVM system properties):
-
-- `-Dws.port=8082`: WebSocket server port
-- `-DRESOURCE_BASE=web`: static file root relative to working dir (default: `web` under `src/main/dist`)
-- `-Dscoreboard.commport=usb.ttyserial`: serial port name for hardware I/O
-
-You can override socket host/port used by the UIs via URL params, e.g.:
-
-```
-http://localhost:8080/index.html?socketHost=example.com&socketPort=9090
-```
-
-## Deployment
-
-We now deploy using a Windows app image (bundled runtime). Zip/tar distributions are disabled.
-
-**Prerequisites**
-- Open inbound ports `8080` (HTTP) and `8082` (WebSocket) on the host firewall if other devices connect.
-
-**Windows App Image (bundled runtime)**
-- Build locally with jpackage (requires JDK 21 with jpackage; Temurin 21 recommended):
-  - PowerShell:
-    - `$env:JAVA_HOME="C:\\Path\\To\\Temurin\\jdk-21.x"`
-    - `$env:PATH="$env:JAVA_HOME\\bin;$env:PATH"`
-    - `./gradlew jpackageFullJre`
-  - Output app image: `build/jpackage/scoreboard/`
-- Deploy by copying the `scoreboard/` folder to the target machine and running `scoreboard.exe`.
-- A small launcher dialog appears (Close exits cleanly). Click “Open Scoreboard” to launch the UI.
-
-Zip for handoff
-- Create a portable zip of the app image: `./gradlew appImageZip`
-- Output: `build/artifacts/scoreboard-<version>-app-image.zip`
-
-Installer note
-- Creating an MSI/EXE installer requires WiX on PATH; the app image above is sufficient for most installs.
-
-**Start/Stop Helpers**
-- Stop any running packaged instance from the repo: `./gradlew stopPackaged`
-- Run UI tests against the packaged app (headless Chrome): `./gradlew uiTestPackaged`
-
-**Service Management (optional)**
-- Windows (auto-start): Use Task Scheduler to run `scoreboard.exe` at logon, or wrap with NSSM.
-
-**Runtime Tweaks**
-- JVM properties:
-  - `-Dws.port=8082` to change WebSocket port.
-  - `-DRESOURCE_BASE=/path/to/web` to override static file root.
-  - `-Dscoreboard.showDialog=true` to show the launcher dialog on startup (enabled in packaged app).
-
+- Standard games can set an intermission duration when creating a new game.
+- UI “none” sets the intermission to `0` minutes.
+- Backend treats `0` as “no intermission” and advances directly to the next period when a period ends.
 
