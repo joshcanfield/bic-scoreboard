@@ -296,7 +296,7 @@
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
         <h4 class="modal-title">Create a new Game</h4>
-        <p class="help-block">Enter the period length in minutes.</p>
+        <p class="help-block">Enter the period and intermission lengths in minutes.</p>
       </div>
       <div class="modal-body">
         <div role="tabpanel">
@@ -367,7 +367,22 @@
                     <span> | </span>
                     <a href="#" data-action="set-value" data-target="#period-3" data-value="17">17</a>
                     <span> | </span>
-                    <a href="#" data-action="set-value" data-target="#period-3" data-value="20">20</a>
+                  <a href="#" data-action="set-value" data-target="#period-3" data-value="20">20</a>
+                  </div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="intermission-minutes" class="col-lg-6 control-label">Intermission</label>
+                  <div class="col-lg-2"><input id="intermission-minutes" class="form-control input-sm" type="text" maxlength="2" size="2" value="1"/></div>
+                  <div class="col-xs-4">
+                    <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="0">none</a>
+                    <span> | </span>
+                    <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="1">1</a>
+                    <span> | </span>
+                    <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="5">5</a>
+                    <span> | </span>
+                    <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="10">10</a>
+                    <span> | </span>
+                    <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="15">15</a>
                   </div>
                 </div>
               </form>

@@ -139,9 +139,54 @@ public class NativeWebSocketServer extends WebSocketServer {
                 out.put("scoreboardOn", gameManager.updatesRunning());
                 broadcastJson("power", out);
             } else if ("createGame".equals(event)) {
-                GameConfig cfg = mapper.convertValue(dataObj, GameConfig.class);
-                gameManager.getScoreBoard().setPeriodLength(cfg.getPeriodLengths());
-                gameManager.setShiftLengthSeconds(cfg.getBuzzerIntervalSeconds());
+                // Defensive Map-based parsing to respect 0 values and avoid type erasure issues
+                Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){});
+
+                // Mutate the injected GameConfig instance in place
+                GameConfig cfg = gameManager.getGameConfigInstance();
+
+                // Period lengths
+                if (data.containsKey("periodLengths")) {
+                    try {
+                        Object pl = data.get("periodLengths");
+                        if (pl instanceof Iterable) {
+                            java.util.ArrayList<Integer> list = new java.util.ArrayList<>();
+                            for (Object o : (Iterable<?>) pl) {
+                                if (o == null) continue;
+                                if (o instanceof Number) list.add(((Number) o).intValue());
+                                else list.add(Integer.parseInt(String.valueOf(o)));
+                            }
+                            cfg.setPeriodLengths(list);
+                            gameManager.getScoreBoard().setPeriodLength(list);
+                        }
+                    } catch (Exception ex) {
+                        log.warn("WS createGame: invalid periodLengths: {}", ex.getMessage());
+                    }
+                }
+
+                // Intermission minutes (respect explicit 0)
+                if (data.containsKey("intermissionDurationMinutes")) {
+                    try {
+                        Object im = data.get("intermissionDurationMinutes");
+                        Integer minutes = (im instanceof Number) ? ((Number) im).intValue() : Integer.parseInt(String.valueOf(im));
+                        cfg.setIntermissionDurationMinutes(minutes);
+                    } catch (Exception ex) {
+                        log.warn("WS createGame: invalid intermission: {}", ex.getMessage());
+                    }
+                }
+
+                // Buzzer interval (optional)
+                if (data.containsKey("buzzerIntervalSeconds")) {
+                    try {
+                        Object bi = data.get("buzzerIntervalSeconds");
+                        Integer seconds = (bi instanceof Number) ? ((Number) bi).intValue() : Integer.parseInt(String.valueOf(bi));
+                        cfg.setBuzzerIntervalSeconds(seconds);
+                        gameManager.setShiftLengthSeconds(seconds);
+                    } catch (Exception ex) {
+                        log.warn("WS createGame: invalid buzzerIntervalSeconds: {}", ex.getMessage());
+                    }
+                }
+
                 gameManager.reset();
                 if (gameManager.getPeriodLength() == 0) {
                     gameManager.setPeriod(1);
@@ -172,9 +217,16 @@ public class NativeWebSocketServer extends WebSocketServer {
         state.put("time", gameManager.getRemainingTimeMillis());
         state.put("running", gameManager.isClockRunning());
         state.put("period", gameManager.getPeriod());
-        state.put("periodLength", gameManager.getPeriodLength());
         state.put("scoreboardOn", gameManager.updatesRunning());
         state.put("buzzerOn", gameManager.isBuzzerOn());
+
+        canfield.bia.hockey.scoreboard.ScoreBoard.GameState gameState = gameManager.getScoreBoard().getGameState();
+        state.put("gameState", gameState);
+
+        int periodLength = (gameState == canfield.bia.hockey.scoreboard.ScoreBoard.GameState.INTERMISSION)
+            ? gameManager.getIntermissionDurationMinutes()
+            : gameManager.getPeriodLength();
+        state.put("periodLength", periodLength);
 
         for (Team team : Team.values()) {
             final HashMap<String, Object> o = new HashMap<>();

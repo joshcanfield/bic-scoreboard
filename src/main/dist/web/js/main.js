@@ -820,12 +820,25 @@ const initEvents = () => {
       if (!n) { field.closest('.form-group').classList.add('has-error'); error = true; }
       else { periods[i] = n; }
     }
+    // Intermission minutes (optional, allow 0 for none)
+    const intermissionField = document.getElementById('intermission-minutes');
+    let intermission = null;
+    if (intermissionField) {
+      const raw = intermissionField.value.trim();
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n) || n < 0) { intermissionField.closest('.form-group').classList.add('has-error'); error = true; }
+      else intermission = n;
+    }
     if (error) return;
-    // Persist last used standard settings (period lengths only)
+    // Persist last used standard settings (period lengths + intermission)
     try {
       localStorage.setItem('scoreboard.standard.periods', JSON.stringify(periods));
+      if (intermission != null) localStorage.setItem('scoreboard.standard.intermission', String(intermission));
     } catch(_) {}
-    Server.createGame({ periodLengths: periods });
+    const cfg = { periodLengths: periods };
+    // Always include intermission; 0 disables per backend semantics
+    if (intermission != null) cfg.intermissionDurationMinutes = intermission;
+    Server.createGame(cfg);
     Modals.hide($('#new-game-dialog'));
   });
 
@@ -1170,6 +1183,11 @@ const initEvents = () => {
             if (field && typeof arr[i] === 'number') field.value = String(arr[i]);
           }
         }
+      }
+      const im = localStorage.getItem('scoreboard.standard.intermission');
+      if (im != null) {
+        const f = document.getElementById('intermission-minutes');
+        if (f) f.value = String(parseInt(im,10) || 0);
       }
     } catch(_) {}
 

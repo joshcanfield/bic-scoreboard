@@ -23,6 +23,7 @@ public class SimpleGameManager {
   private final ScoreBoard scoreBoard;
   private final ScoreboardAdapter scoreboardAdapter;
   private final AppConfig appConfig;
+  private GameConfig gameConfig;
 
   private final List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
   private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
@@ -33,17 +34,50 @@ public class SimpleGameManager {
 
 
   @Inject
-  public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter, AppConfig appConfig) {
+  public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter, AppConfig appConfig, GameConfig gameConfig) {
     this.scoreBoard = scoreBoard;
     this.scoreboardAdapter = scoreboardAdapter;
     this.appConfig = appConfig;
+    this.gameConfig = gameConfig;
 
     scoreBoard.addListener(
         event -> {
           switch (event.getType()) {
             case tick:
-              updatePenalties();
-              handleShiftBuzzer();
+              if (scoreBoard.getGameState() == ScoreBoard.GameState.IN_PROGRESS) {
+                updatePenalties();
+                handleShiftBuzzer();
+              }
+              break;
+            case end_of_period:
+              if (scoreBoard.getGameState() == ScoreBoard.GameState.IN_PROGRESS) {
+                int currentPeriod = scoreBoard.getPeriod();
+                if (currentPeriod >= scoreBoard.getLastPeriodNumber()) {
+                  // Game is over
+                  scoreBoard.setGameState(ScoreBoard.GameState.GAME_OVER);
+                } else if (currentPeriod > 0) {
+                  // Start intermission if configured (> 0 minutes); otherwise advance directly
+                  Integer intermission = gameConfig.getIntermissionDurationMinutes();
+                  if (intermission != null && intermission > 0) {
+                    scoreBoard.setGameState(ScoreBoard.GameState.INTERMISSION);
+                    scoreBoard.getGameClock().setTime(intermission, 0);
+                    scoreBoard.getGameClock().start();
+                  } else {
+                    // No intermission: advance to next period and pause in READY state
+                    scoreBoard.advancePeriod();
+                    scoreBoard.setGameState(ScoreBoard.GameState.READY_FOR_PERIOD);
+                  }
+                } else { // currentPeriod == 0
+                  // Warmup ended
+                  scoreBoard.advancePeriod();
+                  scoreBoard.setGameState(ScoreBoard.GameState.READY_FOR_PERIOD);
+                }
+              } else if (scoreBoard.getGameState() == ScoreBoard.GameState.INTERMISSION) {
+                // Intermission ended
+                scoreBoard.setGameState(ScoreBoard.GameState.READY_FOR_PERIOD);
+                scoreBoard.advancePeriod();
+              }
+              break;
           }
         }
     );
@@ -52,7 +86,7 @@ public class SimpleGameManager {
 
   // Convenience constructor for tests and simple wiring
   public SimpleGameManager(ScoreBoard scoreBoard, ScoreboardAdapter scoreboardAdapter) {
-    this(scoreBoard, scoreboardAdapter, new AppConfig());
+    this(scoreBoard, scoreboardAdapter, new AppConfig(), new GameConfig());
   }
 
   private void handleShiftBuzzer() {
@@ -95,6 +129,10 @@ public class SimpleGameManager {
     return scoreBoard.getPeriodLengthMinutes();
   }
 
+  public int getIntermissionDurationMinutes() {
+    return gameConfig.getIntermissionDurationMinutes();
+  }
+
   public int getRemainingTimeMillis() {
     final Clock.ClockTime time = scoreBoard.getGameClock().getTime();
     return (time.getMinutes() * 60 + time.getSeconds()) * 1000;
@@ -104,6 +142,10 @@ public class SimpleGameManager {
    * Change API to talk minutes/seconds
    */
   public void setTime(int millis) {
+    if (scoreBoard.getGameState() == ScoreBoard.GameState.GAME_OVER && millis > 0) {
+      scoreBoard.setGameState(ScoreBoard.GameState.IN_PROGRESS);
+    }
+
     final Clock gameClock = scoreBoard.getGameClock();
 
     final int minutes = Clock.getMinutes(millis);
@@ -123,7 +165,14 @@ public class SimpleGameManager {
   }
 
   public void startClock() {
-    scoreBoard.getGameClock().start();
+    ScoreBoard.GameState state = scoreBoard.getGameState();
+    if (state == ScoreBoard.GameState.PRE_GAME || state == ScoreBoard.GameState.READY_FOR_PERIOD) {
+      scoreBoard.setGameState(ScoreBoard.GameState.IN_PROGRESS);
+    }
+
+    if (state != ScoreBoard.GameState.GAME_OVER) {
+      scoreBoard.getGameClock().start();
+    }
   }
 
   public void stopClock() {
@@ -257,7 +306,7 @@ public class SimpleGameManager {
     // Do we need to put some penalties on the board?
     final int startTime = roundToSecond(getRemainingTimeMillis());
 
-    if (homePenalties.size() > 0) {
+    if (!homePenalties.isEmpty()) {
       while (!availableHomePenaltyIndex.isEmpty()) {
         int index = availableHomePenaltyIndex.remove();
 
@@ -275,7 +324,7 @@ public class SimpleGameManager {
       }
     }
 
-    if (awayPenalties.size() > 0) {
+    if (!awayPenalties.isEmpty()) {
       while (!availableAwayPenaltyIndex.isEmpty()) {
         int index = availableAwayPenaltyIndex.remove();
 
@@ -320,6 +369,7 @@ public class SimpleGameManager {
 
   public void reset() {
     stopClock();
+    scoreBoard.setGameState(ScoreBoard.GameState.PRE_GAME);
     homePenalties.clear();
     awayPenalties.clear();
     scoreBoard.setAwayPenalty(0, null);
@@ -375,5 +425,14 @@ public class SimpleGameManager {
 
   public String currentPort() {
     return scoreboardAdapter.getPortName();
+  }
+
+  public void setGameConfig(GameConfig gameConfig) {
+    this.gameConfig = gameConfig;
+  }
+
+  // Expose the injected config instance so callers (e.g., WS) can mutate in place.
+  public GameConfig getGameConfigInstance() {
+    return this.gameConfig;
   }
 }

@@ -28,6 +28,5 @@ build/
 # put stuff you don't want checked in here
 local/
 tools/
-
 /out/
 /src/main/dist/scoreboard.properties

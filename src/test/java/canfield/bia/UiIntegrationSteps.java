@@ -173,6 +173,17 @@ public class UiIntegrationSteps {
         Thread.sleep(200);
     }
 
+    @When("I set standard intermission to {int}")
+    public void setStandardIntermission(int minutes) {
+        setInputValue("#intermission-minutes", String.valueOf(minutes));
+    }
+
+    @Then("the standard intermission should be {int}")
+    public void verifyStandardIntermission(int minutes) {
+        String v = getInputValue("#intermission-minutes");
+        Assert.assertEquals(Integer.parseInt(v), minutes, "intermission-minutes");
+    }
+
     @When("I refresh the page")
     public void refreshPage() {
         driver.navigate().refresh();
