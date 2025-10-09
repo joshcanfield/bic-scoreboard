@@ -85,8 +85,8 @@ const State = {
   running: false,
   period: 0,
   periodLengthMillis: 0,
-  home: { score: 0, shots: 0, penalties: [] },
-  away: { score: 0, shots: 0, penalties: [] },
+  home: { score: 0, shots: 0, penalties: [], goals: [] },
+  away: { score: 0, shots: 0, penalties: [], goals: [] },
   scoreboardOn: false,
   buzzerOn: false,
   portNames: [],
@@ -281,6 +281,43 @@ const renderPenaltyTable = (teamElem, teamKey, penalties) => {
   if (phTBody) phTBody.innerHTML = formatPenaltyPlaceholders(needed);
 };
 
+const formatGoals = (goals) => {
+  if (!Array.isArray(goals) || goals.length === 0) {
+    return '<tr class="placeholder"><td colspan="4">No goals yet</td></tr>';
+  }
+  return goals.map((g) => {
+    const safeTime = typeof g.time === 'number' ? Math.max(0, g.time) : 0;
+    const tm = millisToMinSec(safeTime);
+    const timeText = formatClock(tm.minutes, tm.seconds);
+    const period = (g.period === 0 || g.period) ? g.period : '-';
+    const scorer = (g.playerNumber === 0 || g.playerNumber) ? g.playerNumber : '-';
+    const primary = (g.primaryAssistNumber === 0 || g.primaryAssistNumber)
+      ? g.primaryAssistNumber
+      : ((g.assistNumber && g.assistNumber > 0) ? g.assistNumber : null);
+    const secondary = (g.secondaryAssistNumber === 0 || g.secondaryAssistNumber)
+      ? g.secondaryAssistNumber
+      : null;
+    const assists = [];
+    if (primary !== null && primary !== undefined) assists.push(primary);
+    if (secondary !== null && secondary !== undefined) assists.push(secondary);
+    const assistsText = assists.length ? assists.map(String).join(' / ') : '&ndash;';
+    const idAttr = (g.id === 0 || g.id) ? ` data-goal-id="${String(g.id)}"` : '';
+    return `<tr${idAttr}>
+      <td>${period}</td>
+      <td>${timeText}</td>
+      <td>${scorer}</td>
+      <td>${assistsText}</td>
+    </tr>`;
+  }).join('');
+};
+
+const renderGoalTable = (teamElem, goals) => {
+  if (!teamElem) return;
+  const listTBody = teamElem.querySelector('tbody.goal-list');
+  if (!listTBody) return;
+  listTBody.innerHTML = formatGoals(goals || []);
+};
+
 const renderUpdate = (data) => {
   Object.assign(State, {
     time: data.time,
@@ -300,6 +337,8 @@ const renderUpdate = (data) => {
   // penalties
   renderPenaltyTable(home, 'home', data.home.penalties);
   renderPenaltyTable(away, 'away', data.away.penalties);
+  renderGoalTable(home, data.home.goals);
+  renderGoalTable(away, data.away.goals);
 
   // clock update: text element only (mm:ss)
   const { minutes, seconds } = millisToMinSec(State.time);
@@ -598,14 +637,163 @@ const initEvents = () => {
   $('.period-up').addEventListener('click', () => Server.setPeriod(State.period + 1));
   $('.period-down').addEventListener('click', () => Server.setPeriod(Math.max(0, State.period - 1)));
 
+  const goalModal = document.getElementById('add-goal');
+  const clearGoalErrors = () => {
+    if (!goalModal) return;
+    goalModal.querySelectorAll('.form-group').forEach((group) => group.classList.remove('has-error'));
+  };
+  const setGoalModalTeam = (team) => {
+    if (!goalModal) return;
+    goalModal.dataset.team = team || '';
+    const title = goalModal.querySelector('.modal-title');
+    if (title) title.textContent = team === 'away' ? 'Add Away Goal' : 'Add Home Goal';
+  };
+  const openGoalModal = (team) => {
+    if (!goalModal) return;
+    clearGoalErrors();
+    setGoalModalTeam(team);
+    const periodField = document.getElementById('add-goal-period');
+    const timeField = document.getElementById('add-goal-time');
+    const playerField = document.getElementById('add-goal-player');
+    const assist1Field = document.getElementById('add-goal-assist1');
+    const assist2Field = document.getElementById('add-goal-assist2');
+    if (periodField) periodField.value = String(State.period || 0);
+    if (timeField) {
+      const { minutes, seconds } = millisToMinSec(State.time);
+      timeField.value = formatClock(minutes, seconds);
+    }
+    if (playerField) playerField.value = '';
+    if (assist1Field) assist1Field.value = '';
+    if (assist2Field) assist2Field.value = '';
+    Modals.show(goalModal);
+    setTimeout(() => {
+      if (playerField) playerField.focus();
+    }, 0);
+  };
+  const submitGoal = async () => {
+    if (!goalModal) return;
+    const team = goalModal.dataset.team;
+    if (!team) return;
+    const periodField = document.getElementById('add-goal-period');
+    const timeField = document.getElementById('add-goal-time');
+    const playerField = document.getElementById('add-goal-player');
+    const assist1Field = document.getElementById('add-goal-assist1');
+    const assist2Field = document.getElementById('add-goal-assist2');
+    clearGoalErrors();
+
+    let hasError = false;
+
+    const markError = (field) => {
+      if (field && field.closest) {
+        const group = field.closest('.form-group');
+        if (group) group.classList.add('has-error');
+      }
+    };
+
+    let period = State.period;
+    if (periodField) {
+      const periodRaw = periodField.value.trim();
+      const parsedPeriod = parseInt(periodRaw, 10);
+      if (!Number.isNaN(parsedPeriod)) {
+        period = parsedPeriod;
+      } else if (periodRaw) {
+        markError(periodField);
+        hasError = true;
+      }
+    }
+
+    let playerNumber = 0;
+    if (playerField) {
+      const playerRaw = playerField.value.trim();
+      playerNumber = parseInt(playerRaw, 10);
+      if (playerRaw === '' || Number.isNaN(playerNumber)) {
+        markError(playerField);
+        hasError = true;
+      }
+    }
+
+    let timeMillis = State.time;
+    if (timeField) {
+      const timeRaw = timeField.value.trim();
+      const parsedTime = parseClockMillis(timeRaw);
+      if (parsedTime == null) {
+        markError(timeField);
+        hasError = true;
+      } else {
+        timeMillis = parsedTime;
+      }
+    }
+
+    const payload = {
+      period,
+      playerNumber,
+      time: timeMillis
+    };
+
+    if (assist1Field) {
+      const a1Raw = assist1Field.value.trim();
+      if (a1Raw) {
+        const a1 = parseInt(a1Raw, 10);
+        if (Number.isNaN(a1)) {
+          markError(assist1Field);
+          hasError = true;
+        } else {
+          payload.primaryAssistNumber = a1;
+        }
+      }
+    }
+
+    if (assist2Field) {
+      const a2Raw = assist2Field.value.trim();
+      if (a2Raw) {
+        const a2 = parseInt(a2Raw, 10);
+        if (Number.isNaN(a2)) {
+          markError(assist2Field);
+          hasError = true;
+        } else {
+          payload.secondaryAssistNumber = a2;
+        }
+      }
+    }
+
+    if (hasError) return;
+
+    try {
+      await api.post(`${team}/goal`, payload);
+      Modals.hide(goalModal);
+    } catch (err) {
+      console.warn('Failed to add goal', err);
+    }
+  };
+  if (goalModal) {
+    const form = goalModal.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitGoal();
+      });
+    }
+    const submitBtn = document.getElementById('add-goal-submit');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        submitGoal();
+      });
+    }
+  }
+
   // Score buttons
   $$('.score-up').forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
     const team = e.currentTarget.dataset.team;
-    Server.goal({ team, player: 10, assist: 15 });
+    if (!team) return;
+    openGoalModal(team);
   }));
   $$('.score-down').forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
     const team = e.currentTarget.dataset.team;
-    Server.undoGoal({ team });
+    if (!team) return;
+    api.del(`${team}/goal`).catch(() => {});
   }));
 
   // Shot buttons

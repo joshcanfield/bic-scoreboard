@@ -88,6 +88,14 @@ public class UiIntegrationSteps {
         driver.get("http://localhost:8080/");
         jsClick("a.period-up");
         jsClick("#home button.score-up");
+        waitForModalVisible("#add-goal");
+        // Modal auto-fills period and time from game state, so we only set player and assists
+        setInputValue("#add-goal-player", "77");
+        setInputValue("#add-goal-assist1", "18");
+        setInputValue("#add-goal-assist2", "21");
+        jsClick("#add-goal-submit");
+        waitForModalHidden("#add-goal");
+        waitForScore("#home-score", 1);
         jsClick("#clock-start");
         Thread.sleep(500);
     }
@@ -339,6 +347,31 @@ public class UiIntegrationSteps {
     private void jsClick(String selector) {
         ((JavascriptExecutor) driver).executeScript(
                 "var el=document.querySelector('" + selector + "'); if(el) el.click();");
+    }
+
+    private void waitForModalVisible(String selector) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d)
+                        .executeScript("var el=document.querySelector(arguments[0]); return !!el && window.getComputedStyle(el).display !== 'none';", selector)));
+    }
+
+    private void waitForModalHidden(String selector) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d)
+                        .executeScript("var el=document.querySelector(arguments[0]); return !el || window.getComputedStyle(el).display === 'none';", selector)));
+    }
+
+    private void waitForScore(String scoreId, int expected) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> {
+                    WebElement el = d.findElement(By.id(scoreId.replace("#", "")));
+                    String txt = el.getText().trim();
+                    try {
+                        return Integer.parseInt(txt) == expected;
+                    } catch (NumberFormatException ex) {
+                        return false;
+                    }
+                });
     }
 
     private void setInputValue(String selector, String value) {

@@ -71,6 +71,18 @@
         </div>
       </div>
 
+      <div class="goals">
+        <table class="table table-condensed">
+          <tr>
+            <th>Period</th><th>Time</th><th>Player #</th><th>Assists</th>
+          </tr>
+          <tbody class="goal-list">
+          <tr class="placeholder"><td colspan="4">No goals yet</td></tr>
+          </tbody>
+          <tr><td colspan="4"></td></tr>
+        </table>
+      </div>
+
       <div class="penalties">
         <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="home">+Penalty</a>
         <table class="table table-condensed">
@@ -131,6 +143,18 @@
         </div>
       </div>
 
+      <div class="goals">
+        <table class="table table-condensed">
+          <tr>
+            <th>Period</th><th>Time</th><th>Player #</th><th>Assists</th>
+          </tr>
+          <tbody class="goal-list">
+          <tr class="placeholder"><td colspan="4">No goals yet</td></tr>
+          </tbody>
+          <tr><td colspan="4"></td></tr>
+        </table>
+      </div>
+
       <div class="penalties">
         <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">+Penalty</a>
         <table class="table table-condensed">
@@ -173,6 +197,55 @@
     </div>
   </div>
   </div>
+
+<div class="modal fade" id="add-goal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Add Goal</h4>
+      </div>
+      <div class="modal-body">
+        <form class="form-horizontal">
+          <div class="form-group goal-period">
+            <label for="add-goal-period" class="col-lg-5 control-label">Period</label>
+            <div class="col-lg-4">
+              <input id="add-goal-period" class="form-control input-sm" type="number" min="0" max="9"/>
+            </div>
+          </div>
+          <div class="form-group goal-time">
+            <label for="add-goal-time" class="col-lg-5 control-label">Clock Time</label>
+            <div class="col-lg-4">
+              <input id="add-goal-time" class="form-control input-sm" type="text" placeholder="MM:SS"/>
+            </div>
+          </div>
+          <div class="form-group goal-player">
+            <label for="add-goal-player" class="col-lg-5 control-label">Scoring Player #</label>
+            <div class="col-lg-4">
+              <input id="add-goal-player" class="form-control input-sm" type="text" maxlength="2"/>
+            </div>
+          </div>
+          <div class="form-group goal-assist1">
+            <label for="add-goal-assist1" class="col-lg-5 control-label">Primary Assist #</label>
+            <div class="col-lg-4">
+              <input id="add-goal-assist1" class="form-control input-sm" type="text" maxlength="2"/>
+            </div>
+          </div>
+          <div class="form-group goal-assist2">
+            <label for="add-goal-assist2" class="col-lg-5 control-label">Secondary Assist #</label>
+            <div class="col-lg-4">
+              <input id="add-goal-assist2" class="form-control input-sm" type="text" maxlength="2"/>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="add-goal-submit">Add Goal</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal fade" id="add-penalty">
   <div class="modal-dialog">

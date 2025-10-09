@@ -277,8 +277,8 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 }
 .score, .shots { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
 /* Team accent borders */
-#home .score, #home .shots, #home .penalties .table { border-top: 3px solid var(--home-color); }
-#away .score, #away .shots, #away .penalties .table { border-top: 3px solid var(--away-color); }
+#home .score, #home .shots, #home .penalties .table, #home .goals .table { border-top: 3px solid var(--home-color); }
+#away .score, #away .shots, #away .penalties .table, #away .goals .table { border-top: 3px solid var(--away-color); }
 .section-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
 /* Digits look */
@@ -299,12 +299,17 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 #period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; color: var(--muted); }
 #period-block a { color: var(--accent); }
 
-/* Penalties */
-.penalties .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.penalties .table { width: 100%; }
+/* Penalties & Goals tables */
+.penalties .table,
+.goals .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.penalties .table,
+.goals .table { width: 100%; }
 .penalties .table > tbody > tr > td,
 .penalties .table > thead > tr > th,
-.penalties .table > tbody > tr > th { border-color: rgba(255,255,255,0.06); text-align: center; vertical-align: middle; white-space: nowrap; }
+.penalties .table > tbody > tr > th,
+.goals .table > tbody > tr > td,
+.goals .table > thead > tr > th,
+.goals .table > tbody > tr > th { border-color: rgba(255,255,255,0.06); text-align: center; vertical-align: middle; white-space: nowrap; }
 .penalties .table td .pn[data-serving]:not([data-serving=""])::after { content: " (" attr(data-serving) ")"; }
 .penalties a.btn.btn-primary { --btn-primary-bg: var(--accent); --btn-primary-bg-2: var(--accent); --btn-primary-shadow: none; }
 
@@ -312,6 +317,9 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .penalties tbody.placeholders tr.placeholder td:last-child { /* hide action column visually for placeholders */
     visibility: hidden;
 }
+
+.goals { margin-top: 18px; }
+.goals .table tbody tr.placeholder td { padding: 12px 8px; color: rgba(255,255,255,0.45); font-style: italic; }
 
 .progress { background: rgba(255,255,255,0.06); border-radius: 10px; border: 1px solid var(--border); }
 .progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 0 12px rgba(76,201,240,0.45); }

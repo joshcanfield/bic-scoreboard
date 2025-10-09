@@ -134,4 +134,72 @@ class TestSimpleGameManager {
         Mockito.verify(scoreBoard, Mockito.never()).setGameState(ScoreBoard.GameState.INTERMISSION)
         Mockito.verify(gameClock, Mockito.never()).start()
     }
+
+    @Test
+    void "add goal records details and bumps score"() {
+        def scoreBoard = mock(ScoreBoard)
+        def gameClock = mock(Clock)
+        def scoreboardAdapter = mock(ScoreboardAdapter)
+
+        when(scoreBoard.getGameClock()).thenReturn(gameClock)
+        when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
+        when(scoreBoard.getPeriod()).thenReturn(2)
+        when(scoreBoard.getHomeScore()).thenReturn(0)
+        when(gameClock.getTime()).thenReturn(new Clock.ClockTime(12, 34, 0))
+
+        def manager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
+        def goal = new Goal()
+        goal.setPlayerNumber(17)
+        goal.setPrimaryAssistNumber(9)
+        goal.setSecondaryAssistNumber(23)
+
+        def added = manager.addGoal(Team.home, goal)
+
+        assert added.getPeriod() == 2
+        assert added.getTime() == 754000
+        assert added.getPlayerNumber() == 17
+        assert added.getPrimaryAssistNumber() == 9
+        assert added.getSecondaryAssistNumber() == 23
+        assert manager.getGoals(Team.home).size() == 1
+        assert manager.getGoals(Team.home)[0].getId() != null
+
+        Mockito.verify(scoreBoard).setHomeScore(1)
+    }
+
+    @Test
+    void "remove last goal pops stack and decrements score"() {
+        def scoreBoard = mock(ScoreBoard)
+        def gameClock = mock(Clock)
+        def scoreboardAdapter = mock(ScoreboardAdapter)
+
+        when(scoreBoard.getGameClock()).thenReturn(gameClock)
+        when(scoreBoard.getPeriodLengthMinutes()).thenReturn(20)
+        when(scoreBoard.getPeriod()).thenReturn(1)
+        when(scoreBoard.getHomeScore()).thenReturn(0, 1, 2)
+        when(gameClock.getTime()).thenReturn(
+                new Clock.ClockTime(15, 0, 0),
+                new Clock.ClockTime(14, 30, 0)
+        )
+
+        def manager = new SimpleGameManager(scoreBoard, scoreboardAdapter)
+
+        def first = new Goal()
+        first.setPlayerNumber(8)
+        manager.addGoal(Team.home, first)
+
+        def second = new Goal()
+        second.setPlayerNumber(19)
+        manager.addGoal(Team.home, second)
+
+        assert manager.getGoals(Team.home).size() == 2
+
+        def removed = manager.removeLastGoal(Team.home)
+
+        assert removed.getPlayerNumber() == 19
+        assert manager.getGoals(Team.home).size() == 1
+        assert manager.getGoals(Team.home)[0].getPlayerNumber() == 8
+
+        Mockito.verify(scoreBoard).setHomeScore(2)
+        Mockito.verify(scoreBoard, Mockito.atLeast(2)).setHomeScore(1)
+    }
 }
