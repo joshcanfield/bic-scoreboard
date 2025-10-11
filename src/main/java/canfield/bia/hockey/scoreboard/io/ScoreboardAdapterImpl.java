@@ -61,14 +61,25 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
 
   @SuppressWarnings("unchecked")
   private static List<CommPortIdentifier> getPortIdentifiers() {
+    log.debug("Attempting to enumerate serial ports using PureJavaComm");
+    log.debug("java.library.path: {}", System.getProperty("java.library.path"));
+    log.debug("purejavacomm.porttypes: {}", System.getProperty("purejavacomm.porttypes"));
+
     final Enumeration<CommPortIdentifier> portIdentifiers = CommPortIdentifier.getPortIdentifiers();
     final List<CommPortIdentifier> serialPorts = new ArrayList<>();
+    int totalPorts = 0;
     while (portIdentifiers.hasMoreElements()) {
       CommPortIdentifier commPortIdentifier = portIdentifiers.nextElement();
+      totalPorts++;
+      log.debug("Found port: {} (type={})",
+          commPortIdentifier.getName(),
+          commPortIdentifier.getPortType());
       if (commPortIdentifier.getPortType() == CommPortIdentifier.PORT_SERIAL) {
         serialPorts.add(commPortIdentifier);
+        log.info("Added serial port: {}", commPortIdentifier.getName());
       }
     }
+    log.info("Port enumeration complete: {} total ports, {} serial ports", totalPorts, serialPorts.size());
     return serialPorts;
   }
 

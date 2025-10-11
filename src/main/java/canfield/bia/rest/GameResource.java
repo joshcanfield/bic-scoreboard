@@ -123,6 +123,29 @@ public class GameResource {
     return Response.ok(response).build();
   }
 
+  @GET
+  @Path("/diagnostics")
+  public Response getDiagnostics() {
+    final HashMap<String, Object> diagnostics = new HashMap<>();
+
+    // System properties that affect serial port detection
+    diagnostics.put("os.name", System.getProperty("os.name"));
+    diagnostics.put("os.arch", System.getProperty("os.arch"));
+    diagnostics.put("os.version", System.getProperty("os.version"));
+    diagnostics.put("java.version", System.getProperty("java.version"));
+    diagnostics.put("java.library.path", System.getProperty("java.library.path"));
+    diagnostics.put("purejavacomm.porttypes", System.getProperty("purejavacomm.porttypes"));
+    diagnostics.put("user.dir", System.getProperty("user.dir"));
+
+    // Port information
+    diagnostics.put("currentPort", game.currentPort());
+    diagnostics.put("availablePorts", game.possiblePortNames());
+    diagnostics.put("portCount", game.possiblePortNames().size());
+    diagnostics.put("scoreboardRunning", game.updatesRunning());
+
+    return Response.ok(diagnostics).build();
+  }
+
   @POST
   @Path("/{team}/goal")
   @Consumes(MediaType.APPLICATION_JSON)
