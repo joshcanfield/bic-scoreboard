@@ -7,6 +7,8 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.DefaultHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.util.resource.Resource;
+import org.eclipse.jetty.util.resource.ResourceCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher;
@@ -14,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.File;
 
 public class HockeyGameServer {
     private static final Logger log = LoggerFactory.getLogger(HockeyGameServer.class);
@@ -67,7 +70,21 @@ public class HockeyGameServer {
         fileHandler.setDirectoriesListed(true);
         fileHandler.setWelcomeFiles(new String[]{"index.html"});
         String resourceBase = System.getProperty("RESOURCE_BASE", "web");
-        fileHandler.setResourceBase(resourceBase);
+        try {
+            Resource base = Resource.newResource(resourceBase);
+            if (base.exists() && base.isDirectory()) {
+                ResourceCollection collection = buildResourceCollection(resourceBase);
+                if (collection != null) {
+                    fileHandler.setBaseResource(collection);
+                } else {
+                    fileHandler.setBaseResource(base);
+                }
+            } else {
+                fileHandler.setResourceBase(resourceBase);
+            }
+        } catch (Exception ex) {
+            fileHandler.setResourceBase(resourceBase);
+        }
 
         final ServletContextHandler resteasyHandler = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         resteasyHandler.setContextPath("/");
@@ -88,5 +105,21 @@ public class HockeyGameServer {
         } catch (Exception e) {
             throw new RuntimeException("Failed to start service.", e);
         }
+    }
+
+    private ResourceCollection buildResourceCollection(String resourceBase) {
+        try {
+            File baseDir = new File(resourceBase);
+            if (!baseDir.isDirectory()) return null;
+            File parent = baseDir.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                Resource base = Resource.newResource(baseDir);
+                Resource parentResource = Resource.newResource(parent);
+                return new ResourceCollection(base, parentResource);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to configure resource collection for {}", resourceBase, ex);
+        }
+        return null;
     }
 }

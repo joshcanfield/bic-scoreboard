@@ -5,6 +5,7 @@ import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -207,6 +208,96 @@ public class UiIntegrationSteps {
         Assert.assertEquals(Integer.parseInt(v1), p1, "period-1");
         Assert.assertEquals(Integer.parseInt(v2), p2, "period-2");
         Assert.assertEquals(Integer.parseInt(v3), p3, "period-3");
+    }
+
+    private void ensureShortcutsReady() {
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Object status = js.executeAsyncScript(
+                "var cb = arguments[arguments.length - 1];" +
+                        "if (!window.__test || !window.__test.shortcutsReady) { cb('missing'); return; }" +
+                        "try {" +
+                        "  window.__test.shortcutsReady().then(function() {" +
+                        "    try {" +
+                        "      var errFn = window.__test.shortcutsLoadError;" +
+                        "      var hasError = errFn ? errFn() : false;" +
+                        "      cb(hasError ? 'error' : 'ok');" +
+                        "    } catch (err) {" +
+                        "      cb('error');" +
+                        "    }" +
+                        "  }).catch(function() { cb('error'); });" +
+                        "} catch (err) { cb('error'); }"
+        );
+        Assert.assertEquals(status, "ok", "Keyboard shortcuts should load successfully");
+    }
+
+    @Then("the keyboard shortcuts should load successfully")
+    public void keyboardShortcutsShouldLoadSuccessfully() {
+        ensureShortcutsReady();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> getShortcutBindings(String action) {
+        ensureShortcutsReady();
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Object result = js.executeScript(
+                "return window.__test && window.__test.shortcuts ? window.__test.shortcuts() : null;"
+        );
+        Assert.assertNotNull(result, "Shortcuts map should be available");
+        Map<String, Object> shortcuts = (Map<String, Object>) result;
+        Object raw = shortcuts.get(action);
+        Assert.assertNotNull(raw, "Shortcut '" + action + "' should exist");
+        if (raw instanceof List<?>) {
+            List<?> rawList = (List<?>) raw;
+            List<String> bindings = new ArrayList<>(rawList.size());
+            for (Object entry : rawList) {
+                bindings.add(String.valueOf(entry));
+            }
+            return bindings;
+        }
+        return Collections.singletonList(String.valueOf(raw));
+    }
+
+    @Then("shortcut {string} should include {string}")
+    public void shortcutShouldIncludeBinding(String action, String binding) {
+        List<String> bindings = getShortcutBindings(action);
+        Assert.assertTrue(bindings.contains(binding),
+                "Expected shortcut '" + action + "' to include binding '" + binding + "' but had " + bindings);
+    }
+
+    @When("I press the clock start shortcut")
+    public void pressClockStartShortcut() {
+        new Actions(driver).sendKeys(Keys.ARROW_UP).perform();
+    }
+
+    @When("I press the clock stop shortcut")
+    public void pressClockStopShortcut() {
+        new Actions(driver).sendKeys(Keys.ARROW_DOWN).perform();
+    }
+
+    @When("I record the current clock time")
+    public void recordCurrentClockTime() {
+        initialTime = readClockMillis();
+    }
+
+    @When("I open the add goal dialog for the home team")
+    public void openAddGoalDialogHome() {
+        jsClick("#home button.score-up");
+        waitForModalVisible("#add-goal");
+    }
+
+    @When("I press Escape")
+    public void pressEscape() {
+        new Actions(driver).sendKeys(Keys.ESCAPE).perform();
+    }
+
+    @Then("the modal {string} should be visible")
+    public void modalShouldBeVisible(String selector) {
+        waitForModalVisible(selector);
+    }
+
+    @Then("the modal {string} should be hidden")
+    public void modalShouldBeHidden(String selector) {
+        waitForModalHidden(selector);
     }
 
     @Given("the clock is stopped")
