@@ -190,17 +190,29 @@ const on = (el, type, selOrHandler, handler) => {
 
 // Minimal modal management (Bootstrap-like)
 const Modals = (() => {
+  const isVisible = (modal) => modal && window.getComputedStyle(modal).display !== 'none';
+  const anyVisible = () => Array.from(document.querySelectorAll('.modal')).some(isVisible);
   const show = (modal) => {
+    if (!modal) return;
+    modal.__trigger = modal.__trigger || document.activeElement || null;
     modal.style.display = 'block';
     modal.setAttribute('aria-hidden', 'false');
     modal.classList.add('in');
     document.body.classList.add('modal-open');
   };
   const hide = (modal) => {
+    if (!modal) return;
     modal.classList.remove('in');
     modal.setAttribute('aria-hidden', 'true');
     modal.style.display = 'none';
-    document.body.classList.remove('modal-open');
+    if (!anyVisible()) document.body.classList.remove('modal-open');
+    const trigger = modal.__trigger;
+    modal.__trigger = null;
+    if (trigger && typeof trigger.focus === 'function') {
+      setTimeout(() => {
+        try { trigger.focus(); } catch (_) {}
+      }, 0);
+    }
   };
   const showById = (id) => show($(id.startsWith('#') ? id : `#${id}`));
   const init = () => {
@@ -222,6 +234,14 @@ const Modals = (() => {
     // backdrop click
     on(document, 'click', '.modal', (e, t) => {
       if (e.target === t) hide(t);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' && e.key !== 'Esc') return;
+      const open = Array.from(document.querySelectorAll('.modal.in, .modal[aria-hidden="false"]'))
+        .filter(isVisible);
+      if (!open.length) return;
+      e.preventDefault();
+      hide(open[open.length - 1]);
     });
   };
   return { init, show, hide, showById };
@@ -517,6 +537,8 @@ const beginPortStepper = async () => {
 };
 
 // ---------- Wire up events ----------
+let openGoalModal = () => {};
+
 const initEvents = () => {
   // Team color chips + modal palettes
   // Presets: rainbow + black and white
@@ -647,8 +669,13 @@ const initEvents = () => {
     goalModal.dataset.team = team || '';
     const title = goalModal.querySelector('.modal-title');
     if (title) title.textContent = team === 'away' ? 'Add Away Goal' : 'Add Home Goal';
+    const header = goalModal.querySelector('.goal-modal-header');
+    if (header) {
+      header.classList.remove('home', 'away');
+      header.classList.add(team === 'away' ? 'away' : 'home');
+    }
   };
-  const openGoalModal = (team) => {
+  openGoalModal = (team) => {
     if (!goalModal) return;
     clearGoalErrors();
     setGoalModalTeam(team);
@@ -1513,8 +1540,30 @@ const initEvents = () => {
       $(target).classList.add('active');
     });
   }
+  // Keyboard shortcuts help dialog: populate with actual shortcuts when opened
+  on(document, 'click', 'button[href="#keyboard-shortcuts-dialog"][data-toggle="modal"]', () => {
+    // Get the current shortcuts and update the dialog
+    const shortcuts = KeyboardShortcuts.getShortcuts();
+    const pretty = (binding) => binding.replace(/\+/g, ' + ').replace('Control', 'Ctrl').replace('ArrowUp', '↑').replace('ArrowDown', '↓').replace('ArrowLeft', '←').replace('ArrowRight', '→');
+    const formatShortcut = (sc) => {
+      if (!sc) return '—';
+      const bindings = Array.isArray(sc) ? sc : [sc];
+      if (!bindings.length) return '—';
+      return bindings.map(pretty).join(' / ');
+    };
+    Object.entries(shortcuts).forEach(([action, shortcut]) => {
+      const el = document.getElementById(`shortcut-${action}`);
+      if (el) el.textContent = formatShortcut(shortcut);
+    });
+  });
+
   // Expose helper functions for client-side tests
-  try { window.__test = { minutesStepForShift, normalizeMinutes }; } catch (_) {}
+  try {
+    window.__test = Object.assign(window.__test || {}, {
+      minutesStepForShift,
+      normalizeMinutes
+    });
+  } catch (_) {}
 };
 
 // ---------- Socket events ----------
@@ -1578,9 +1627,211 @@ const initSocket = () => {
   socket.on('update', (data) => renderUpdate(data));
 };
 
+// ---------- Keyboard Shortcuts ----------
+const KeyboardShortcuts = (() => {
+  // Default shortcuts (fallback if file fails to load)
+  const DEFAULT_SHORTCUTS = {
+    buzzer: ['b'],
+    clockToggle: ['Space'],
+    clockStart: ['ArrowUp', 'w'],
+    clockStop: ['ArrowDown', 's'],
+    homeShotUp: ['q'],
+    homeShotDown: ['Shift+q'],
+    awayShotUp: ['e'],
+    awayShotDown: ['Shift+e'],
+    homeGoal: ['ArrowLeft', 'a'],
+    awayGoal: ['ArrowRight', 'd'],
+    homePenalty: ['p'],
+    awayPenalty: ['Shift+p'],
+    periodUp: ['Control+ArrowUp'],
+    periodDown: ['Control+ArrowDown']
+  };
+
+  let shortcuts = { ...DEFAULT_SHORTCUTS };
+  let shortcutBindings = []; // array of { action, shortcut, parsed }
+  let loadPromise = Promise.resolve();
+  let loadError = false;
+
+  const normalizeKey = (key) => String(key).trim();
+  const normalizeModifiers = (parts) => {
+    const mods = parts.slice(0, -1).map(p => p.toLowerCase().trim());
+    const key = parts[parts.length - 1].trim();
+    return { shift: mods.includes('shift'), ctrl: mods.includes('control') || mods.includes('ctrl'), alt: mods.includes('alt'), key };
+  };
+
+  const canonicalKey = (rawKey) => {
+    const key = String(rawKey).trim();
+    if (!key) return '';
+    const lower = key.toLowerCase();
+    if (lower === 'space' || lower === 'spacebar') return ' ';
+    if (key.length === 1) return lower;
+    return lower;
+  };
+
+  const parseShortcut = (shortcut) => {
+    const parts = normalizeKey(shortcut).split('+');
+    if (parts.length === 1) return { shift: false, ctrl: false, alt: false, key: canonicalKey(parts[0]) };
+    const mods = normalizeModifiers(parts);
+    return { ...mods, key: canonicalKey(mods.key) };
+  };
+
+  const eventMatchesShortcut = (e, parsed) => {
+    const eventKey = canonicalKey(e.key);
+    return eventKey === parsed.key && e.shiftKey === parsed.shift && e.ctrlKey === parsed.ctrl && e.altKey === parsed.alt;
+  };
+
+  const loadShortcuts = async () => {
+    loadError = false;
+    try {
+      const res = await fetch('/keyboard-shortcuts.json');
+      if (!res.ok) throw new Error('Failed to load keyboard shortcuts');
+      const data = await res.json();
+      shortcuts = { ...DEFAULT_SHORTCUTS, ...data };
+      console.log('Keyboard shortcuts loaded:', shortcuts);
+    } catch (err) {
+      console.warn('Failed to load keyboard-shortcuts.json, using defaults:', err);
+      shortcuts = { ...DEFAULT_SHORTCUTS };
+      loadError = true;
+    }
+    buildBindings();
+  };
+
+  const ensureArray = (value) => {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+  };
+
+  const buildBindings = () => {
+    shortcutBindings = [];
+    Object.entries(shortcuts).forEach(([action, bindingValue]) => {
+      ensureArray(bindingValue).forEach((binding) => {
+        if (!binding) return;
+        try {
+          const parsed = parseShortcut(binding);
+          shortcutBindings.push({ action, shortcut: binding, parsed });
+        } catch (err) {
+          console.warn(`Invalid shortcut for ${action}: ${binding}`, err);
+        }
+      });
+    });
+  };
+
+  const handleKeyPress = (e) => {
+    // Ignore if typing in input/textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // Ignore if modal is open (except for specific shortcuts)
+    const modalOpen = document.body.classList.contains('modal-open');
+
+    for (const { action, parsed } of shortcutBindings) {
+      if (eventMatchesShortcut(e, parsed)) {
+        e.preventDefault();
+        handleAction(action, modalOpen);
+        return;
+      }
+    }
+  };
+
+  const handleAction = (action, modalOpen) => {
+    // Skip most actions if modal is open
+    if (modalOpen && !['buzzer', 'clockToggle', 'clockStart', 'clockStop'].includes(action)) return;
+
+    switch (action) {
+      case 'buzzer':
+        Server.buzzer();
+        break;
+      case 'clockToggle':
+        if (State.running) {
+          State.running = false;
+          Server.pauseClock();
+        } else {
+          State.running = true;
+          Server.startClock();
+        }
+        break;
+      case 'clockStart':
+        if (!State.running) {
+          State.running = true;
+          Server.startClock();
+        }
+        break;
+      case 'clockStop':
+        if (State.running) {
+          State.running = false;
+          Server.pauseClock();
+        }
+        break;
+      case 'homeShotUp':
+        Server.shot({ team: 'home' });
+        break;
+      case 'homeShotDown':
+        Server.undoShot({ team: 'home' });
+        break;
+      case 'awayShotUp':
+        Server.shot({ team: 'away' });
+        break;
+      case 'awayShotDown':
+        Server.undoShot({ team: 'away' });
+        break;
+      case 'homeGoal':
+        openGoalModal('home');
+        break;
+      case 'awayGoal':
+        openGoalModal('away');
+        break;
+      case 'homePenalty':
+        // Trigger modal open via simulated click
+        const homeBtn = document.querySelector('a[data-team="home"][href="#add-penalty"]');
+        if (homeBtn) homeBtn.click();
+        break;
+      case 'awayPenalty':
+        const awayBtn = document.querySelector('a[data-team="away"][href="#add-penalty"]');
+        if (awayBtn) awayBtn.click();
+        break;
+      case 'periodUp':
+        Server.setPeriod(State.period + 1);
+        break;
+      case 'periodDown':
+        Server.setPeriod(Math.max(0, State.period - 1));
+        break;
+      default:
+        console.warn('Unknown action:', action);
+    }
+  };
+
+  const init = async () => {
+    loadPromise = loadShortcuts();
+    await loadPromise;
+    document.addEventListener('keydown', handleKeyPress);
+  };
+
+  const cloneShortcuts = () => {
+    const cloned = {};
+    Object.entries(shortcuts).forEach(([action, value]) => {
+      if (!value) return;
+      cloned[action] = ensureArray(value).map((binding) => String(binding));
+    });
+    return cloned;
+  };
+
+  const getShortcuts = () => cloneShortcuts();
+  const whenReady = () => loadPromise;
+  const hadError = () => loadError;
+
+  return { init, getShortcuts, whenReady, hadError };
+})();
+
+try {
+  window.__test = Object.assign(window.__test || {}, {
+    shortcuts: () => KeyboardShortcuts.getShortcuts(),
+    shortcutsReady: () => KeyboardShortcuts.whenReady(),
+    shortcutsLoadError: () => KeyboardShortcuts.hadError()
+  });
+} catch (_) {}
+
 // ---------- Boot ----------
 document.addEventListener('DOMContentLoaded', () => {
   Modals.init();
   initEvents();
   initSocket();
+  KeyboardShortcuts.init();
 });

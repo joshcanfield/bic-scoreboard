@@ -32,7 +32,7 @@
           </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
-          <li class="navbar-form" role="form" style="display:flex;align-items:center;gap:10px;margin-right:10px;">
+          <li class="navbar-form team-color-form" role="form">
             <span class="team-chip-label">Home</span>
             <button type="button" href="#team-colors" data-toggle="modal" id="home-color-chip" class="color-chip" aria-label="Edit Home color" title="Home color"></button>
             <span class="team-chip-label">Away</span>
@@ -41,6 +41,11 @@
           <li><button type="button" class="btn btn-warning navbar-btn" id="buzzer">Buzzer</button></li>
           <li>
             <button type="button" data-toggle="modal" href="#new-game-dialog" class="btn btn-primary navbar-btn">New Game</button>
+          </li>
+          <li>
+              <button type="button" data-toggle="modal" href="#keyboard-shortcuts-dialog" class="btn btn-default navbar-btn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">
+                  <span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span>
+              </button>
           </li>
         </ul>
       </div>
@@ -201,7 +206,7 @@
 <div class="modal fade" id="add-goal">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header goal-modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
         <h4 class="modal-title">Add Goal</h4>
       </div>
@@ -555,6 +560,90 @@
 </div>
 
 <!-- Team Colors modal removed in favor of inline header palettes -->
+
+<!-- Keyboard Shortcuts Help -->
+<div class="modal fade" id="keyboard-shortcuts-dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Keyboard Shortcuts</h4>
+      </div>
+      <div class="modal-body">
+        <p class="help-block">Use these keyboard shortcuts to control the scoreboard quickly.</p>
+        <table class="table table-condensed table-striped">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Shortcut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Buzzer</td>
+              <td><kbd id="shortcut-buzzer">B</kbd></td>
+            </tr>
+            <tr>
+              <td>Start Clock</td>
+              <td><kbd id="shortcut-clockStart">↑ / W</kbd></td>
+            </tr>
+            <tr>
+              <td>Stop Clock</td>
+              <td><kbd id="shortcut-clockStop">↓ / S</kbd></td>
+            </tr>
+            <tr>
+              <td>Toggle Clock</td>
+              <td><kbd id="shortcut-clockToggle">Space</kbd></td>
+            </tr>
+            <tr>
+              <td>Home Shot</td>
+              <td><kbd id="shortcut-homeShotUp">Q</kbd></td>
+            </tr>
+            <tr>
+              <td>Undo Home Shot</td>
+              <td><kbd id="shortcut-homeShotDown">Shift + Q</kbd></td>
+            </tr>
+            <tr>
+              <td>Away Shot</td>
+              <td><kbd id="shortcut-awayShotUp">E</kbd></td>
+            </tr>
+            <tr>
+              <td>Undo Away Shot</td>
+              <td><kbd id="shortcut-awayShotDown">Shift + E</kbd></td>
+            </tr>
+            <tr>
+              <td>Home Goal</td>
+              <td><kbd id="shortcut-homeGoal">← / A</kbd></td>
+            </tr>
+            <tr>
+              <td>Away Goal</td>
+              <td><kbd id="shortcut-awayGoal">→ / D</kbd></td>
+            </tr>
+            <tr>
+              <td>Home Penalty</td>
+              <td><kbd id="shortcut-homePenalty">P</kbd></td>
+            </tr>
+            <tr>
+              <td>Away Penalty</td>
+              <td><kbd id="shortcut-awayPenalty">Shift + P</kbd></td>
+            </tr>
+            <tr>
+              <td>Period Up</td>
+              <td><kbd id="shortcut-periodUp">Ctrl + ↑</kbd></td>
+            </tr>
+            <tr>
+              <td>Period Down</td>
+              <td><kbd id="shortcut-periodDown">Ctrl + ↓</kbd></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
