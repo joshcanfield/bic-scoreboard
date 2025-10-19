@@ -5,9 +5,11 @@ import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.*;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
 import org.testng.Assert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -181,6 +183,18 @@ public class UiIntegrationSteps {
     public void openNewGameDialog() throws InterruptedException {
         jsClick("button[href=\\\"#new-game-dialog\\\"]");
         Thread.sleep(100);
+    }
+
+    @When("I choose the standard template {string}")
+    public void chooseStandardTemplate(String label) {
+        WebElement selectEl = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.id("standard-template")));
+        Select select = new Select(selectEl);
+        try {
+            select.selectByValue(label);
+        } catch (NoSuchElementException ignored) {
+            select.selectByVisibleText(label);
+        }
     }
 
     @When("I set standard periods to {int}, {int}, {int}, {int}")
@@ -482,7 +496,9 @@ public class UiIntegrationSteps {
 
     private void setInputValue(String selector, String value) {
         ((JavascriptExecutor) driver).executeScript(
-                "var el=document.querySelector('" + selector + "'); if(el) el.value='" + value + "';");
+                "var el=document.querySelector(arguments[0]);" +
+                        "if(el){ el.value=arguments[1]; el.dispatchEvent(new Event('input', {bubbles:true})); }",
+                selector, value);
     }
 
     private String getInputValue(String selector) {

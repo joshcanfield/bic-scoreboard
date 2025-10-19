@@ -547,6 +547,7 @@ h2 {
 /* New Game dialog: left-align labels to reduce wrapping */
 #new-game-dialog .control-label { text-align: left; }
 #new-game-dialog .help-block { white-space: normal; }
+#new-game-dialog .template-help { margin-top: 4px; }
 
 
 /* --- Ports list styling --- */
