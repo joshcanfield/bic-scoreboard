@@ -6,6 +6,7 @@ import io.cucumber.java.Scenario;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 
@@ -25,6 +26,20 @@ import static canfield.bia.UiHooks.driver;
 public class UiIntegrationSteps {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static int initialTime;
+
+    private boolean isSelectorFocused(String selector) {
+        Object result = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector(arguments[0]);" +
+                        "return !!el && el === document.activeElement;", selector);
+        return Boolean.TRUE.equals(result);
+    }
+
+    private boolean isSelectorHovered(String selector) {
+        Object result = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector(arguments[0]);" +
+                        "return !!el && el.matches(':hover');", selector);
+        return Boolean.TRUE.equals(result);
+    }
 
     @After
     public void takeScreenshotOnFailure(Scenario scenario) {
@@ -475,5 +490,59 @@ public class UiIntegrationSteps {
                 "var el=document.querySelector('" + selector + "'); return el? el.value: '';"
         );
         return String.valueOf(ret);
+    }
+
+    @When("I click the home goal button")
+    public void clickHomeGoalButton() {
+        driver.get("http://localhost:8080/");
+        WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .score .score-up")));
+        btn.click();
+    }
+
+    @Then("the goal modal should be visible")
+    public void goalModalShouldBeVisible() {
+        waitForModalVisible("#add-goal");
+    }
+
+    @Then("the element {string} should not be focused")
+    public void elementShouldNotBeFocused(String selector) {
+        boolean unfocused = new WebDriverWait(driver, Duration.ofSeconds(2))
+                .until(d -> !isSelectorFocused(selector));
+        Assert.assertTrue(unfocused,
+                "Expected element " + selector + " to lose focus after interaction");
+    }
+
+    @Then("the element {string} should not be hovered")
+    public void elementShouldNotBeHovered(String selector) {
+        boolean unhovered = new WebDriverWait(driver, Duration.ofSeconds(2))
+                .until(d -> !isSelectorHovered(selector));
+        Assert.assertTrue(unhovered,
+                "Expected element " + selector + " to lose hover state after interaction");
+    }
+
+    @When("I close the goal modal")
+    public void closeGoalModal() {
+        jsClick("#add-goal .modal-footer .btn[data-dismiss=\"modal\"]");
+        waitForModalHidden("#add-goal");
+    }
+
+    @When("I click the home penalty button")
+    public void clickHomePenaltyButton() {
+        driver.get("http://localhost:8080/");
+        WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .penalties a.btn[data-team=\"home\"]")));
+        btn.click();
+    }
+
+    @Then("the penalty modal should be visible")
+    public void penaltyModalShouldBeVisible() {
+        waitForModalVisible("#add-penalty");
+    }
+
+    @When("I close the penalty modal")
+    public void closePenaltyModal() {
+        jsClick("#add-penalty .modal-footer .btn[data-dismiss=\"modal\"]");
+        waitForModalHidden("#add-penalty");
     }
 }

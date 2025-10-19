@@ -24,11 +24,61 @@ img.navbar-brand {
     padding-top: 0;
 }
 
-#home .penalties .penalty {
+.team .penalties .penalty {
     float: right;
 }
+
+.btn:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.4);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
 #clock_box {
     text-align: center;
+}
+
+#swap-teams {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.swap-teams-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.swap-teams-btn:hover,
+.swap-teams-btn:focus {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+    color: var(--text);
+    outline: none;
+}
+
+.swap-teams-btn .glyphicon {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+}
+
+body[data-home-side="right"] #swap-teams-btn .glyphicon {
+    transform: scaleX(-1);
 }
 
 #clock-moment {
