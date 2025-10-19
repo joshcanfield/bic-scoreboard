@@ -17,3 +17,16 @@ Feature: Game Flow
     And I wait 1100 milliseconds
     Then the clock should stay the same
 
+  Scenario: Repeated clock stop shortcut should not change the time
+    Given the clock is stopped
+    When I press the clock start shortcut
+    And I wait 1100 milliseconds
+    Then the clock should count down
+    When I press the clock stop shortcut
+    And I wait 200 milliseconds
+    Then the clock should not be running
+    And I record the current clock time
+    When I press the clock stop shortcut
+    And I wait 200 milliseconds
+    Then the clock should stay the same
+

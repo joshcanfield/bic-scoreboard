@@ -1,5 +1,6 @@
 package canfield.bia.rest;
 
+import canfield.bia.hockey.Goal;
 import canfield.bia.hockey.Penalty;
 import canfield.bia.hockey.SimpleGameManager;
 import canfield.bia.hockey.Team;
@@ -21,9 +22,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Path("/game")
 @Produces("application/json")
 public class GameResource {
+  private static final Logger log = LoggerFactory.getLogger(GameResource.class);
+
 
   private final SimpleGameManager game;
 
@@ -56,6 +62,7 @@ public class GameResource {
       o.put("score", game.getScore(team));
       o.put("penalties", game.getPenalties(team));
       o.put("shots", game.getShots(team));
+      o.put("goals", game.getGoals(team));
       state.put(team.name(), o);
     }
 
@@ -116,25 +123,48 @@ public class GameResource {
     return Response.ok(response).build();
   }
 
+  @GET
+  @Path("/diagnostics")
+  public Response getDiagnostics() {
+    final HashMap<String, Object> diagnostics = new HashMap<>();
+
+    // System properties that affect serial port detection
+    diagnostics.put("os.name", System.getProperty("os.name"));
+    diagnostics.put("os.arch", System.getProperty("os.arch"));
+    diagnostics.put("os.version", System.getProperty("os.version"));
+    diagnostics.put("java.version", System.getProperty("java.version"));
+    diagnostics.put("java.library.path", System.getProperty("java.library.path"));
+    diagnostics.put("purejavacomm.porttypes", System.getProperty("purejavacomm.porttypes"));
+    diagnostics.put("user.dir", System.getProperty("user.dir"));
+
+    // Port information
+    diagnostics.put("currentPort", game.currentPort());
+    diagnostics.put("availablePorts", game.possiblePortNames());
+    diagnostics.put("portCount", game.possiblePortNames().size());
+    diagnostics.put("scoreboardRunning", game.updatesRunning());
+
+    return Response.ok(diagnostics).build();
+  }
+
   @POST
   @Path("/{team}/goal")
   @Consumes(MediaType.APPLICATION_JSON)
   public Response addGoal(
-      @PathParam("team") Team team
+      @PathParam("team") Team team,
+      Goal goal
   ) {
-    switch (team) {
-      case home:
-        int homeScore = game.getScore(Team.home);
-        game.setScore(Team.home, homeScore + 1);
-        break;
-      case away:
-        int awayScore = game.getScore(Team.away);
-        game.setScore(Team.away, awayScore + 1);
-        break;
-      default:
-        return Response.status(Response.Status.BAD_REQUEST).entity("Invalid team: " + team).build();
+    try {
+      log.info("Received goal: {}", goal);
+      if (goal == null) {
+        game.setScore(team, game.getScore(team) + 1);
+        return Response.ok().build();
+      }
+      Goal created = game.addGoal(team, goal);
+      return Response.ok(created).build();
+    } catch (Exception e) {
+      log.error("Error adding goal", e);
+      return Response.serverError().build();
     }
-    return Response.ok().build();
   }
 
   @POST
@@ -187,13 +217,11 @@ public class GameResource {
   @DELETE
   @Path("/{team}/goal")
   public Response undoGoal(@PathParam("team") Team team) {
-
-    int score = game.getScore(team);
-    if (score > 0) {
-      game.setScore(team, score - 1);
+    Goal removed = game.removeLastGoal(team);
+    if (removed != null) {
+      return Response.ok(removed).build();
     }
-
-    return Response.ok().build();
+    return Response.noContent().build();
   }
 
   @POST

@@ -30,3 +30,6 @@ local/
 tools/
 /out/
 /src/main/dist/scoreboard.properties
+.pki/
+.local/
+.cache/

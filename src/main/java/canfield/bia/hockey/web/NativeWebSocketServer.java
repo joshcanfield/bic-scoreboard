@@ -1,6 +1,7 @@
 package canfield.bia.hockey.web;
 
 import canfield.bia.hockey.GameConfig;
+import canfield.bia.hockey.Goal;
 import canfield.bia.hockey.SimpleGameManager;
 import canfield.bia.hockey.Team;
 import org.java_websocket.WebSocket;
@@ -96,13 +97,20 @@ public class NativeWebSocketServer extends WebSocketServer {
             } else if ("clock_pause".equals(event)) {
                 gameManager.stopClock();
             } else if ("goal".equals(event)) {
-                Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
-                Team team = Team.valueOf(data.get("team"));
-                gameManager.setScore(team, gameManager.getScore(team) + 1);
+                Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){});
+                Object teamValue = data.get("team");
+                if (teamValue != null) {
+                    Team team = Team.valueOf(String.valueOf(teamValue));
+                    Goal goal = mapper.convertValue(dataObj, Goal.class);
+                    gameManager.addGoal(team, goal);
+                }
             } else if ("undo_goal".equals(event)) {
-                Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
-                Team team = Team.valueOf(data.get("team"));
-                gameManager.setScore(team, gameManager.getScore(team) - 1);
+                Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){});
+                Object teamValue = data.get("team");
+                if (teamValue != null) {
+                    Team team = Team.valueOf(String.valueOf(teamValue));
+                    gameManager.removeLastGoal(team);
+                }
             } else if ("shot".equals(event)) {
                 Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});
                 Team team = Team.valueOf(data.get("team"));
@@ -188,9 +196,6 @@ public class NativeWebSocketServer extends WebSocketServer {
                 }
 
                 gameManager.reset();
-                if (gameManager.getPeriodLength() == 0) {
-                    gameManager.setPeriod(1);
-                }
             }
         } catch (Exception e) {
             log.warn("WS event handling error: {}", e.getMessage());
@@ -233,6 +238,7 @@ public class NativeWebSocketServer extends WebSocketServer {
             o.put("score", gameManager.getScore(team));
             o.put("penalties", gameManager.getPenalties(team));
             o.put("shots", gameManager.getShots(team));
+            o.put("goals", gameManager.getGoals(team));
             state.put(team.name(), o);
         }
         return state;

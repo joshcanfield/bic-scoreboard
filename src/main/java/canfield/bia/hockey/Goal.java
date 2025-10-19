@@ -1,10 +1,25 @@
 package canfield.bia.hockey;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Goal {
-    int period;
-    int time;
-    int playerNumber;
-    int assistNumber;
+    private static final AtomicInteger idSource = new AtomicInteger();
+
+    private final Integer id = idSource.incrementAndGet();
+
+    private int period;
+    private int time;
+    private int playerNumber;
+    private Integer primaryAssistNumber;
+    private Integer secondaryAssistNumber;
+
+    public Integer getId() {
+        return id;
+    }
 
     public int getPeriod() {
         return period;
@@ -30,11 +45,28 @@ public class Goal {
         this.playerNumber = playerNumber;
     }
 
-    public int getAssistNumber() {
-        return assistNumber;
+    public Integer getPrimaryAssistNumber() {
+        return primaryAssistNumber;
     }
 
-    public void setAssistNumber(int assistNumber) {
-        this.assistNumber = assistNumber;
+    public void setPrimaryAssistNumber(Integer primaryAssistNumber) {
+        this.primaryAssistNumber = primaryAssistNumber;
+    }
+
+    public Integer getSecondaryAssistNumber() {
+        return secondaryAssistNumber;
+    }
+
+    public void setSecondaryAssistNumber(Integer secondaryAssistNumber) {
+        this.secondaryAssistNumber = secondaryAssistNumber;
+    }
+
+    @JsonIgnore
+    public Integer getAssistNumber() {
+        return primaryAssistNumber;
+    }
+
+    public void setAssistNumber(Integer assistNumber) {
+        this.primaryAssistNumber = assistNumber;
     }
 }

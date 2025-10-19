@@ -5,7 +5,11 @@ import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.*;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
 import org.testng.Assert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +28,20 @@ import static canfield.bia.UiHooks.driver;
 public class UiIntegrationSteps {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static int initialTime;
+
+    private boolean isSelectorFocused(String selector) {
+        Object result = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector(arguments[0]);" +
+                        "return !!el && el === document.activeElement;", selector);
+        return Boolean.TRUE.equals(result);
+    }
+
+    private boolean isSelectorHovered(String selector) {
+        Object result = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector(arguments[0]);" +
+                        "return !!el && el.matches(':hover');", selector);
+        return Boolean.TRUE.equals(result);
+    }
 
     @After
     public void takeScreenshotOnFailure(Scenario scenario) {
@@ -88,6 +106,14 @@ public class UiIntegrationSteps {
         driver.get("http://localhost:8080/");
         jsClick("a.period-up");
         jsClick("#home button.score-up");
+        waitForModalVisible("#add-goal");
+        // Modal auto-fills period and time from game state, so we only set player and assists
+        setInputValue("#add-goal-player", "77");
+        setInputValue("#add-goal-assist1", "18");
+        setInputValue("#add-goal-assist2", "21");
+        jsClick("#add-goal-submit");
+        waitForModalHidden("#add-goal");
+        waitForScore("#home-score", 1);
         jsClick("#clock-start");
         Thread.sleep(500);
     }
@@ -159,6 +185,18 @@ public class UiIntegrationSteps {
         Thread.sleep(100);
     }
 
+    @When("I choose the standard template {string}")
+    public void chooseStandardTemplate(String label) {
+        WebElement selectEl = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.id("standard-template")));
+        Select select = new Select(selectEl);
+        try {
+            select.selectByValue(label);
+        } catch (NoSuchElementException ignored) {
+            select.selectByVisibleText(label);
+        }
+    }
+
     @When("I set standard periods to {int}, {int}, {int}, {int}")
     public void setStandardPeriods(int p0, int p1, int p2, int p3) {
         setInputValue("#period-0", String.valueOf(p0));
@@ -199,6 +237,96 @@ public class UiIntegrationSteps {
         Assert.assertEquals(Integer.parseInt(v1), p1, "period-1");
         Assert.assertEquals(Integer.parseInt(v2), p2, "period-2");
         Assert.assertEquals(Integer.parseInt(v3), p3, "period-3");
+    }
+
+    private void ensureShortcutsReady() {
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Object status = js.executeAsyncScript(
+                "var cb = arguments[arguments.length - 1];" +
+                        "if (!window.__test || !window.__test.shortcutsReady) { cb('missing'); return; }" +
+                        "try {" +
+                        "  window.__test.shortcutsReady().then(function() {" +
+                        "    try {" +
+                        "      var errFn = window.__test.shortcutsLoadError;" +
+                        "      var hasError = errFn ? errFn() : false;" +
+                        "      cb(hasError ? 'error' : 'ok');" +
+                        "    } catch (err) {" +
+                        "      cb('error');" +
+                        "    }" +
+                        "  }).catch(function() { cb('error'); });" +
+                        "} catch (err) { cb('error'); }"
+        );
+        Assert.assertEquals(status, "ok", "Keyboard shortcuts should load successfully");
+    }
+
+    @Then("the keyboard shortcuts should load successfully")
+    public void keyboardShortcutsShouldLoadSuccessfully() {
+        ensureShortcutsReady();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> getShortcutBindings(String action) {
+        ensureShortcutsReady();
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Object result = js.executeScript(
+                "return window.__test && window.__test.shortcuts ? window.__test.shortcuts() : null;"
+        );
+        Assert.assertNotNull(result, "Shortcuts map should be available");
+        Map<String, Object> shortcuts = (Map<String, Object>) result;
+        Object raw = shortcuts.get(action);
+        Assert.assertNotNull(raw, "Shortcut '" + action + "' should exist");
+        if (raw instanceof List<?>) {
+            List<?> rawList = (List<?>) raw;
+            List<String> bindings = new ArrayList<>(rawList.size());
+            for (Object entry : rawList) {
+                bindings.add(String.valueOf(entry));
+            }
+            return bindings;
+        }
+        return Collections.singletonList(String.valueOf(raw));
+    }
+
+    @Then("shortcut {string} should include {string}")
+    public void shortcutShouldIncludeBinding(String action, String binding) {
+        List<String> bindings = getShortcutBindings(action);
+        Assert.assertTrue(bindings.contains(binding),
+                "Expected shortcut '" + action + "' to include binding '" + binding + "' but had " + bindings);
+    }
+
+    @When("I press the clock start shortcut")
+    public void pressClockStartShortcut() {
+        new Actions(driver).sendKeys(Keys.ARROW_UP).perform();
+    }
+
+    @When("I press the clock stop shortcut")
+    public void pressClockStopShortcut() {
+        new Actions(driver).sendKeys(Keys.ARROW_DOWN).perform();
+    }
+
+    @When("I record the current clock time")
+    public void recordCurrentClockTime() {
+        initialTime = readClockMillis();
+    }
+
+    @When("I open the add goal dialog for the home team")
+    public void openAddGoalDialogHome() {
+        jsClick("#home button.score-up");
+        waitForModalVisible("#add-goal");
+    }
+
+    @When("I press Escape")
+    public void pressEscape() {
+        new Actions(driver).sendKeys(Keys.ESCAPE).perform();
+    }
+
+    @Then("the modal {string} should be visible")
+    public void modalShouldBeVisible(String selector) {
+        waitForModalVisible(selector);
+    }
+
+    @Then("the modal {string} should be hidden")
+    public void modalShouldBeHidden(String selector) {
+        waitForModalHidden(selector);
     }
 
     @Given("the clock is stopped")
@@ -341,9 +469,36 @@ public class UiIntegrationSteps {
                 "var el=document.querySelector('" + selector + "'); if(el) el.click();");
     }
 
+    private void waitForModalVisible(String selector) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d)
+                        .executeScript("var el=document.querySelector(arguments[0]); return !!el && window.getComputedStyle(el).display !== 'none';", selector)));
+    }
+
+    private void waitForModalHidden(String selector) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> Boolean.TRUE.equals(((JavascriptExecutor) d)
+                        .executeScript("var el=document.querySelector(arguments[0]); return !el || window.getComputedStyle(el).display === 'none';", selector)));
+    }
+
+    private void waitForScore(String scoreId, int expected) {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> {
+                    WebElement el = d.findElement(By.id(scoreId.replace("#", "")));
+                    String txt = el.getText().trim();
+                    try {
+                        return Integer.parseInt(txt) == expected;
+                    } catch (NumberFormatException ex) {
+                        return false;
+                    }
+                });
+    }
+
     private void setInputValue(String selector, String value) {
         ((JavascriptExecutor) driver).executeScript(
-                "var el=document.querySelector('" + selector + "'); if(el) el.value='" + value + "';");
+                "var el=document.querySelector(arguments[0]);" +
+                        "if(el){ el.value=arguments[1]; el.dispatchEvent(new Event('input', {bubbles:true})); }",
+                selector, value);
     }
 
     private String getInputValue(String selector) {
@@ -351,5 +506,59 @@ public class UiIntegrationSteps {
                 "var el=document.querySelector('" + selector + "'); return el? el.value: '';"
         );
         return String.valueOf(ret);
+    }
+
+    @When("I click the home goal button")
+    public void clickHomeGoalButton() {
+        driver.get("http://localhost:8080/");
+        WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .score .score-up")));
+        btn.click();
+    }
+
+    @Then("the goal modal should be visible")
+    public void goalModalShouldBeVisible() {
+        waitForModalVisible("#add-goal");
+    }
+
+    @Then("the element {string} should not be focused")
+    public void elementShouldNotBeFocused(String selector) {
+        boolean unfocused = new WebDriverWait(driver, Duration.ofSeconds(2))
+                .until(d -> !isSelectorFocused(selector));
+        Assert.assertTrue(unfocused,
+                "Expected element " + selector + " to lose focus after interaction");
+    }
+
+    @Then("the element {string} should not be hovered")
+    public void elementShouldNotBeHovered(String selector) {
+        boolean unhovered = new WebDriverWait(driver, Duration.ofSeconds(2))
+                .until(d -> !isSelectorHovered(selector));
+        Assert.assertTrue(unhovered,
+                "Expected element " + selector + " to lose hover state after interaction");
+    }
+
+    @When("I close the goal modal")
+    public void closeGoalModal() {
+        jsClick("#add-goal .modal-footer .btn[data-dismiss=\"modal\"]");
+        waitForModalHidden("#add-goal");
+    }
+
+    @When("I click the home penalty button")
+    public void clickHomePenaltyButton() {
+        driver.get("http://localhost:8080/");
+        WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .penalties a.btn[data-team=\"home\"]")));
+        btn.click();
+    }
+
+    @Then("the penalty modal should be visible")
+    public void penaltyModalShouldBeVisible() {
+        waitForModalVisible("#add-penalty");
+    }
+
+    @When("I close the penalty modal")
+    public void closePenaltyModal() {
+        jsClick("#add-penalty .modal-footer .btn[data-dismiss=\"modal\"]");
+        waitForModalHidden("#add-penalty");
     }
 }

@@ -8,6 +8,7 @@ import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -27,6 +28,8 @@ public class SimpleGameManager {
 
   private final List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
   private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
+  private final List<Goal> homeGoals = new CopyOnWriteArrayList<>();
+  private final List<Goal> awayGoals = new CopyOnWriteArrayList<>();
   private Integer shiftLengthSeconds;
   private int lastShiftBuzzer = 0;
   private int homeShots = 0;
@@ -355,6 +358,10 @@ public class SimpleGameManager {
     return team == Team.home ? homePenalties : awayPenalties;
   }
 
+  public List<Goal> getGoals(Team team) {
+    return Collections.unmodifiableList(team == Team.home ? homeGoals : awayGoals);
+  }
+
   public void addPenalty(Team team, Penalty penalty) {
     switch (team) {
       case home:
@@ -367,11 +374,56 @@ public class SimpleGameManager {
     updatePenalties();
   }
 
+  public Goal addGoal(Team team, Goal goal) {
+    if (goal == null) {
+      return null;
+    }
+
+    if (goal.getPeriod() <= 0) {
+      goal.setPeriod(getPeriod());
+    }
+
+    int goalTime = goal.getTime();
+    if (goalTime <= 0) {
+      goalTime = getRemainingTimeMillis();
+    }
+    goal.setTime(Math.max(0, roundToSecond(goalTime)));
+
+    switch (team) {
+      case home:
+        homeGoals.add(goal);
+        break;
+      case away:
+        awayGoals.add(goal);
+        break;
+    }
+
+    setScore(team, getScore(team) + 1);
+    return goal;
+  }
+
+  public Goal removeLastGoal(Team team) {
+    List<Goal> goals = team == Team.home ? homeGoals : awayGoals;
+    Goal removed = null;
+    if (!goals.isEmpty()) {
+      removed = goals.remove(goals.size() - 1);
+    }
+
+    int score = getScore(team);
+    if (score > 0) {
+      setScore(team, score - 1);
+    }
+
+    return removed;
+  }
+
   public void reset() {
     stopClock();
     scoreBoard.setGameState(ScoreBoard.GameState.PRE_GAME);
     homePenalties.clear();
     awayPenalties.clear();
+    homeGoals.clear();
+    awayGoals.clear();
     scoreBoard.setAwayPenalty(0, null);
     scoreBoard.setAwayPenalty(1, null);
     scoreBoard.setHomePenalty(0, null);

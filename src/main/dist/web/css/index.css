@@ -24,11 +24,61 @@ img.navbar-brand {
     padding-top: 0;
 }
 
-#home .penalties .penalty {
+.team .penalties .penalty {
     float: right;
 }
+
+.btn:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.4);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
 #clock_box {
     text-align: center;
+}
+
+#swap-teams {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.swap-teams-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.swap-teams-btn:hover,
+.swap-teams-btn:focus {
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+    color: var(--text);
+    outline: none;
+}
+
+.swap-teams-btn .glyphicon {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+}
+
+body[data-home-side="right"] #swap-teams-btn .glyphicon {
+    transform: scaleX(-1);
 }
 
 #clock-moment {
@@ -115,6 +165,28 @@ body.buzzer { animation: buzzerPulse 0.6s ease-in-out 0s infinite alternate; }
 .navbar.navbar-default .navbar-brand, .navbar.navbar-default .navbar-nav>li>a { background: transparent !important; }
 img.navbar-brand { display: block; height: 97px; width: auto; }
 .navbar-btn#buzzer { background: var(--warn); border: none; color: #1b1b1b; font-weight: 700; margin-right: 12px; }
+.navbar-nav > li > .navbar-btn { margin-right: 12px; }
+.navbar-nav > li:last-child > .navbar-btn { margin-right: 0; }
+.navbar .team-color-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 12px 0 0;
+    padding: 0;
+    height: auto;
+}
+.navbar .team-color-form .team-chip-label {
+    margin: 0;
+    line-height: 1;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+.navbar .team-color-form .color-chip {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    margin: 0;
+}
 /* Buttons: stronger colors + obvious hover/focus states */
 .btn {
     color: var(--text);
@@ -236,9 +308,9 @@ img.navbar-brand { display: block; height: 97px; width: auto; }
 /* Navbar color chips */
 .color-chip {
     display: inline-block;
-    width: 18px; height: 18px;
+    width: 20px; height: 20px;
     border: 2px solid #ffffff;
-    border-radius: 4px;
+    border-radius: 5px;
     background: #ccc; /* will be overridden via JS */
     box-shadow: 0 1px 2px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.08);
     padding: 0; margin: 0;
@@ -277,8 +349,8 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 }
 .score, .shots { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
 /* Team accent borders */
-#home .score, #home .shots, #home .penalties .table { border-top: 3px solid var(--home-color); }
-#away .score, #away .shots, #away .penalties .table { border-top: 3px solid var(--away-color); }
+#home .score, #home .shots, #home .penalties .table, #home .goals .table { border-top: 3px solid var(--home-color); }
+#away .score, #away .shots, #away .penalties .table, #away .goals .table { border-top: 3px solid var(--away-color); }
 .section-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
 /* Digits look */
@@ -299,12 +371,23 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 #period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; color: var(--muted); }
 #period-block a { color: var(--accent); }
 
-/* Penalties */
-.penalties .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.penalties .table { width: 100%; }
+/* Penalties & Goals tables */
+.penalties .table,
+.goals .table { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.penalties .table,
+.goals .table { width: 100%; }
 .penalties .table > tbody > tr > td,
 .penalties .table > thead > tr > th,
-.penalties .table > tbody > tr > th { border-color: rgba(255,255,255,0.06); text-align: center; vertical-align: middle; white-space: nowrap; }
+.penalties .table > tbody > tr > th,
+.goals .table > tbody > tr > td,
+.goals .table > thead > tr > th,
+.goals .table > tbody > tr > th { border-color: rgba(255,255,255,0.06); text-align: center; vertical-align: middle; white-space: nowrap; }
+.penalties .table > tbody > tr:nth-child(even),
+.goals .table > tbody > tr:nth-child(even) { background: rgba(9,14,30,0.9); }
+.penalties .table > tbody > tr:nth-child(odd),
+.goals .table > tbody > tr:nth-child(odd) { background: rgba(15,22,44,0.9); }
+.penalties .table .btn,
+.goals .table .btn { color: var(--text); }
 .penalties .table td .pn[data-serving]:not([data-serving=""])::after { content: " (" attr(data-serving) ")"; }
 .penalties a.btn.btn-primary { --btn-primary-bg: var(--accent); --btn-primary-bg-2: var(--accent); --btn-primary-shadow: none; }
 
@@ -312,6 +395,9 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .penalties tbody.placeholders tr.placeholder td:last-child { /* hide action column visually for placeholders */
     visibility: hidden;
 }
+
+.goals { margin-top: 18px; }
+.goals .table tbody tr.placeholder td { padding: 12px 8px; color: rgba(255,255,255,0.45); font-style: italic; }
 
 .progress { background: rgba(255,255,255,0.06); border-radius: 10px; border: 1px solid var(--border); }
 .progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 0 12px rgba(76,201,240,0.45); }
@@ -322,11 +408,37 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .modal-content { background: #101838; color: var(--text); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 16px; box-shadow: 0 18px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06); }
 .modal-header, .modal-footer { border-color: rgba(255,255,255,0.08); }
 .modal-header { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)); border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.goal-modal-header { position: relative; overflow: hidden; }
+.goal-modal-header.home {
+    background: var(--home-color);
+    border-color: var(--home-color);
+}
+.goal-modal-header.away {
+    background: var(--away-color);
+    border-color: var(--away-color);
+}
+.goal-modal-header.home .modal-title,
+.goal-modal-header.away .modal-title { color: #fff; }
+.goal-modal-header.home .close,
+.goal-modal-header.away .close { color: #fff; opacity: .85; }
+.goal-modal-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0));
+    pointer-events: none;
+}
 .modal-header .close { color: var(--text); text-shadow: none; opacity: .8; font-size: 28px; line-height: 1; padding: 4px 8px; margin-top: -6px; }
 .modal-header .close:hover, .modal-header .close:focus { color: #fff; opacity: 1; outline: none; }
 .modal .btn-danger { background: linear-gradient(180deg, #ff7575, #ef476f); border: none; }
 .modal.fade .modal-dialog { transform: translateY(8px) scale(0.985); opacity: 0; transition: transform .18s cubic-bezier(.2,.7,.2,1), opacity .18s ease; }
 .modal.in .modal-dialog { transform: translateY(0) scale(1); opacity: 1; }
+#keyboard-shortcuts-dialog .table-striped > tbody > tr:nth-of-type(odd) { background: rgba(248, 249, 255, 0.08); }
+#keyboard-shortcuts-dialog .table-striped > tbody > tr:nth-of-type(even) { background: rgba(248, 249, 255, 0.02); }
+#keyboard-shortcuts-dialog .table-striped > tbody > tr:hover { background: rgba(248, 249, 255, 0.14); }
+#keyboard-shortcuts-dialog .table-strip
+#keyboard-shortcuts-dialog .table td { font-weight: 600; }
+#keyboard-shortcuts-dialog .table th { font-weight: 700; }
 
 /* Tabs */
 .nav-tabs>li>a { background: #1b2446; border: 1px solid var(--border); color: var(--muted); }
@@ -435,6 +547,7 @@ h2 {
 /* New Game dialog: left-align labels to reduce wrapping */
 #new-game-dialog .control-label { text-align: left; }
 #new-game-dialog .help-block { white-space: normal; }
+#new-game-dialog .template-help { margin-top: 4px; }
 
 
 /* --- Ports list styling --- */
@@ -458,5 +571,6 @@ h2 {
 }
 .port-pill.active { background: var(--success); color: #0b1020; border-color: transparent; }
 .port-pill.tried { opacity: 0.6; }
+
 
 
