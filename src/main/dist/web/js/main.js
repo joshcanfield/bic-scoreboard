@@ -93,6 +93,103 @@ const State = {
   currentPort: '',
 };
 
+// ---------- Team layout (Home/Away ordering) ----------
+const TeamLayout = (() => {
+  const STORAGE_KEY = 'scoreboard.layout.leftTeam';
+  let sides = { left: 'home', right: 'away' };
+  let button = null;
+
+  const readStoredLeft = () => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored === 'away' ? 'away' : 'home';
+    } catch (_) {
+      return 'home';
+    }
+  };
+
+  const persistLeft = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, sides.left);
+    } catch (_) {
+      /* ignore persistence issues */
+    }
+  };
+
+  const applyDomOrder = () => {
+    const row = document.querySelector('.container > .row');
+    const home = document.getElementById('home');
+    const away = document.getElementById('away');
+    const clock = document.getElementById('clock_box');
+    if (!row || !home || !away || !clock) return;
+    const leftEl = sides.left === 'home' ? home : away;
+    const rightEl = sides.left === 'home' ? away : home;
+    [leftEl, clock, rightEl].forEach((el) => {
+      if (el && el.parentElement === row) row.appendChild(el);
+    });
+  };
+
+  const updateBodyDataset = () => {
+    if (!document || !document.body) return;
+    document.body.dataset.homeSide = sides.left === 'home' ? 'left' : 'right';
+    document.body.dataset.leftTeam = sides.left;
+    document.body.dataset.rightTeam = sides.right;
+  };
+
+  const updateButtonState = () => {
+    if (!button) button = document.getElementById('swap-teams-btn');
+    if (!button) return;
+    const homeSide = sides.left === 'home' ? 'left' : 'right';
+    const statusLabel = homeSide === 'left' ? 'Home currently on left. Swap sides.' : 'Home currently on right. Swap sides.';
+    button.setAttribute('aria-pressed', homeSide === 'right' ? 'true' : 'false');
+    button.setAttribute('aria-label', statusLabel);
+    button.setAttribute('title', statusLabel);
+  };
+
+  const apply = (leftTeam) => {
+    const nextLeft = leftTeam === 'away' ? 'away' : 'home';
+    if (sides.left !== nextLeft) {
+      sides = { left: nextLeft, right: nextLeft === 'home' ? 'away' : 'home' };
+      applyDomOrder();
+      persistLeft();
+      updateBodyDataset();
+      updateButtonState();
+      document.dispatchEvent(new CustomEvent('scoreboard:layout-changed', { detail: { ...sides } }));
+      return;
+    }
+    // Even if unchanged, ensure DOM/order/button reflect stored state
+    applyDomOrder();
+    updateBodyDataset();
+    updateButtonState();
+  };
+
+  const toggle = () => {
+    const nextLeft = sides.right;
+    apply(nextLeft);
+  };
+
+  const init = () => {
+    button = document.getElementById('swap-teams-btn');
+    if (button) {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggle();
+        button.blur();
+      });
+    }
+    apply(readStoredLeft());
+  };
+
+  const getTeamForSide = (side) => {
+    if (side === 'left' || side === 'right') return sides[side];
+    return 'home';
+  };
+
+  const getSides = () => ({ ...sides });
+
+  return { init, toggle, getTeamForSide, getSides };
+})();
+
 // ---------- Transport (Socket.IO or native WebSocket) ----------
 const buildBaseHost = (defPort) => {
   const url = new URL(window.location.href);
@@ -194,7 +291,11 @@ const Modals = (() => {
   const anyVisible = () => Array.from(document.querySelectorAll('.modal')).some(isVisible);
   const show = (modal) => {
     if (!modal) return;
-    modal.__trigger = modal.__trigger || document.activeElement || null;
+    const active = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+    if (active) modal.__trigger = active;
+    if (modal.__trigger && typeof modal.__trigger.blur === 'function') {
+      try { modal.__trigger.blur(); } catch (_) {}
+    }
     modal.style.display = 'block';
     modal.setAttribute('aria-hidden', 'false');
     modal.classList.add('in');
@@ -208,6 +309,7 @@ const Modals = (() => {
     if (!anyVisible()) document.body.classList.remove('modal-open');
     const trigger = modal.__trigger;
     modal.__trigger = null;
+    restoreHover(trigger);
     if (trigger && typeof trigger.focus === 'function') {
       setTimeout(() => {
         try { trigger.focus(); } catch (_) {}
@@ -221,9 +323,19 @@ const Modals = (() => {
       e.preventDefault();
       const href = t.getAttribute('href');
       if (href) showById(href);
+      if ((e.detail || 0) !== 0) {
+        requestAnimationFrame(() => {
+          if (document.activeElement === t) {
+            try { t.blur(); } catch (_) {}
+          }
+        });
+      }
       // store trigger for later access
       const m = $(href);
-      if (m) m.__trigger = t;
+      if (m) {
+        m.__trigger = t;
+        suppressHover(t);
+      }
     });
     // close via [data-dismiss="modal"]
     on(document, 'click', '[data-dismiss="modal"]', (e, t) => {
@@ -650,6 +762,72 @@ const initEvents = () => {
   // Load stored colors then paint chips
   loadStoredTeamColors();
   updateColorChips();
+
+  const simulatePointerLeave = (el) => {
+    if (!el || typeof el.dispatchEvent !== 'function') return;
+    const doc = el.ownerDocument || document;
+    const related = doc.body || null;
+    ['pointerout', 'pointerleave', 'mouseout', 'mouseleave'].forEach((type) => {
+      try {
+        const evt = new MouseEvent(type, { bubbles: true, cancelable: true, relatedTarget: related });
+        el.dispatchEvent(evt);
+      } catch (_) {
+        try {
+          const evt = doc.createEvent('MouseEvent');
+          evt.initMouseEvent(type, true, true, doc.defaultView, 0, 0, 0, 0, 0,
+            false, false, false, false, 0, related);
+          el.dispatchEvent(evt);
+        } catch (_) {}
+      }
+    });
+  };
+
+  const suppressHover = (el) => {
+    if (!el || !el.style || el.__hoverSuppressed) return;
+    el.__hoverSuppressed = { pointerEvents: el.style.pointerEvents };
+    el.style.pointerEvents = 'none';
+  };
+  const restoreHover = (el) => {
+    if (!el || !el.style || !el.__hoverSuppressed) return;
+    const prev = el.__hoverSuppressed.pointerEvents;
+    if (prev === undefined || prev === null || prev === '') {
+      el.style.removeProperty('pointer-events');
+    } else {
+      el.style.pointerEvents = prev;
+    }
+    delete el.__hoverSuppressed;
+  };
+  const scheduleBlur = (el) => {
+    if (!el) return;
+    simulatePointerLeave(el);
+    requestAnimationFrame(() => {
+      try { el.blur(); } catch (_) {}
+    });
+  };
+
+  let pressedButton = null;
+  const rememberPressedButton = (e) => {
+    const btn = e.target && e.target.closest('.btn');
+    if (btn) pressedButton = btn;
+  };
+  const releasePressedButton = () => {
+    if (!pressedButton) return;
+    const btn = pressedButton;
+    pressedButton = null;
+    scheduleBlur(btn);
+  };
+  if ('onpointerdown' in window) {
+    document.addEventListener('pointerdown', rememberPressedButton, true);
+    document.addEventListener('pointerup', releasePressedButton, true);
+    document.addEventListener('pointercancel', releasePressedButton, true);
+  } else {
+    document.addEventListener('mousedown', rememberPressedButton, true);
+    document.addEventListener('mouseup', releasePressedButton, true);
+    document.addEventListener('touchstart', rememberPressedButton, true);
+    document.addEventListener('touchend', releasePressedButton, true);
+    document.addEventListener('touchcancel', releasePressedButton, true);
+  }
+
   // Navbar buttons
   $('#buzzer').addEventListener('click', () => Server.buzzer());
   $('#clock-start').addEventListener('click', () => Server.startClock());
@@ -815,6 +993,7 @@ const initEvents = () => {
     const team = e.currentTarget.dataset.team;
     if (!team) return;
     openGoalModal(team);
+    if ((e.detail || 0) !== 0) scheduleBlur(e.currentTarget);
   }));
   $$('.score-down').forEach(btn => btn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -854,6 +1033,7 @@ const initEvents = () => {
     set('#pd-start', t.dataset.start || '—');
     set('#pd-remaining', t.dataset.remaining || '—');
     Modals.show(dlg);
+    if ((e.detail || 0) !== 0) scheduleBlur(t);
   });
 
   // Power control button workflow
@@ -1680,6 +1860,15 @@ const KeyboardShortcuts = (() => {
     return eventKey === parsed.key && e.shiftKey === parsed.shift && e.ctrlKey === parsed.ctrl && e.altKey === parsed.alt;
   };
 
+  // Keyboard shortcuts always apply to the team in each column, regardless of which squad is home/away.
+  const LEFT_COLUMN_ACTIONS = new Set(['homeShotUp', 'homeShotDown', 'homeGoal', 'homePenalty']);
+  const RIGHT_COLUMN_ACTIONS = new Set(['awayShotUp', 'awayShotDown', 'awayGoal', 'awayPenalty']);
+  const teamForShortcutAction = (action) => {
+    if (LEFT_COLUMN_ACTIONS.has(action)) return TeamLayout.getTeamForSide('left');
+    if (RIGHT_COLUMN_ACTIONS.has(action)) return TeamLayout.getTeamForSide('right');
+    return null;
+  };
+
   const loadShortcuts = async () => {
     loadError = false;
     try {
@@ -1735,6 +1924,7 @@ const KeyboardShortcuts = (() => {
     // Skip most actions if modal is open
     if (modalOpen && !['buzzer', 'clockToggle', 'clockStart', 'clockStop'].includes(action)) return;
 
+    const team = teamForShortcutAction(action);
     switch (action) {
       case 'buzzer':
         Server.buzzer();
@@ -1761,31 +1951,27 @@ const KeyboardShortcuts = (() => {
         }
         break;
       case 'homeShotUp':
-        Server.shot({ team: 'home' });
+      case 'awayShotUp':
+        if (!team) return;
+        Server.shot({ team });
         break;
       case 'homeShotDown':
-        Server.undoShot({ team: 'home' });
-        break;
-      case 'awayShotUp':
-        Server.shot({ team: 'away' });
-        break;
       case 'awayShotDown':
-        Server.undoShot({ team: 'away' });
+        if (!team) return;
+        Server.undoShot({ team });
         break;
       case 'homeGoal':
-        openGoalModal('home');
-        break;
       case 'awayGoal':
-        openGoalModal('away');
+        if (!team) return;
+        openGoalModal(team);
         break;
       case 'homePenalty':
-        // Trigger modal open via simulated click
-        const homeBtn = document.querySelector('a[data-team="home"][href="#add-penalty"]');
-        if (homeBtn) homeBtn.click();
-        break;
       case 'awayPenalty':
-        const awayBtn = document.querySelector('a[data-team="away"][href="#add-penalty"]');
-        if (awayBtn) awayBtn.click();
+        if (!team) return;
+        {
+          const penaltyBtn = document.querySelector(`a[data-team="${team}"][href="#add-penalty"]`);
+          if (penaltyBtn) penaltyBtn.click();
+        }
         break;
       case 'periodUp':
         Server.setPeriod(State.period + 1);
@@ -1831,6 +2017,7 @@ try {
 // ---------- Boot ----------
 document.addEventListener('DOMContentLoaded', () => {
   Modals.init();
+  TeamLayout.init();
   initEvents();
   initSocket();
   KeyboardShortcuts.init();

@@ -102,6 +102,16 @@
     </div>
 
     <div id="clock_box" class="col-md-4">
+      <div id="swap-teams" class="swap-teams">
+        <button type="button"
+                id="swap-teams-btn"
+                class="btn btn-default btn-sm swap-teams-btn"
+                aria-label="Swap home and away sides"
+                title="Swap home and away sides">
+          <span class="glyphicon glyphicon-refresh" aria-hidden="true"></span>
+          <span class="sr-only">Swap home and away sides</span>
+        </button>
+      </div>
       <a data-toggle="modal" href="#set-clock">
         <div class="clock">
           <div class="digits"><div id="clock-text" class="clock-text">00:00</div></div>
@@ -135,15 +145,15 @@
             <div id="away-score" class="score-text">00</div>
           </div>
           <div class="btn-row">
-            <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
             <button data-team="away" class="score-down btn btn-default btn-sm">-</button>
+            <button data-team="away" class="score-up btn btn-primary btn-lg">+Goal</button>
           </div>
         </div>
         <div class="shots" aria-label="Away shots on goal">
           <div id="away-shots" class="shots-counter">0</div>
           <div class="btn-row">
-            <button data-team="away" class="shots-up btn btn-info">+Shot</button>
             <button data-team="away" class="shots-down btn btn-default btn-sm">-</button>
+            <button data-team="away" class="shots-up btn btn-info">+Shot</button>
           </div>
         </div>
       </div>
@@ -161,7 +171,7 @@
       </div>
 
       <div class="penalties">
-        <a data-toggle="modal" href="#add-penalty" class="btn btn-primary" data-team="away">+Penalty</a>
+        <a data-toggle="modal" href="#add-penalty" class="penalty btn btn-primary" data-team="away">+Penalty</a>
         <table class="table table-condensed">
           <tr>
             <th>Period</th><th>Player #</th><th>Remaining</th><th>&nbsp;</th>
@@ -570,7 +580,7 @@
         <h4 class="modal-title">Keyboard Shortcuts</h4>
       </div>
       <div class="modal-body">
-        <p class="help-block">Use these keyboard shortcuts to control the scoreboard quickly.</p>
+        <p class="help-block">Shortcuts always target the left or right column (default Home/Away); swap columns to match the rink view.</p>
         <table class="table table-condensed table-striped">
           <thead>
             <tr>
@@ -596,35 +606,35 @@
               <td><kbd id="shortcut-clockToggle">Space</kbd></td>
             </tr>
             <tr>
-              <td>Home Shot</td>
+              <td>Left Column Shot (default Home)</td>
               <td><kbd id="shortcut-homeShotUp">Q</kbd></td>
             </tr>
             <tr>
-              <td>Undo Home Shot</td>
+              <td>Undo Left Shot</td>
               <td><kbd id="shortcut-homeShotDown">Shift + Q</kbd></td>
             </tr>
             <tr>
-              <td>Away Shot</td>
+              <td>Right Column Shot (default Away)</td>
               <td><kbd id="shortcut-awayShotUp">E</kbd></td>
             </tr>
             <tr>
-              <td>Undo Away Shot</td>
+              <td>Undo Right Shot</td>
               <td><kbd id="shortcut-awayShotDown">Shift + E</kbd></td>
             </tr>
             <tr>
-              <td>Home Goal</td>
+              <td>Left Column Goal (default Home)</td>
               <td><kbd id="shortcut-homeGoal">← / A</kbd></td>
             </tr>
             <tr>
-              <td>Away Goal</td>
+              <td>Right Column Goal (default Away)</td>
               <td><kbd id="shortcut-awayGoal">→ / D</kbd></td>
             </tr>
             <tr>
-              <td>Home Penalty</td>
+              <td>Left Column Penalty</td>
               <td><kbd id="shortcut-homePenalty">P</kbd></td>
             </tr>
             <tr>
-              <td>Away Penalty</td>
+              <td>Right Column Penalty</td>
               <td><kbd id="shortcut-awayPenalty">Shift + P</kbd></td>
             </tr>
             <tr>
