@@ -14,7 +14,7 @@ This will show:
 - Available serial ports
 - Current configuration
 
-**Expected Result**: You should see COM ports listed in `availablePorts` if PureJavaComm is working correctly.
+**Expected Result**: You should see COM ports listed in `availablePorts` if jSerialComm is working correctly.
 
 ### Step 2: Check Windows Device Manager
 1. Press `Win + X` and select "Device Manager"
@@ -29,30 +29,11 @@ Look in the `logs/scoreboard.log` file for messages like:
 Port enumeration complete: X total ports, Y serial ports
 ```
 
-If you see `0 total ports`, PureJavaComm is not detecting any ports.
+If you see `0 total ports`, jSerialComm is not detecting any ports.
 
 ## Common Fixes
 
-### Fix 1: Try Windows-Specific Port Detection
-PureJavaComm on Windows scans the registry. Sometimes it needs help finding COM ports.
-
-Add this JVM option to force Windows registry scanning:
-```
--Dpurejavacomm.porttypes=WindowsRegistry
-```
-
-**How to apply:**
-- If running from command line: `java -Dpurejavacomm.porttypes=WindowsRegistry -jar scoreboard.jar`
-- If using the packaged app, you may need to modify the launcher
-
-### Fix 2: Manually Specify COM Port Range
-If Windows has high-numbered COM ports (e.g., COM10+), try scanning a specific range:
-
-```
--Dpurejavacomm.pollstrategy=selective
-```
-
-### Fix 3: Check USB Driver Installation
+### Fix 1: Check USB Driver Installation
 Many USB-to-Serial adapters require specific drivers:
 
 1. **FTDI Chips**: Download from https://ftdichip.com/drivers/
@@ -97,8 +78,8 @@ For maximum diagnostic output:
 3. Restart the application
 4. Check `logs/scoreboard.log` for detailed port scanning information
 
-### Check PureJavaComm Native Library
-PureJavaComm needs to load a native DLL on Windows. Check the log for errors like:
+### Check jSerialComm Native Library
+jSerialComm needs to load a native DLL on Windows. Check the log for errors like:
 ```
 UnsatisfiedLinkError
 ```
@@ -112,8 +93,7 @@ If you see this:
 Create a test file `TestPorts.java`:
 
 ```java
-import purejavacomm.CommPortIdentifier;
-import java.util.Enumeration;
+import com.fazecast.jSerialComm.SerialPort;
 
 public class TestPorts {
     public static void main(String[] args) {
@@ -121,11 +101,10 @@ public class TestPorts {
         System.out.println("OS: " + System.getProperty("os.name"));
         System.out.println("\nScanning for ports...");
 
-        Enumeration<?> ports = CommPortIdentifier.getPortIdentifiers();
+        SerialPort[] ports = SerialPort.getCommPorts();
         int count = 0;
-        while (ports.hasMoreElements()) {
-            CommPortIdentifier port = (CommPortIdentifier) ports.nextElement();
-            System.out.println("Found: " + port.getName() + " (type: " + port.getPortType() + ")");
+        for (SerialPort port : ports) {
+            System.out.println("Found: " + port.getSystemPortName() + " (" + port.getDescriptivePortName() + ")");
             count++;
         }
         System.out.println("\nTotal ports found: " + count);
@@ -135,11 +114,11 @@ public class TestPorts {
 
 Compile and run:
 ```bash
-javac -cp purejavacomm-1.0.1.RELEASE.jar TestPorts.java
-java -cp .;purejavacomm-1.0.1.RELEASE.jar TestPorts
+javac -cp jSerialComm-2.10.4.jar TestPorts.java
+java -cp .;jSerialComm-2.10.4.jar TestPorts
 ```
 
-This isolates whether the issue is with PureJavaComm or the application.
+This isolates whether the issue is with jSerialComm or the application.
 
 ## Known Issues
 
@@ -169,10 +148,10 @@ When reporting a serial port issue, please include:
 
 ## Technical Background
 
-The application uses **PureJavaComm 1.0.1** for serial communication. On Windows, this library:
+The application uses **jSerialComm 2.10.4** for serial communication. On Windows, this library:
 
-1. Scans the Windows registry at `HKEY_LOCAL_MACHINE\HARDWARE\DEVICEMAP\SERIALCOMM`
-2. Attempts to open each discovered port to verify it's accessible
-3. Uses JNI (Java Native Interface) with a bundled Windows DLL
+1.  Uses standard Windows APIs to enumerate serial ports.
+2.  Bundles a native DLL that is extracted to a temporary directory (`java.io.tmpdir`).
+3.  Uses JNI (Java Native Interface) to communicate with the native library.
 
-The most common issue is registry scanning failures or driver issues with USB-to-Serial adapters.
+The most common issues are permission problems with the temporary directory or driver issues with USB-to-Serial adapters.

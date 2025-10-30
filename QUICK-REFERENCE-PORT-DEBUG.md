@@ -45,7 +45,6 @@ I've added comprehensive debugging tools to help diagnose serial port detection 
 3. If Device Manager shows ports but app doesn't:
    - Try running as Administrator
    - Check USB-to-Serial driver is installed
-   - Try setting `-Dpurejavacomm.porttypes=WindowsRegistry`
 
 ### Scenario 2: Port Shows Up but Can't Connect
 
@@ -84,7 +83,7 @@ I've added comprehensive debugging tools to help diagnose serial port detection 
 
 1. **SerialPortDiagnostic.java**
    - Standalone diagnostic utility
-   - Tests PureJavaComm without running the full app
+   - Tests jSerialComm without running the full app
    - Provides troubleshooting suggestions
 
 2. **bin/diagnose-ports.bat**
@@ -98,7 +97,7 @@ I've added comprehensive debugging tools to help diagnose serial port detection 
 4. **TROUBLESHOOTING-SERIAL-PORTS.md**
    - Complete troubleshooting guide
    - Covers common issues and fixes
-   - Technical background on PureJavaComm
+   - Technical background on jSerialComm
 
 ## Remote Debugging
 

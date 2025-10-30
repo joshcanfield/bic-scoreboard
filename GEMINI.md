@@ -6,7 +6,7 @@ The application consists of a server that manages the game state and communicate
 
 - **Jetty + RESTEasy:** Expose a REST API on port `8080` for querying and updating the game clock, scores, penalties, and buzzer.
 - **Native WebSocket server:** Pushes real-time score and clock updates to connected web clients on port `8082`.
-- **PureJavaComm:** Connects to the physical scoreboard over a serial port so on-ice displays mirror the server state.
+- **jSerialComm:** Connects to the physical scoreboard over a serial port so on-ice displays mirror the server state.
 - **Dagger:** Wires these components together and produces singletons for the scoreboard state and services.
 
 For more detailed information on project structure, build commands, coding style, and other guidelines, please refer to [AGENTS.md](AGENTS.md).

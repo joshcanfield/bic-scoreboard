@@ -40,7 +40,7 @@
 
 ## Security & Configuration Tips
 - Runtime ports: REST `8080`, WebSocket `8082` (configurable via `-Dws.port=`). Avoid committing secrets; local logging config under `src/main/dist/conf/logback.xml`.
-- Hardware I/O uses serial (PureJavaComm); mock or isolate when writing tests.
+- Hardware I/O uses serial (jSerialComm); mock or isolate when writing tests.
 
 ## Web UI Overview
 - Control UI is served from `src/main/dist/web/index.html` (type="module" JS; no jQuery/Bootstrap JS).
@@ -64,7 +64,7 @@
 - Native WebSocket endpoint at `ws://<host>:<ws.port>/ws` (default port `8082`). The client speaks a simple JSON envelope `{event, data}`.
 
 ## UI Test Harness
-- `UiHooks` starts the Jetty server and the native WebSocket server for tests. It sets `RESOURCE_BASE` to the `src/main/dist/web` folder (symlink or copy) so assets are served.
+- `UiHooks` starts the Jetty server and the native WebSocket server for tests. It sets `RESOURCE_BASE` to the `src/main/dist/web-generated` folder (symlink or copy) so assets are served.
 - Chrome runs headless by default. Adjust options in `UiHooks.initChromeDriver()` if you need visibility locally.
 - Keep selectors stable (`id`s and key class names) to reduce flakiness.
 
