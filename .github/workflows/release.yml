@@ -35,6 +35,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Cache Gradle Node downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle/nodejs
+            .gradle/npm
+          key: ${{ runner.os }}-gradle-node-${{ hashFiles('build.gradle', 'src/ui/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-node-
+
       - name: Verify Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v3
 

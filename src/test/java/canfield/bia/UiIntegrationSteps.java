@@ -12,6 +12,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.Select;
 import org.testng.Assert;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -28,6 +29,8 @@ import static canfield.bia.UiHooks.driver;
 public class UiIntegrationSteps {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static int initialTime;
+    private String recordedHomeColor;
+    private String recordedAwayColor;
 
     private boolean isSelectorFocused(String selector) {
         Object result = ((JavascriptExecutor) driver).executeScript(
@@ -83,6 +86,118 @@ public class UiIntegrationSteps {
         driver.get("http://localhost:8080/");
     }
 
+    @And("I record the current team colors")
+    public void recordCurrentTeamColors() {
+        recordedHomeColor = normalizeColor(readCssVar("--home-color"));
+        recordedAwayColor = normalizeColor(readCssVar("--away-color"));
+        Assert.assertNotNull(recordedHomeColor, "Expected home color to be detectable");
+        Assert.assertNotNull(recordedAwayColor, "Expected away color to be detectable");
+        Assert.assertNotEquals(recordedHomeColor, recordedAwayColor,
+                "Home and away colors should be distinct when recorded");
+    }
+
+    @When("I swap the teams")
+    public void swapTeams() {
+        jsClick("#swap-teams-btn");
+        new WebDriverWait(driver, Duration.ofSeconds(3)).until(d -> {
+            Object val = ((JavascriptExecutor) d).executeScript(
+                    "return document.body && document.body.dataset ? document.body.dataset.leftTeam : null;");
+            return val != null && !"".equals(val);
+        });
+    }
+
+    @When("I reset the team layout to default")
+    public void resetTeamLayoutToDefault() throws InterruptedException {
+        Object leftTeam = ((JavascriptExecutor) driver).executeScript(
+                "return document.body && document.body.dataset ? document.body.dataset.leftTeam : 'home';");
+        if ("away".equals(String.valueOf(leftTeam))) {
+            swapTeams();
+            Thread.sleep(100);
+        }
+    }
+
+    @When("I add a goal for the away team")
+    public void addGoalForAwayTeam() throws Exception {
+        int before = readScore("#away");
+        jsClick("#away button.score-up");
+        setInputValue("#add-goal-player", "91");
+        setInputValue("#add-goal-assist", "18");
+        jsClick("#add-goal-add");
+        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+        Map<String, Object> gameState = fetchGameState();
+        Map<?, ?> awayState = (Map<?, ?>) gameState.get("away");
+        int serverScore = awayState.get("score") instanceof Number ? ((Number) awayState.get("score")).intValue() : Integer.parseInt(String.valueOf(awayState.get("score")));
+        int after = readScore("#away");
+        Assert.assertEquals(serverScore, before + 1, "Server away score should increment (actual: " + serverScore + ")");
+        Assert.assertEquals(after, before + 1, "Away score should increment via goal dialog (actual: " + after + ")");
+    }
+
+    @When("I press the shortcut {string}")
+    public void pressShortcut(String shortcut) throws InterruptedException {
+        String[] parts = shortcut.split("\\+");
+        String keyToken = parts[parts.length - 1].trim();
+        boolean ctrl = false;
+        boolean shift = false;
+        boolean alt = false;
+        boolean meta = false;
+        for (int i = 0; i < parts.length - 1; i++) {
+            String token = parts[i].trim();
+            switch (token.toLowerCase(Locale.ROOT)) {
+                case "ctrl":
+                case "control":
+                    ctrl = true;
+                    break;
+                case "shift":
+                    shift = true;
+                    break;
+                case "alt":
+                    alt = true;
+                    break;
+                case "meta":
+                case "cmd":
+                case "command":
+                    meta = true;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported modifier: " + token);
+            }
+        }
+        String[] spec = resolveKeySpec(keyToken);
+        ((JavascriptExecutor) driver).executeScript(
+                "var event = new KeyboardEvent('keydown', {key: arguments[0], code: arguments[1], " +
+                        "ctrlKey: arguments[2], shiftKey: arguments[3], altKey: arguments[4], metaKey: arguments[5], " +
+                        "bubbles: true, cancelable: true}); document.dispatchEvent(event);",
+                spec[0], spec[1], ctrl, shift, alt, meta
+        );
+        Thread.sleep(150); // allow websocket update to arrive
+    }
+
+    @Then("the home shots should be {int}")
+    public void homeShotsShouldBe(int expected) {
+        assertShots("#home", expected);
+    }
+
+    @Then("the away shots should be {int}")
+    public void awayShotsShouldBe(int expected) {
+        assertShots("#away", expected);
+    }
+
+    @Then("the home column color should remain the recorded home color")
+    public void homeColorShouldRemainRecordedHomeColor() {
+        Assert.assertNotNull(recordedHomeColor, "Home color must be recorded before verification");
+        String current = normalizeColor(readCssVar("--home-color"));
+        Assert.assertEquals(current, recordedAwayColor,
+                "Home column color should be the recorded away color after swap");
+    }
+
+    @Then("the away column color should remain the recorded away color")
+    public void awayColorShouldRemainRecordedAwayColor() {
+        Assert.assertNotNull(recordedAwayColor, "Away color must be recorded before verification");
+        String current = normalizeColor(readCssVar("--away-color"));
+        Assert.assertEquals(current, recordedHomeColor,
+                "Away column color should be the recorded home color after swap");
+    }
+
     @Then("the page title should be {string}")
     public void pageTitleShouldBe(String title) {
         Assert.assertEquals(driver.getTitle(), title, "Index page should contain scoreboard title");
@@ -129,8 +244,12 @@ public class UiIntegrationSteps {
 
     @Then("the game period should be {int}")
     public void gamePeriodShouldBe(int period) {
-        int displayed = Integer.parseInt(driver.findElement(By.cssSelector("#period .digit")).getText());
-        Assert.assertEquals(displayed, period);
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Boolean ok = wait.until(d -> {
+            String text = d.findElement(By.cssSelector("#period .digit")).getText();
+            return Integer.parseInt(text) == period;
+        });
+        Assert.assertTrue(ok, "Expected period " + period);
     }
 
     @Then("the clock should not be running")
@@ -449,6 +568,16 @@ public class UiIntegrationSteps {
         Assert.assertTrue(ok, "Expected " + count + " penalty row(s) for player " + player);
     }
 
+    private Map<String, Object> fetchGameState() throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) URI.create("http://localhost:8080/api/game/").toURL().openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(2000);
+        conn.setReadTimeout(2000);
+        try (InputStream in = conn.getInputStream()) {
+            return MAPPER.readValue(in, new TypeReference<Map<String, Object>>() {});
+        }
+    }
+
     private int readScore(String teamSelector) {
         String id = teamSelector.replace("#", "").trim() + "-score"; // "#home" -> "home-score"
         WebElement el = driver.findElement(By.id(id));
@@ -462,6 +591,78 @@ public class UiIntegrationSteps {
         int minutes = Integer.parseInt(parts[0]);
         int seconds = Integer.parseInt(parts[1]);
         return (minutes * 60 + seconds) * 1000;
+    }
+
+    private void assertShots(String teamSelector, int expected) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        Boolean ok = wait.ignoring(StaleElementReferenceException.class)
+                .until(d -> readShots(teamSelector) == expected);
+        Assert.assertTrue(ok, "Expected " + teamSelector + " shots to be " + expected);
+    }
+
+    private int readShots(String teamSelector) {
+        String id = teamSelector.replace("#", "").trim() + "-shots";
+        WebElement el = driver.findElement(By.id(id));
+        String txt = el.getText().trim();
+        return Integer.parseInt(txt);
+    }
+
+    private String[] resolveKeySpec(String token) {
+        String normalized = token.trim();
+        switch (normalized.toLowerCase(Locale.ROOT)) {
+            case "arrowup":
+                return new String[]{"ArrowUp", "ArrowUp"};
+            case "arrowdown":
+                return new String[]{"ArrowDown", "ArrowDown"};
+            case "arrowleft":
+                return new String[]{"ArrowLeft", "ArrowLeft"};
+            case "arrowright":
+                return new String[]{"ArrowRight", "ArrowRight"};
+            case "space":
+            case "spacebar":
+                return new String[]{" ", "Space"};
+            default:
+                if (normalized.length() == 1) {
+                    String lower = normalized.toLowerCase(Locale.ROOT);
+                    String upper = normalized.toUpperCase(Locale.ROOT);
+                    return new String[]{lower, "Key" + upper};
+                }
+                throw new IllegalArgumentException("Unsupported key: " + token);
+        }
+    }
+
+    private String readCssVar(String varName) {
+        Object ret = ((JavascriptExecutor) driver).executeScript(
+                "return getComputedStyle(document.documentElement).getPropertyValue(arguments[0]);",
+                varName);
+        return ret == null ? "" : String.valueOf(ret).trim();
+    }
+
+    private String normalizeColor(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("#")) {
+            return lower;
+        }
+        if (lower.startsWith("rgb")) {
+            try {
+                String inner = lower.substring(lower.indexOf('(') + 1, lower.indexOf(')'));
+                String[] parts = inner.split(",");
+                int r = Integer.parseInt(parts[0].trim());
+                int g = Integer.parseInt(parts[1].trim());
+                int b = Integer.parseInt(parts[2].trim());
+                return String.format("#%02x%02x%02x", r, g, b);
+            } catch (Exception ignored) {
+                return lower;
+            }
+        }
+        return lower;
     }
 
     private void jsClick(String selector) {

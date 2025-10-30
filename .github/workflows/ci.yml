@@ -19,11 +19,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          architecture: 'x86'
 
       - name: Install Google Chrome
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
+
+      - name: Cache Gradle Node downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle/nodejs
+            .gradle/npm
+          key: ${{ runner.os }}-gradle-node-${{ hashFiles('build.gradle', 'src/ui/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-node-
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -31,11 +42,18 @@ jobs:
       - name: Verify Gradle
         run: .\gradlew.bat --version
 
-      - name: Run tests (incl. UI)
+      - name: Run UI validation (lint, typecheck, unit tests)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
-          .\gradlew.bat test --no-daemon --stacktrace --info *>&1 | Tee-Object -FilePath build\ci-test.log
+          .\gradlew.bat uiCheck --no-daemon --stacktrace *>&1 | Tee-Object -FilePath build\ci-ui-check.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build project (Java + UI)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          .\gradlew.bat build --no-daemon --stacktrace --info *>&1 | Tee-Object -FilePath build\ci-build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload test reports
@@ -47,7 +65,8 @@ jobs:
             build/reports/**
             build/test-results/**
             build/logs/**
-            build/ci-test.log
+            build/ci-*.log
+            src/ui/coverage/**
           if-no-files-found: warn
           retention-days: 7
 
@@ -63,6 +82,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          architecture: 'x86'
+
+      - name: Cache Gradle Node downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle/nodejs
+            .gradle/npm
+          key: ${{ runner.os }}-gradle-node-${{ hashFiles('build.gradle', 'src/ui/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-node-
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3

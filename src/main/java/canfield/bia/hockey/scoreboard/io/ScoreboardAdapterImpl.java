@@ -6,16 +6,14 @@ import canfield.bia.hockey.scoreboard.ScoreBoard;
 import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import purejavacomm.CommPortIdentifier;
-import purejavacomm.PortInUseException;
-import purejavacomm.SerialPort;
+import com.fazecast.jSerialComm.SerialPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ScoreboardAdapterImpl implements ScoreboardAdapter {
@@ -39,6 +37,17 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     this.scoreBoard = scoreBoard;
     this.portName = portName;
 
+    // WORKAROUND: jSerialComm extracts a native library to java.io.tmpdir.
+    // If the default tmpdir has execution restrictions, the library will fail to load,
+    // causing the port connection to fail silently. By redirecting the tmpdir to
+    // a local directory, we ensure the library can be loaded.
+    java.io.File projectTempDir = new java.io.File("build/tmp/jSerialComm");
+    if (!projectTempDir.exists()) {
+        projectTempDir.mkdirs();
+    }
+    System.setProperty("java.io.tmpdir", projectTempDir.getAbsolutePath());
+    System.setProperty("fazecast.jSerialComm.appid", "Scoreboard");
+
     initListener(scoreBoard);
   }
 
@@ -51,41 +60,9 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     return digit(offset, value, (byte) 0);
   }
 
-  private static CommPortIdentifier getPortId(String portName) {
-    final List<CommPortIdentifier> portIdentifiers = getPortIdentifiers();
-    final Optional<CommPortIdentifier> first = portIdentifiers.stream()
-        .filter((commPortIdentifier -> commPortIdentifier.getName().equals(portName)))
-        .findFirst();
-    return first.orElse(null);
-  }
-
-  @SuppressWarnings("unchecked")
-  private static List<CommPortIdentifier> getPortIdentifiers() {
-    log.debug("Attempting to enumerate serial ports using PureJavaComm");
-    log.debug("java.library.path: {}", System.getProperty("java.library.path"));
-    log.debug("purejavacomm.porttypes: {}", System.getProperty("purejavacomm.porttypes"));
-
-    final Enumeration<CommPortIdentifier> portIdentifiers = CommPortIdentifier.getPortIdentifiers();
-    final List<CommPortIdentifier> serialPorts = new ArrayList<>();
-    int totalPorts = 0;
-    while (portIdentifiers.hasMoreElements()) {
-      CommPortIdentifier commPortIdentifier = portIdentifiers.nextElement();
-      totalPorts++;
-      log.debug("Found port: {} (type={})",
-          commPortIdentifier.getName(),
-          commPortIdentifier.getPortType());
-      if (commPortIdentifier.getPortType() == CommPortIdentifier.PORT_SERIAL) {
-        serialPorts.add(commPortIdentifier);
-        log.info("Added serial port: {}", commPortIdentifier.getName());
-      }
-    }
-    log.info("Port enumeration complete: {} total ports, {} serial ports", totalPorts, serialPorts.size());
-    return serialPorts;
-  }
-
   @Override
   public List<String> possiblePorts() {
-    return getPortIdentifiers().stream().map(CommPortIdentifier::getName).sorted().collect(Collectors.toList());
+    return Arrays.stream(SerialPort.getCommPorts()).map(SerialPort::getSystemPortName).sorted().collect(Collectors.toList());
   }
 
   @Override
@@ -115,7 +92,7 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     if (serialPort == null) {
       return;
     }
-    serialPort.close();
+    serialPort.closePort();
     serialPort = null;
   }
 
@@ -166,27 +143,20 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     }
     lastOpenAttempt = now;
     log.trace("Attempt to open port {}", portName);
-    final CommPortIdentifier portId = getPortId(portName);
-    if (portId == null) {
-      return;
-    }
 
-    final SerialPort open;
     try {
-      open = (SerialPort) portId.open("BIA Scoreboard", 1000);
-    } catch (PortInUseException e) {
-      log.warn("port already in use! {}", portName, e);
-      serialPort = null;
+      serialPort = SerialPort.getCommPort(portName);
+      serialPort.openPort();
+    } catch (Exception e) {
+      log.warn("Failed to open port: {}", portName, e);
+      if (serialPort != null) {
+        serialPort.closePort();
+        serialPort = null;
+      }
       return;
     }
+
     log.debug("Port {} opened", portName);
-
-    configure(open);
-    serialPort = open;
-  }
-
-  private void configure(SerialPort port) {
-    port.notifyOnOutputEmpty(true);
   }
 
   private void send(byte[] msg) {
@@ -197,12 +167,11 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     openPort();
 
     if (serialPort != null) {
-      OutputStream os;
       try {
-        os = serialPort.getOutputStream();
-        os.write(msg);
-      } catch (IOException e) {
+        serialPort.writeBytes(msg, msg.length);
+      } catch (Exception e) {
         log.warn("Failed to write to serial port! {} - try to reconnect", portName);
+        serialPort.closePort();
         serialPort = null;
       }
     }

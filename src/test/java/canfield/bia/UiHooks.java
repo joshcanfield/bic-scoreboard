@@ -71,10 +71,12 @@ public class UiHooks {
         originalResourceBase = System.getProperty("RESOURCE_BASE");
         Path dist = Paths.get("src/main/dist").toAbsolutePath();
         System.setProperty("user.dir", dist.toString());
-        System.setProperty("RESOURCE_BASE", dist.resolve("web").toString());
+        // Serve from web-generated (TypeScript build output) for tests
+        System.setProperty("RESOURCE_BASE", dist.resolve("web-generated").toString());
 
-        Path webSrc = dist.resolve("web");
-        Path webDest = Paths.get("web");
+        // Create symlink or copy web-generated folder for relative path access
+        Path webSrc = dist.resolve("web-generated");
+        Path webDest = Paths.get("web-generated");
         if (Files.notExists(webDest)) {
             try {
                 Files.createSymbolicLink(webDest, webSrc);
@@ -142,7 +144,8 @@ public class UiHooks {
             if (serverThread != null) {
                 serverThread.join(5000);
             }
-            Path webDest = Paths.get("web");
+            // Clean up the web-generated symlink/copy created for tests
+            Path webDest = Paths.get("web-generated");
             if (Files.exists(webDest)) {
                 Files.walk(webDest)
                         .sorted(Comparator.reverseOrder())

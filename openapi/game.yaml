@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: Bremerton Ice Arena Scoreboard API
+  version: 0.1.0
+  description: >
+    Hand-authored OpenAPI skeleton for the scoreboard REST endpoints. Generated responses should remain
+    compatible with the existing Java service until automated generation is introduced.
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+x-websocket:
+  url: ws://localhost:8082/ws
+  description: Native WebSocket endpoint used by the control and display UIs.
+  notes: >
+    Messages follow a JSON envelope `{ "event": string, "data": any }`. Outbound `update`
+    events mirror the REST `GET /game` payload with an extra `buzzerOn` flag; outbound `power`
+    events carry `{ "scoreboardOn": boolean }`. Inbound events include `goal`, `shot`,
+    `undo_goal`, `undo_shot`, `clock_start`, `clock_pause`, `set_period`, `buzzer`, `power`,
+    `power_on`, `power_off`, `power_state`, and `createGame` (see `components/schemas/WebSocketEventPayloads`).
+paths:
+  /game:
+    get:
+      summary: Retrieve the current game snapshot.
+      operationId: getGame
+      responses:
+        '200':
+          description: Current game state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+    post:
+      summary: Reset the game to its initial state.
+      operationId: resetGame
+      responses:
+        '200':
+          description: Game state after reset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+    put:
+      summary: Update select game fields.
+      operationId: updateGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameUpdateRequest'
+      responses:
+        '200':
+          description: Game state after update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+  /game/portName:
+    post:
+      summary: Set the active serial port used by the scoreboard adapter.
+      operationId: setPortName
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortSelection'
+      responses:
+        '200':
+          description: Available ports after configuration update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortList'
+  /game/portNames:
+    get:
+      summary: List all available serial ports and the current selection.
+      operationId: listPortNames
+      responses:
+        '200':
+          description: Available serial ports.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortList'
+  /game/{team}/goal:
+    post:
+      summary: Increment a team's score.
+      operationId: addGoal
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+      responses:
+        '200':
+          description: Goal recorded.
+    delete:
+      summary: Decrement a team's score if possible.
+      operationId: undoGoal
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+      responses:
+        '200':
+          description: Goal removed.
+  /game/{team}/shot:
+    post:
+      summary: Increment a team's shot tally.
+      operationId: addShot
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+      responses:
+        '200':
+          description: Shot recorded.
+    delete:
+      summary: Decrement a team's shot tally if possible.
+      operationId: undoShot
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+      responses:
+        '200':
+          description: Shot removed.
+  /game/{team}/penalty:
+    post:
+      summary: Add a penalty for the given team.
+      operationId: addPenalty
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Penalty'
+      responses:
+        '200':
+          description: Penalty accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Penalty'
+  /game/{team}/penalty/{penaltyId}:
+    delete:
+      summary: Remove a penalty by identifier.
+      operationId: deletePenalty
+      parameters:
+        - $ref: '#/components/parameters/TeamParam'
+        - $ref: '#/components/parameters/PenaltyIdParam'
+      responses:
+        '200':
+          description: Penalty removed.
+  /game/buzzer/{millis}:
+    post:
+      summary: Trigger the scoreboard buzzer for the specified duration.
+      operationId: buzzer
+      parameters:
+        - $ref: '#/components/parameters/BuzzerDurationParam'
+      responses:
+        '200':
+          description: Buzzer triggered.
+  /game/power:
+    post:
+      summary: Toggle scoreboard update power state.
+      operationId: togglePower
+      responses:
+        '200':
+          description: Power state toggled.
+components:
+  parameters:
+    TeamParam:
+      name: team
+      in: path
+      required: true
+      description: Team identifier.
+      schema:
+        $ref: '#/components/schemas/Team'
+    PenaltyIdParam:
+      name: penaltyId
+      in: path
+      required: true
+      description: Unique penalty identifier.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    BuzzerDurationParam:
+      name: millis
+      in: path
+      required: true
+      description: Duration in milliseconds to ring the buzzer.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+  schemas:
+    Team:
+      type: string
+      description: Team selector for score, shot, and penalty operations.
+      enum:
+        - home
+        - away
+    GameState:
+      type: object
+      additionalProperties: false
+      required:
+        - time
+        - running
+        - period
+        - scoreboardOn
+        - gameState
+        - periodLength
+        - home
+        - away
+      properties:
+        time:
+          type: integer
+          format: int32
+          description: Remaining time in the active clock, expressed in milliseconds.
+        running:
+          type: boolean
+          description: Whether the game clock is currently running.
+        period:
+          type: integer
+          format: int32
+          description: Current period (0 = warmup).
+        scoreboardOn:
+          type: boolean
+          description: Whether the physical scoreboard updates are enabled.
+        gameState:
+          $ref: '#/components/schemas/ScoreboardGameState'
+        periodLength:
+          type: integer
+          format: int32
+          description: Active period length in minutes (intermission length during intermission).
+        home:
+          $ref: '#/components/schemas/TeamState'
+        away:
+          $ref: '#/components/schemas/TeamState'
+    TeamState:
+      type: object
+      additionalProperties: false
+      required:
+        - score
+        - shots
+        - penalties
+      properties:
+        score:
+          type: integer
+          format: int32
+          description: Goals recorded for the team.
+        shots:
+          type: integer
+          format: int32
+          description: Shots on goal for the team.
+        penalties:
+          type: array
+          description: Active penalties for the team.
+          items:
+            $ref: '#/components/schemas/Penalty'
+    Penalty:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - playerNumber
+        - time
+        - elapsed
+        - period
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Server-assigned identifier.
+        playerNumber:
+          type: integer
+          format: int32
+          description: Player receiving the penalty.
+        servingPlayerNumber:
+          type: integer
+          format: int32
+          description: Substitute player serving the penalty, when applicable.
+        time:
+          type: integer
+          format: int32
+          description: Penalty duration in seconds.
+        elapsed:
+          type: integer
+          format: int32
+          description: Elapsed penalty time in seconds.
+        period:
+          type: integer
+          format: int32
+          description: Period when the penalty was issued.
+        offIceTime:
+          type: integer
+          format: int32
+          description: Time the player spent off the ice.
+        startTime:
+          type: integer
+          format: int32
+          description: Clock value when the penalty started, expressed in seconds remaining.
+    GameUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          type: integer
+          format: int32
+          description: Desired period number.
+        running:
+          type: boolean
+          description: Clock running state toggle.
+        time:
+          type: integer
+          format: int32
+          description: Remaining time to set, in milliseconds.
+    PortSelection:
+      type: object
+      required:
+        - portName
+      properties:
+        portName:
+          type: string
+          description: Serial port to activate.
+    PortList:
+      type: object
+      required:
+        - portNames
+      properties:
+        currentPort:
+          type: string
+          nullable: true
+          description: Currently active serial port, if any.
+        portNames:
+          type: array
+          description: Discoverable serial port identifiers.
+          items:
+            type: string
+    ScoreboardGameState:
+      type: string
+      enum:
+        - PRE_GAME
+        - IN_PROGRESS
+        - INTERMISSION
+        - READY_FOR_PERIOD
+        - GAME_OVER
+    UpdateEventPayload:
+      allOf:
+        - $ref: '#/components/schemas/GameState'
+        - type: object
+          additionalProperties: false
+          required:
+            - buzzerOn
+          properties:
+            buzzerOn:
+              type: boolean
+              description: Whether the buzzer is currently sounding.
+    PowerEventPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - scoreboardOn
+      properties:
+        scoreboardOn:
+          type: boolean
+          description: Scoreboard power state after a toggle or probe.
+    TeamCommandPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - team
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+      description: Payload for goal and shot commands targeting a specific team.
+    SetPeriodCommandPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - period
+      properties:
+        period:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Period number to activate.
+    CreateGameCommandPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        periodLengths:
+          type: array
+          description: Minutes for warmup and each period.
+          items:
+            type: integer
+            format: int32
+            minimum: 0
+        intermissionDurationMinutes:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Intermission duration in minutes.
+        buzzerIntervalSeconds:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Shift buzzer interval in seconds.
+    WebSocketEventEnvelope:
+      type: object
+      required:
+        - event
+      properties:
+        event:
+          type: string
+          description: Event name as understood by the native WebSocket server.
+        data:
+          description: Event-specific payload; may be omitted for events without data.
+    WebSocketEventPayloads:
+      type: object
+      description: Convenience map of WebSocket event names to representative payload schemas.
+      properties:
+        update:
+          $ref: '#/components/schemas/UpdateEventPayload'
+        power:
+          $ref: '#/components/schemas/PowerEventPayload'
+        goal:
+          $ref: '#/components/schemas/TeamCommandPayload'
+        undo_goal:
+          $ref: '#/components/schemas/TeamCommandPayload'
+        shot:
+          $ref: '#/components/schemas/TeamCommandPayload'
+        undo_shot:
+          $ref: '#/components/schemas/TeamCommandPayload'
+        set_period:
+          $ref: '#/components/schemas/SetPeriodCommandPayload'
+        createGame:
+          $ref: '#/components/schemas/CreateGameCommandPayload'

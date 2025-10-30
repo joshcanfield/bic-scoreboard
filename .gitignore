@@ -33,3 +33,10 @@ tools/
 .pki/
 .local/
 .cache/
+/.claude/settings.local.json
+
+# TypeScript/Node
+/src/ui/node_modules/
+/src/ui/dist/
+/src/ui/coverage/
+/src/main/dist/web-generated/

@@ -26,7 +26,7 @@ public class ServiceMain {
         if (args.length == 0 || args[0].equals("start")) {
             // only try to start if we're already started
             if (hockeyGameServer == null) {
-                printBanner();
+
                 normalizeAppWorkingDir();
                 maybeShowStartupWindow();
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
@@ -63,15 +63,7 @@ public class ServiceMain {
         }
     }
 
-    private static void printBanner() {
-        try {
-          InputStream bannerStream = ClassLoader.getSystemResourceAsStream("banner.txt");
-          IOUtils.copy(bannerStream, System.out);
-        } catch (Exception ignored) {
-            // ignored
-          System.out.println();
-        }
-    }
+
 
     private static void normalizeAppWorkingDir() {
         try {
@@ -81,9 +73,13 @@ public class ServiceMain {
             if (appDir != null && appDir.getName().equalsIgnoreCase("app")) {
                 java.io.File root = appDir.getParentFile(); // .../scoreboard
                 if (root != null && root.isDirectory()) {
-                    // Point static resources to the packaged web folder
+                    // Point static resources to the packaged web-generated folder (TypeScript build output)
+                    // Fall back to web folder if web-generated doesn't exist (backward compatibility)
+                    java.io.File webGenerated = new java.io.File(root, "web-generated");
                     java.io.File web = new java.io.File(root, "web");
-                    if (web.isDirectory()) {
+                    if (webGenerated.isDirectory()) {
+                        System.setProperty("RESOURCE_BASE", webGenerated.getAbsolutePath());
+                    } else if (web.isDirectory()) {
                         System.setProperty("RESOURCE_BASE", web.getAbsolutePath());
                     }
                     // Ensure logs directory exists for logback file appender

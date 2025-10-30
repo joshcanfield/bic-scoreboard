@@ -8,6 +8,8 @@ plugins {
     id 'org.beryx.jlink' version '3.1.1'
     // For creating a fat JAR used by the fallback jpackage task
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    // For integrating Node/npm build into Gradle workflow
+    id 'com.github.node-gradle.node' version '7.1.0'
 }
 
 java {
@@ -37,6 +39,16 @@ repositories {
     mavenCentral()
 }
 
+// Node/npm integration for UI workspace
+node {
+    version = '20.11.1'
+    npmVersion = ''
+    download = true
+    workDir = file("${project.projectDir}/.gradle/nodejs")
+    npmWorkDir = file("${project.projectDir}/.gradle/npm")
+    nodeProjectDir = file("${project.projectDir}/src/ui")
+}
+
 // This simulates Maven's "provided" scope, until it is officially supported by Gradle
 // See http://jira.codehaus.org/browse/GRADLE-784
 
@@ -59,7 +71,7 @@ dependencies {
     // Dagger compiler is compile-time only; keep as annotation processor, not runtime
     annotationProcessor "com.squareup.dagger:dagger-compiler:1.1.0"
 
-    implementation "com.github.purejavacomm:purejavacomm:1.0.1.RELEASE"
+    implementation "com.fazecast:jSerialComm:2.10.4"
 
     implementation "joda-time:joda-time:2.1"
 
@@ -138,6 +150,56 @@ tasks.named('run') {
 }
 tasks.named('wrapper') {
     gradleVersion = '8.7'
+}
+
+// UI build tasks using Node Gradle plugin
+tasks.register('uiBuild', com.github.gradle.node.npm.task.NpmTask) {
+    group = 'build'
+    description = 'Builds the TypeScript UI and outputs to src/main/dist/web-generated'
+    dependsOn tasks.named('npmInstall')
+    npmCommand = ['run', 'build']
+    inputs.dir('src/ui/src')
+    inputs.file('src/ui/package.json')
+    inputs.file('src/ui/package-lock.json')
+    inputs.file('src/ui/vite.config.ts')
+    inputs.file('src/ui/tsconfig.json')
+    outputs.dir('src/main/dist/web-generated')
+}
+
+tasks.register('uiCheck', com.github.gradle.node.npm.task.NpmTask) {
+    group = 'verification'
+    description = 'Runs lint, tests, and typecheck on the TypeScript UI'
+    dependsOn tasks.named('npmInstall')
+    npmCommand = ['run', 'check']
+    inputs.dir('src/ui/src')
+    inputs.file('src/ui/package.json')
+    inputs.file('src/ui/.eslintrc.json')
+    inputs.file('src/ui/tsconfig.json')
+}
+
+tasks.register('uiTest', com.github.gradle.node.npm.task.NpmTask) {
+    group = 'verification'
+    description = 'Runs Vitest unit tests for the TypeScript UI'
+    dependsOn tasks.named('npmInstall')
+    npmCommand = ['run', 'test']
+    inputs.dir('src/ui/src')
+    inputs.file('src/ui/package.json')
+}
+
+tasks.register('uiClean', Delete) {
+    group = 'build'
+    description = 'Cleans UI build outputs'
+    delete 'src/main/dist/web-generated'
+    delete 'src/ui/node_modules/.vite'
+}
+
+// Wire UI tasks into Java build lifecycle
+tasks.named('processResources') {
+    dependsOn tasks.named('uiBuild')
+}
+
+tasks.named('clean') {
+    dependsOn tasks.named('uiClean')
 }
 
 // Ensure the fat jar has the proper Main-Class and default args can be passed via launcher/installer
@@ -304,6 +366,27 @@ jlink {
         name = 'scoreboard'
         // Default CLI args for launching the app
         args = ['start']
+    }
+
+task runComPortListener(type: JavaExec) {
+    group = "application"
+    description = "Runs the COM port listener test script"
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "canfield.bia.ComPortListener"
+    standardOutput = System.out
+    errorOutput = System.err
+    if (project.hasProperty('comPort')) {
+        args = [project.property('comPort')]
+    }
+}
+
+task runJvmArch(type: JavaExec) {
+    group = "application"
+    description = "Prints the JVM architecture"
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "canfield.bia.JvmArch"
+    standardOutput = System.out
+    errorOutput = System.err
 }
 
 // Stop any running packaged scoreboard app-image processes
