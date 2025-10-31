@@ -20,7 +20,24 @@ export const initGoalDialog = (
   server: ServerActions,
   getState: () => GoalDialogState
 ): GoalDialogController => {
-  const modal = document.getElementById('add-goal') as (HTMLElement & { __trigger?: HTMLElement }) | null;
+  const resolveGoalModal = (): (HTMLElement & { __trigger?: HTMLElement }) | null => {
+    const teamLabel = document.querySelector<HTMLElement>('#add-goal-team');
+    if (teamLabel) {
+      const target = teamLabel.closest<HTMLElement>('#add-goal');
+      if (target) {
+        return target as HTMLElement & { __trigger?: HTMLElement };
+      }
+    }
+
+    const candidates = document.querySelectorAll<HTMLElement>('#add-goal');
+    if (candidates.length > 0) {
+      return candidates[candidates.length - 1] as HTMLElement & { __trigger?: HTMLElement };
+    }
+
+    return null;
+  };
+
+  const modal = resolveGoalModal();
   if (!modal) {
     // Fallback: if modal is missing, fall back to simple goal increment.
     return {
@@ -38,6 +55,8 @@ export const initGoalDialog = (
   const teamLabel = modal.querySelector<HTMLElement>('#add-goal-team');
   const errorBox = modal.querySelector<HTMLElement>('.error');
   const addButton = modal.querySelector<HTMLButtonElement>('#add-goal-add');
+  const goalHeader = modal.querySelector<HTMLElement>('.modal-header');
+  goalHeader?.classList.add('goal-modal-header');
 
   const clearErrors = () => {
     errorBox && (errorBox.textContent = '');
@@ -49,6 +68,11 @@ export const initGoalDialog = (
     if (teamLabel) teamLabel.textContent = team === 'home' ? 'Home' : 'Away';
     const title = modal.querySelector<HTMLElement>('.modal-title');
     if (title) title.textContent = `${team === 'home' ? 'Home' : 'Away'} Goal`;
+    if (goalHeader) {
+      goalHeader.classList.add('goal-modal-header');
+      goalHeader.classList.remove('home', 'away');
+      goalHeader.classList.add(team === 'home' ? 'home' : 'away');
+    }
   };
 
   const open = (team: TeamCode) => {

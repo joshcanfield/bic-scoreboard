@@ -14,7 +14,14 @@ export const initPenaltyControls = ({
     const dlg = $("#add-penalty");
     dlg.dataset.team = team;
     const title = dlg.querySelector(".modal-title");
-    if (title) title.textContent = `${team} Penalty`;
+    const friendlyTeam = team === "home" ? "Home" : "Away";
+    if (title) title.textContent = `${friendlyTeam} Penalty`;
+    const header = dlg.querySelector(".modal-header");
+    if (header) {
+      header.classList.add("penalty-modal-header");
+      header.classList.remove("home", "away");
+      header.classList.add(team === "home" ? "home" : "away");
+    }
     const { minutes, seconds } = millisToMinSec(State.time);
     $("#add-penalty-off_ice").value = formatClock(minutes, seconds);
     $("#add-penalty-time").value = "2:00";
@@ -27,7 +34,13 @@ export const initPenaltyControls = ({
 
   const addPenalty = () => {
     const dlg = $("#add-penalty");
-    const team = dlg.dataset.team;
+    const team = dlg.dataset.team || "home";
+    const header = dlg.querySelector(".modal-header");
+    if (header) {
+      header.classList.add("penalty-modal-header");
+      header.classList.remove("home", "away");
+      header.classList.add(team === "home" ? "home" : "away");
+    }
     const playerField = $("#add-penalty-player");
     const servingField = $("#add-penalty-serving");
     const timeField = $("#add-penalty-time");
@@ -61,7 +74,7 @@ export const initPenaltyControls = ({
 
   const add2plus10 = () => {
     const dlg = $("#add-penalty");
-    const team = dlg.dataset.team;
+    const team = dlg.dataset.team || "home";
     const playerField = $("#add-penalty-player");
     const servingField = $("#add-penalty-serving");
     const offField = $("#add-penalty-off_ice");

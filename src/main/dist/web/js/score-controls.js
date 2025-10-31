@@ -24,8 +24,9 @@ export const initScoreControls = ({
     goalModal.dataset.team = team || "";
     const title = goalModal.querySelector(".modal-title");
     if (title) title.textContent = team === "away" ? "Add Away Goal" : "Add Home Goal";
-    const header = goalModal.querySelector(".goal-modal-header");
+    const header = goalModal.querySelector(".modal-header");
     if (header) {
+      header.classList.add("goal-modal-header");
       header.classList.remove("home", "away");
       header.classList.add(team === "away" ? "away" : "home");
     }
@@ -186,10 +187,18 @@ export const initScoreControls = ({
     }),
   );
 
+  const blurTarget = (event) => {
+    const target = event.currentTarget;
+    if (target && typeof target.blur === "function") {
+      target.blur();
+    }
+  };
+
   $$(".shots-up").forEach((btn) =>
     btn.addEventListener("click", (e) => {
       const team = e.currentTarget.dataset.team;
       Server.shot({ team });
+      blurTarget(e);
     }),
   );
 
@@ -197,6 +206,7 @@ export const initScoreControls = ({
     btn.addEventListener("click", (e) => {
       const team = e.currentTarget.dataset.team;
       Server.undoShot({ team });
+      blurTarget(e);
     }),
   );
 

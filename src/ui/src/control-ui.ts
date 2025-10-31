@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty */
 
 import api from './api/http';
-import { type ControlState, deriveControlState, buildControlView } from './state/control-state';
+import { type ControlState, deriveControlState, buildControlView, type Goal } from './state/control-state';
 import { createServerRuntime, type ServerActions, type TeamCode } from './transport/server';
 import { initClockSettingsDialog } from './view/clock-settings';
 import { initGameDialog } from './view/game-dialog';
@@ -29,6 +29,7 @@ import {
 import { initTeamColorPickers } from './view/team-colors';
 import { TeamLayout } from './view/team-layout';
 import { initKeyboardShortcuts } from './view/keyboard-shortcuts';
+import { millisToMinSec, pad } from './utils/time';
 
 // DOM helpers
 const $ = <T extends HTMLElement = HTMLElement>(sel: string): T | null =>
@@ -65,8 +66,8 @@ const State: ControlState & {
   running: false,
   period: 0,
   periodLengthMillis: 0,
-  home: { score: 0, shots: 0, penalties: [] },
-  away: { score: 0, shots: 0, penalties: [] },
+  home: { score: 0, shots: 0, penalties: [], goals: [] },
+  away: { score: 0, shots: 0, penalties: [], goals: [] },
   scoreboardOn: false,
   buzzerOn: false,
   portNames: [],
@@ -92,16 +93,66 @@ const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'awa
   }
 };
 
+const formatGoals = (goals: ReadonlyArray<Goal> = []): string => {
+  if (!Array.isArray(goals) || goals.length === 0) {
+    return '<tr class="placeholder"><td colspan="4">No goals yet</td></tr>';
+  }
+
+  return goals
+    .map((goal) => {
+      const safeTime = typeof goal.time === 'number' ? Math.max(0, goal.time) : 0;
+      const { minutes, seconds } = millisToMinSec(safeTime);
+      const timeText = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+      const period = goal.period === 0 || goal.period ? goal.period : '-';
+      const scorer = goal.playerNumber === 0 || goal.playerNumber ? goal.playerNumber : '-';
+      const primary =
+        goal.primaryAssistNumber === 0 || goal.primaryAssistNumber
+          ? goal.primaryAssistNumber
+          : goal.assistNumber && goal.assistNumber > 0
+              ? goal.assistNumber
+              : null;
+      const secondary = goal.secondaryAssistNumber === 0 || goal.secondaryAssistNumber ? goal.secondaryAssistNumber : null;
+      const assists: Array<number | string> = [];
+      if (primary !== null && primary !== undefined) assists.push(primary);
+      if (secondary !== null && secondary !== undefined) assists.push(secondary);
+      const assistsText = assists.length ? assists.map(String).join(' / ') : '&ndash;';
+      const idAttr = goal.id === 0 || goal.id ? ` data-goal-id="${String(goal.id)}"` : '';
+      return `
+        <tr${idAttr}>
+          <td>${period}</td>
+          <td>${timeText}</td>
+          <td>${scorer}</td>
+          <td>${assistsText}</td>
+        </tr>`;
+    })
+    .join('');
+};
+
+const renderGoalTable = (teamElem: HTMLElement | null, goals: ReadonlyArray<Goal>) => {
+  if (!teamElem) return;
+  const listTBody = teamElem.querySelector<HTMLElement>('tbody.goal-list');
+  if (!listTBody) return;
+  listTBody.innerHTML = formatGoals(goals);
+};
+
 const renderUpdate = (data: any) => {
   const nextState = deriveControlState(data);
   Object.assign(State, nextState);
   const view = buildControlView(nextState);
+
+  const testHooks = ((window as any).__test ?? {}) as Record<string, unknown>;
+  (window as any).__test = {
+    ...testHooks,
+    lastUpdate: data,
+  };
 
   const home = $('#home');
   const away = $('#away');
 
   renderPenaltyTable(home, 'home', view.homePenalties);
   renderPenaltyTable(away, 'away', view.awayPenalties);
+  renderGoalTable(home, nextState.home.goals);
+  renderGoalTable(away, nextState.away.goals);
 
   const clockText = document.getElementById('clock-text');
   if (clockText) clockText.textContent = view.clockText;
@@ -350,16 +401,23 @@ const initEvents = (goalDialog: GoalDialogController) => {
   );
 
   // Shot buttons
+  const blurTarget = (event: Event) => {
+    const target = event.currentTarget as HTMLButtonElement | null;
+    target?.blur();
+  };
+
   $$('.shots-up').forEach((btn) =>
     btn.addEventListener('click', (e) => {
       const team = (e.currentTarget as HTMLElement).dataset.team as 'home' | 'away';
       Server.shot({ team });
+      blurTarget(e);
     })
   );
   $$('.shots-down').forEach((btn) =>
     btn.addEventListener('click', (e) => {
       const team = (e.currentTarget as HTMLElement).dataset.team as 'home' | 'away';
       Server.undoShot({ team });
+      blurTarget(e);
     })
   );
 

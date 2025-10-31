@@ -39,8 +39,15 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
     const dlg = $('#add-penalty');
     if (!dlg) return;
     dlg.dataset.team = team;
+    const friendlyTeam = team === 'home' ? 'Home' : 'Away';
     const titleEl = dlg.querySelector('.modal-title');
-    if (titleEl) titleEl.textContent = `${team} Penalty`;
+    if (titleEl) titleEl.textContent = `${friendlyTeam} Penalty`;
+    const header = dlg.querySelector<HTMLElement>('.modal-header');
+    if (header) {
+      header.classList.add('penalty-modal-header');
+      header.classList.remove('home', 'away');
+      header.classList.add(team === 'home' ? 'home' : 'away');
+    }
     const state = getState();
     const { minutes, seconds } = millisToMinSec(state.currentTime);
     const offIceInput = $('#add-penalty-off_ice') as HTMLInputElement | null;
@@ -54,6 +61,9 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
     if (playerInput) playerInput.value = '';
     const groups = $$(`.modal-body .form-group`, dlg);
     groups.forEach((g) => g.classList.remove('has-error'));
+    window.setTimeout(() => {
+      playerInput?.focus();
+    }, 50);
   });
 
   // Add penalty submit
@@ -62,7 +72,13 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
     addButton.addEventListener('click', () => {
       const dlg = $('#add-penalty');
       if (!dlg) return;
-      const team = dlg.dataset.team;
+      const team = (dlg.dataset.team as 'home' | 'away') || 'home';
+      const header = dlg.querySelector<HTMLElement>('.modal-header');
+      if (header) {
+        header.classList.add('penalty-modal-header');
+        header.classList.remove('home', 'away');
+        header.classList.add(team === 'home' ? 'home' : 'away');
+      }
       const playerField = $('#add-penalty-player') as HTMLInputElement | null;
       const servingField = $('#add-penalty-serving') as HTMLInputElement | null;
       const timeField = $('#add-penalty-time') as HTMLInputElement | null;
@@ -100,7 +116,7 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
   const add2plus10 = () => {
     const dlg = $('#add-penalty');
     if (!dlg) return;
-    const team = dlg.dataset.team;
+    const team = (dlg.dataset.team as 'home' | 'away') || 'home';
     const playerField = $('#add-penalty-player') as HTMLInputElement | null;
     const servingField = $('#add-penalty-serving') as HTMLInputElement | null;
     const offField = $('#add-penalty-off_ice') as HTMLInputElement | null;

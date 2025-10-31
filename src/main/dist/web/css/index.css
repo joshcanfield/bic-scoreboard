@@ -408,20 +408,28 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 .modal-content { background: #101838; color: var(--text); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 16px; box-shadow: 0 18px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06); }
 .modal-header, .modal-footer { border-color: rgba(255,255,255,0.08); }
 .modal-header { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)); border-top-left-radius: 16px; border-top-right-radius: 16px; }
-.goal-modal-header { position: relative; overflow: hidden; }
-.goal-modal-header.home {
+.goal-modal-header,
+.penalty-modal-header { position: relative; overflow: hidden; }
+.goal-modal-header.home,
+.penalty-modal-header.home {
     background: var(--home-color);
     border-color: var(--home-color);
 }
-.goal-modal-header.away {
+.goal-modal-header.away,
+.penalty-modal-header.away {
     background: var(--away-color);
     border-color: var(--away-color);
 }
 .goal-modal-header.home .modal-title,
-.goal-modal-header.away .modal-title { color: #fff; }
+.goal-modal-header.away .modal-title,
+.penalty-modal-header.home .modal-title,
+.penalty-modal-header.away .modal-title { color: #fff; }
 .goal-modal-header.home .close,
-.goal-modal-header.away .close { color: #fff; opacity: .85; }
-.goal-modal-header::after {
+.goal-modal-header.away .close,
+.penalty-modal-header.home .close,
+.penalty-modal-header.away .close { color: #fff; opacity: .85; }
+.goal-modal-header::after,
+.penalty-modal-header::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -548,6 +556,7 @@ h2 {
 #new-game-dialog .control-label { text-align: left; }
 #new-game-dialog .help-block { white-space: normal; }
 #new-game-dialog .template-help { margin-top: 4px; }
+#new-game-dialog .tab-content { margin-top: 12px; }
 
 
 /* --- Ports list styling --- */
