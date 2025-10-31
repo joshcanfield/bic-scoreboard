@@ -60,7 +60,7 @@ public class SerialPortDiagnostic {
         System.out.printf("  Port %d: %s (%s)\n", i + 1, port.getSystemPortName(), port.getDescriptivePortName());
         System.out.printf("    Description: %s\n", port.getPortDescription());
         System.out.printf("    Location: %s\n", port.getPortLocation());
-        System.out.printf("    Currently Opened: %s\n", port.isOpened() ? "Yes" : "No");
+        System.out.printf("    Currently Opened: %s\n", port.isOpen() ? "Yes" : "No");
         System.out.println();
       }
 

@@ -127,9 +127,13 @@ public class UiIntegrationSteps {
         Map<String, Object> gameState = fetchGameState();
         Map<?, ?> awayState = (Map<?, ?>) gameState.get("away");
         int serverScore = awayState.get("score") instanceof Number ? ((Number) awayState.get("score")).intValue() : Integer.parseInt(String.valueOf(awayState.get("score")));
+        Object goalsRaw = awayState.get("goals");
         int after = readScore("#away");
         Assert.assertEquals(serverScore, before + 1, "Server away score should increment (actual: " + serverScore + ")");
         Assert.assertEquals(after, before + 1, "Away score should increment via goal dialog (actual: " + after + ")");
+        if (goalsRaw instanceof List<?>) {
+            Assert.assertFalse(((List<?>) goalsRaw).isEmpty(), "Server should return at least one away goal entry");
+        }
     }
 
     @When("I press the shortcut {string}")
@@ -224,9 +228,8 @@ public class UiIntegrationSteps {
         waitForModalVisible("#add-goal");
         // Modal auto-fills period and time from game state, so we only set player and assists
         setInputValue("#add-goal-player", "77");
-        setInputValue("#add-goal-assist1", "18");
-        setInputValue("#add-goal-assist2", "21");
-        jsClick("#add-goal-submit");
+        setInputValue("#add-goal-assist", "18");
+        jsClick("#add-goal-add");
         waitForModalHidden("#add-goal");
         waitForScore("#home-score", 1);
         jsClick("#clock-start");
@@ -262,11 +265,13 @@ public class UiIntegrationSteps {
 
     @Then("the home score should be {int}")
     public void homeScoreShouldBe(int score) {
+        waitForScore("#home-score", score);
         Assert.assertEquals(readScore("#home"), score);
     }
 
     @Then("the away score should be {int}")
     public void awayScoreShouldBe(int score) {
+        waitForScore("#away-score", score);
         Assert.assertEquals(readScore("#away"), score);
     }
 
@@ -431,6 +436,66 @@ public class UiIntegrationSteps {
     public void openAddGoalDialogHome() {
         jsClick("#home button.score-up");
         waitForModalVisible("#add-goal");
+    }
+
+    @When("^I enter scorer \"([^\"]*)\" and assist \"([^\"]*)\"$")
+    public void enterScorerAndAssist(String scorer, String assist) {
+        setInputValue("#add-goal-player", scorer);
+        setInputValue("#add-goal-assist", assist);
+    }
+
+    @When("I submit the goal dialog")
+    public void submitGoalDialog() {
+        jsClick("#add-goal-add");
+        waitForModalHidden("#add-goal");
+        try {
+            Map<String, Object> state = fetchGameState();
+            System.out.println("DEBUG submitGoalDialog state=" + state);
+        } catch (Exception ignore) {
+            System.out.println("DEBUG submitGoalDialog failed to fetch state");
+        }
+    }
+
+    @Then("^the home goal table should list player \"([^\"]*)\" with assist \"([^\"]*)\"$")
+    public void verifyHomeGoalTable(String scorer, String assist) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
+        Boolean ok = null;
+        try {
+            ok = wait.until(d -> {
+                try {
+                    WebElement table = d.findElement(By.cssSelector("#home .goals tbody.goal-list"));
+                    List<WebElement> rows = table.findElements(By.tagName("tr"));
+                    for (WebElement row : rows) {
+                        List<WebElement> cells = row.findElements(By.tagName("td"));
+                    if (cells.size() >= 4) {
+                        String rowScorer = cells.get(2).getText().trim();
+                        String rowAssist = cells.get(3).getText().trim();
+                        if (scorer.equals(rowScorer) && rowAssist.contains(assist)) {
+                            return true;
+                        }
+                    }
+                    }
+                    return false;
+                } catch (NoSuchElementException ex) {
+                    return false;
+                }
+            });
+        } catch (TimeoutException ex) {
+            ok = false;
+        }
+        Object state = ((JavascriptExecutor) driver).executeScript(
+                "return window.State ? window.State.home && window.State.home.goals : null;"
+        );
+        System.out.println("DEBUG client goals=" + state);
+        Object tableHtml = ((JavascriptExecutor) driver).executeScript(
+                "var el=document.querySelector('#home .goals tbody.goal-list'); return el ? el.innerHTML : null;"
+        );
+        System.out.println("DEBUG goal table html=" + tableHtml);
+        Object lastUpdate = ((JavascriptExecutor) driver).executeScript(
+                "return window.__test && window.__test.lastUpdate ? window.__test.lastUpdate.home : null;"
+        );
+        System.out.println("DEBUG last update home=" + lastUpdate);
+        Assert.assertTrue(ok, "Expected to find scorer " + scorer + " with assist " + assist + " in goal table");
     }
 
     @When("I press Escape")

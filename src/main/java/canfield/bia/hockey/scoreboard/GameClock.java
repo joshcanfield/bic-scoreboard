@@ -77,6 +77,10 @@ public class GameClock implements Clock {
    */
   @Override
   public void stop() {
+    if (!isRunning) {
+      return;
+    }
+
     isRunning = false;
 
     long now = System.currentTimeMillis();

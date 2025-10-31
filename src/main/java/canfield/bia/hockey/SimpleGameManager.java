@@ -7,7 +7,9 @@ import canfield.bia.hockey.scoreboard.io.ScoreboardAdapter;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
@@ -28,8 +30,7 @@ public class SimpleGameManager {
 
   private final List<Penalty> homePenalties = new CopyOnWriteArrayList<>();
   private final List<Penalty> awayPenalties = new CopyOnWriteArrayList<>();
-  private final List<Goal> homeGoals = new CopyOnWriteArrayList<>();
-  private final List<Goal> awayGoals = new CopyOnWriteArrayList<>();
+  private final List<GoalEvent> goalEvents = new CopyOnWriteArrayList<>();
   private Integer shiftLengthSeconds;
   private int lastShiftBuzzer = 0;
   private int homeShots = 0;
@@ -359,7 +360,17 @@ public class SimpleGameManager {
   }
 
   public List<Goal> getGoals(Team team) {
-    return Collections.unmodifiableList(team == Team.home ? homeGoals : awayGoals);
+    List<Goal> result = new ArrayList<>();
+    for (GoalEvent event : goalEvents) {
+      if (event.getTeam() == team) {
+        result.add(event.getGoal());
+      }
+    }
+    return Collections.unmodifiableList(result);
+  }
+
+  public List<GoalEvent> getGoalEvents() {
+    return List.copyOf(goalEvents);
   }
 
   public void addPenalty(Team team, Penalty penalty) {
@@ -389,24 +400,21 @@ public class SimpleGameManager {
     }
     goal.setTime(Math.max(0, roundToSecond(goalTime)));
 
-    switch (team) {
-      case home:
-        homeGoals.add(goal);
-        break;
-      case away:
-        awayGoals.add(goal);
-        break;
-    }
+    goalEvents.add(new GoalEvent(team, goal, Instant.now()));
 
     setScore(team, getScore(team) + 1);
     return goal;
   }
 
   public Goal removeLastGoal(Team team) {
-    List<Goal> goals = team == Team.home ? homeGoals : awayGoals;
     Goal removed = null;
-    if (!goals.isEmpty()) {
-      removed = goals.remove(goals.size() - 1);
+    for (int i = goalEvents.size() - 1; i >= 0; i--) {
+      GoalEvent event = goalEvents.get(i);
+      if (event.getTeam() == team) {
+        removed = event.getGoal();
+        goalEvents.remove(i);
+        break;
+      }
     }
 
     int score = getScore(team);
@@ -422,8 +430,7 @@ public class SimpleGameManager {
     scoreBoard.setGameState(ScoreBoard.GameState.PRE_GAME);
     homePenalties.clear();
     awayPenalties.clear();
-    homeGoals.clear();
-    awayGoals.clear();
+    goalEvents.clear();
     scoreBoard.setAwayPenalty(0, null);
     scoreBoard.setAwayPenalty(1, null);
     scoreBoard.setHomePenalty(0, null);

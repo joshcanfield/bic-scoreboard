@@ -23,3 +23,10 @@ Feature: Index and Basics
     When I press Escape
     Then the modal "#add-goal" should be hidden
 
+  Scenario: Goal additions populate the goal table
+    When I open the index page
+    And I open the add goal dialog for the home team
+    And I enter scorer "12" and assist "18"
+    And I submit the goal dialog
+    Then the home goal table should list player "12" with assist "18"
+

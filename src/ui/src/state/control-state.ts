@@ -2,11 +2,13 @@ import type { UpdateEventPayload } from '../transport/server';
 import { digits2, millisToMinSec, pad } from '../utils/time';
 
 export type Penalty = NonNullable<UpdateEventPayload['home']['penalties']>[number];
+export type Goal = NonNullable<UpdateEventPayload['home']['goals']>[number];
 
 export interface TeamState {
   score: number;
   shots: number;
   penalties: Penalty[];
+  goals: Goal[];
 }
 
 export interface ControlState {
@@ -40,6 +42,7 @@ const normalizeTeamState = (team: UpdateEventPayload['home'] | undefined): TeamS
   score: team?.score ?? 0,
   shots: team?.shots ?? 0,
   penalties: Array.isArray(team?.penalties) ? (team!.penalties as Penalty[]) : [],
+  goals: Array.isArray(team?.goals) ? (team!.goals as Goal[]) : [],
 });
 
 export const deriveControlState = (update: UpdateEventPayload): ControlState => ({

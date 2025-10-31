@@ -162,6 +162,10 @@ class TestSimpleGameManager {
         assert added.getSecondaryAssistNumber() == 23
         assert manager.getGoals(Team.home).size() == 1
         assert manager.getGoals(Team.home)[0].getId() != null
+        assert manager.getGoalEvents().size() == 1
+        assert manager.getGoalEvents()[0].team == Team.home
+        assert manager.getGoalEvents()[0].goal.is(added)
+        assert manager.getGoalEvents()[0].recordedAt != null
 
         Mockito.verify(scoreBoard).setHomeScore(1)
     }
@@ -198,6 +202,8 @@ class TestSimpleGameManager {
         assert removed.getPlayerNumber() == 19
         assert manager.getGoals(Team.home).size() == 1
         assert manager.getGoals(Team.home)[0].getPlayerNumber() == 8
+        assert manager.getGoalEvents().size() == 1
+        assert manager.getGoalEvents()[0].goal.getPlayerNumber() == 8
 
         Mockito.verify(scoreBoard).setHomeScore(2)
         Mockito.verify(scoreBoard, Mockito.atLeast(2)).setHomeScore(1)

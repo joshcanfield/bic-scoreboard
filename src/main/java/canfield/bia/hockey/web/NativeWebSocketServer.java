@@ -97,12 +97,37 @@ public class NativeWebSocketServer extends WebSocketServer {
             } else if ("clock_pause".equals(event)) {
                 gameManager.stopClock();
             } else if ("goal".equals(event)) {
-                Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){});
+                Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){ });
                 Object teamValue = data.get("team");
                 if (teamValue != null) {
                     Team team = Team.valueOf(String.valueOf(teamValue));
-                    Goal goal = mapper.convertValue(dataObj, Goal.class);
+                    Goal goal = new Goal();
+                    Object player = data.get("player");
+                    if (player != null) {
+                        try {
+                            goal.setPlayerNumber(Integer.parseInt(String.valueOf(player)));
+                        } catch (NumberFormatException ignored) {
+                            // ignore invalid value to preserve backward compatibility
+                        }
+                    }
+                    Object assist = data.get("assist");
+                    if (assist != null) {
+                        try {
+                            goal.setPrimaryAssistNumber(Integer.parseInt(String.valueOf(assist)));
+                        } catch (NumberFormatException ignored) {
+                            // ignore invalid value to preserve backward compatibility
+                        }
+                    }
+                    Object secondary = data.get("secondaryAssist");
+                    if (secondary != null) {
+                        try {
+                            goal.setSecondaryAssistNumber(Integer.parseInt(String.valueOf(secondary)));
+                        } catch (NumberFormatException ignored) {
+                            // ignore invalid value to preserve backward compatibility
+                        }
+                    }
                     gameManager.addGoal(team, goal);
+                    broadcastJson("update", buildUpdate());
                 }
             } else if ("undo_goal".equals(event)) {
                 Map<String, Object> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Object>>(){});
@@ -110,6 +135,7 @@ public class NativeWebSocketServer extends WebSocketServer {
                 if (teamValue != null) {
                     Team team = Team.valueOf(String.valueOf(teamValue));
                     gameManager.removeLastGoal(team);
+                    broadcastJson("update", buildUpdate());
                 }
             } else if ("shot".equals(event)) {
                 Map<String, String> data = mapper.convertValue(dataObj, new TypeReference<Map<String, String>>(){});

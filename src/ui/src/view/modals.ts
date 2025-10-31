@@ -71,6 +71,21 @@ export const createModalController = (): ModalController => {
     on(document, 'click', '.modal', (e, t) => {
       if (e.target === t) hide(t);
     });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const open = Array.from(document.querySelectorAll<HTMLElement>('.modal')).filter((modal) => {
+        const style = window.getComputedStyle(modal);
+        return style.display !== 'none' && modal.getAttribute('aria-hidden') !== 'true';
+      });
+      if (open.length === 0) return;
+      event.stopPropagation();
+      event.preventDefault();
+      const topMost = open[open.length - 1];
+      hide(topMost);
+      const trigger = (topMost as HTMLElement & { __trigger?: HTMLElement }).__trigger;
+      trigger?.focus?.();
+    });
   };
 
   return { init, show, hide, showById };
