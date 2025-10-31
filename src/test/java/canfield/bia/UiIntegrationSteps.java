@@ -467,16 +467,16 @@ public class UiIntegrationSteps {
                     List<WebElement> rows = table.findElements(By.tagName("tr"));
                     for (WebElement row : rows) {
                         List<WebElement> cells = row.findElements(By.tagName("td"));
-                    if (cells.size() >= 4) {
-                        String rowScorer = cells.get(2).getText().trim();
-                        String rowAssist = cells.get(3).getText().trim();
-                        if (scorer.equals(rowScorer) && rowAssist.contains(assist)) {
-                            return true;
+                        if (cells.size() >= 4) {
+                            String rowScorer = cells.get(2).getText().trim();
+                            String rowAssist = cells.get(3).getText().trim();
+                            if (scorer.equals(rowScorer) && rowAssist.contains(assist)) {
+                                return true;
+                            }
                         }
                     }
-                    }
                     return false;
-                } catch (NoSuchElementException ex) {
+                } catch (NoSuchElementException | StaleElementReferenceException ex) {
                     return false;
                 }
             });
