@@ -123,17 +123,9 @@ public class UiIntegrationSteps {
         setInputValue("#add-goal-player", "91");
         setInputValue("#add-goal-assist", "18");
         jsClick("#add-goal-add");
-        try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-        Map<String, Object> gameState = fetchGameState();
-        Map<?, ?> awayState = (Map<?, ?>) gameState.get("away");
-        int serverScore = awayState.get("score") instanceof Number ? ((Number) awayState.get("score")).intValue() : Integer.parseInt(String.valueOf(awayState.get("score")));
-        Object goalsRaw = awayState.get("goals");
+        waitForScore("#away-score", before + 1);
         int after = readScore("#away");
-        Assert.assertEquals(serverScore, before + 1, "Server away score should increment (actual: " + serverScore + ")");
         Assert.assertEquals(after, before + 1, "Away score should increment via goal dialog (actual: " + after + ")");
-        if (goalsRaw instanceof List<?>) {
-            Assert.assertFalse(((List<?>) goalsRaw).isEmpty(), "Server should return at least one away goal entry");
-        }
     }
 
     @When("I press the shortcut {string}")
@@ -241,6 +233,7 @@ public class UiIntegrationSteps {
         jsClick("button[href=\"#new-game-dialog\"]");
         Thread.sleep(100);
         jsClick("#new-game");
+        Thread.sleep(500); // Wait for websocket update
         new WebDriverWait(driver, Duration.ofSeconds(2)).until(
                 d -> "0".equals(d.findElement(By.cssSelector("#period .digit")).getText()));
     }

@@ -6,13 +6,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty */
 
 import api from './api/http';
-import { type ControlState, deriveControlState, buildControlView, type Goal } from './state/control-state';
+import { type Goal } from './state/control-state';
 import { createServerRuntime, type ServerActions, type TeamCode } from './transport/server';
 import { initClockSettingsDialog } from './view/clock-settings';
 import { initGameDialog } from './view/game-dialog';
 import { initGoalDialog, type GoalDialogController } from './view/goal-dialog';
 import Modals from './view/modals';
-import { buildPenaltyTable } from './view/penalties';
 import { initPenaltyDialog, initPenaltyDetailsPopup } from './view/penalty-dialog';
 import {
   defaultPortStepperState,
@@ -29,13 +28,12 @@ import {
 import { initTeamColorPickers } from './view/team-colors';
 import { TeamLayout } from './view/team-layout';
 import { initKeyboardShortcuts } from './view/keyboard-shortcuts';
-import { millisToMinSec, pad } from './utils/time';
+import { resetGameState } from './control-ui';
+import { pad, millisToMinSec } from './utils/time';
 
 // DOM helpers
 const $ = <T extends HTMLElement = HTMLElement>(sel: string): T | null =>
   document.querySelector<T>(sel);
-const $$ = (sel: string): HTMLElement[] =>
-  Array.from(document.querySelectorAll<HTMLElement>(sel));
 
 const on = (
   el: HTMLElement | Document,
@@ -54,28 +52,14 @@ const on = (
 };
 
 // Application state
-const State: ControlState & {
-  portNames: string[];
-  currentPort: string;
-  penaltyDetails: {
-    home: Array<{ period: string; player: string; duration: string; off: string; start: string; remaining: string }>;
-    away: Array<{ period: string; player: string; duration: string; off: string; start: string; remaining: string }>;
-  };
-} = {
-  time: 0,
-  running: false,
-  period: 0,
-  periodLengthMillis: 0,
-  home: { score: 0, shots: 0, penalties: [], goals: [] },
-  away: { score: 0, shots: 0, penalties: [], goals: [] },
-  scoreboardOn: false,
-  buzzerOn: false,
+const State: any = {
   portNames: [],
   currentPort: '',
-  penaltyDetails: {
-    home: [],
-    away: [],
-  },
+  time: 0,
+  period: 0,
+  running: false,
+  home: { score: 0, shots: 0, penalties: [], goals: [] },
+  away: { score: 0, shots: 0, penalties: [], goals: [] },
 };
 
 // Transport
@@ -83,115 +67,236 @@ const { transport, socket, server: Server } = createServerRuntime();
 
 // Rendering
 const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'away', penalties: any[]) => {
-  const listTBody = teamElem && teamElem.querySelector<HTMLElement>('tbody.list');
-  const phTBody = teamElem && teamElem.querySelector<HTMLElement>('tbody.placeholders');
-  const { rowsHtml, placeholderHtml, details } = buildPenaltyTable(teamKey, penalties || []);
-  if (listTBody) listTBody.innerHTML = rowsHtml;
-  if (phTBody) phTBody.innerHTML = placeholderHtml;
-  if (State.penaltyDetails && State.penaltyDetails[teamKey] !== undefined) {
-    State.penaltyDetails[teamKey] = details;
-  }
-};
+  const listTBody = teamElem?.querySelector<HTMLElement>('tbody.list');
+  const phTBody = teamElem?.querySelector<HTMLElement>('tbody.placeholders');
 
-const formatGoals = (goals: ReadonlyArray<Goal> = []): string => {
-  if (!Array.isArray(goals) || goals.length === 0) {
-    return '<tr class="placeholder"><td colspan="4">No goals yet</td></tr>';
+  if (!listTBody || !phTBody) return;
+
+  // Clear existing rows
+  while (listTBody.firstChild) {
+    listTBody.removeChild(listTBody.firstChild);
+  }
+  while (phTBody.firstChild) {
+    phTBody.removeChild(phTBody.firstChild);
   }
 
-  return goals
-    .map((goal) => {
-      const safeTime = typeof goal.time === 'number' ? Math.max(0, goal.time) : 0;
-      const { minutes, seconds } = millisToMinSec(safeTime);
-      const timeText = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
-      const period = goal.period === 0 || goal.period ? goal.period : '-';
-      const scorer = goal.playerNumber === 0 || goal.playerNumber ? goal.playerNumber : '-';
-      const primary =
-        goal.primaryAssistNumber === 0 || goal.primaryAssistNumber
-          ? goal.primaryAssistNumber
-          : goal.assistNumber && goal.assistNumber > 0
-              ? goal.assistNumber
-              : null;
-      const secondary = goal.secondaryAssistNumber === 0 || goal.secondaryAssistNumber ? goal.secondaryAssistNumber : null;
-      const assists: Array<number | string> = [];
-      if (primary !== null && primary !== undefined) assists.push(primary);
-      if (secondary !== null && secondary !== undefined) assists.push(secondary);
-      const assistsText = assists.length ? assists.map(String).join(' / ') : '&ndash;';
-      const idAttr = goal.id === 0 || goal.id ? ` data-goal-id="${String(goal.id)}"` : '';
-      return `
-        <tr${idAttr}>
-          <td>${period}</td>
-          <td>${timeText}</td>
-          <td>${scorer}</td>
-          <td>${assistsText}</td>
-        </tr>`;
-    })
-    .join('');
+  // Render penalty rows
+  penalties.forEach(detail => {
+    const row = document.createElement('tr');
+
+    const periodCell = document.createElement('td');
+    periodCell.textContent = detail.period;
+    row.appendChild(periodCell);
+
+    const playerCell = document.createElement('td');
+    const playerSpan = document.createElement('span');
+    playerSpan.className = 'pn';
+    playerSpan.textContent = detail.player;
+    if (detail.servingPlayer && detail.servingPlayer !== detail.player) {
+      playerSpan.dataset.serving = detail.servingPlayer;
+    }
+    playerCell.appendChild(playerSpan);
+    row.appendChild(playerCell);
+
+    const remainingCell = document.createElement('td');
+    remainingCell.textContent = detail.remaining;
+    row.appendChild(remainingCell);
+
+    const actionsCell = document.createElement('td');
+    const detailsLink = document.createElement('a');
+    detailsLink.href = '#';
+    detailsLink.dataset.action = 'penalty-details';
+    detailsLink.dataset.team = detail.team;
+    detailsLink.dataset.pid = detail.id;
+    detailsLink.dataset.player = detail.player;
+    detailsLink.dataset.period = detail.period;
+    detailsLink.dataset.duration = detail.duration;
+    detailsLink.dataset.off = detail.off;
+    detailsLink.dataset.start = detail.start;
+    detailsLink.dataset.remaining = detail.remaining;
+    detailsLink.title = 'Details';
+    detailsLink.textContent = 'Details';
+    actionsCell.appendChild(detailsLink);
+
+    actionsCell.appendChild(document.createTextNode(' | '));
+
+    const deleteLink = document.createElement('a');
+    deleteLink.href = '#';
+    deleteLink.dataset.action = 'delete-penalty';
+    deleteLink.dataset.team = detail.team;
+    deleteLink.dataset.pid = detail.id;
+    deleteLink.textContent = 'x';
+    actionsCell.appendChild(deleteLink);
+
+    row.appendChild(actionsCell);
+
+    listTBody.appendChild(row);
+  });
+
+  // Render placeholder rows
+  const placeholderCount = Math.max(0, 2 - penalties.length);
+  for (let i = 0; i < placeholderCount; i++) {
+    const row = document.createElement('tr');
+    row.className = 'placeholder';
+    for (let j = 0; j < 4; j++) {
+      const cell = document.createElement('td');
+      cell.innerHTML = '&ndash;';
+      row.appendChild(cell);
+    }
+    phTBody.appendChild(row);
+  }
 };
 
 const renderGoalTable = (teamElem: HTMLElement | null, goals: ReadonlyArray<Goal>) => {
   if (!teamElem) return;
   const listTBody = teamElem.querySelector<HTMLElement>('tbody.goal-list');
   if (!listTBody) return;
-  listTBody.innerHTML = formatGoals(goals);
+
+  // Clear existing rows
+  while (listTBody.firstChild) {
+    listTBody.removeChild(listTBody.firstChild);
+  }
+
+  if (!Array.isArray(goals) || goals.length === 0) {
+    const row = document.createElement('tr');
+    row.className = 'placeholder';
+    const cell = document.createElement('td');
+    cell.colSpan = 4;
+    cell.textContent = 'No goals yet';
+    row.appendChild(cell);
+    listTBody.appendChild(row);
+    return;
+  }
+
+  goals.forEach((goal) => {
+    const row = document.createElement('tr');
+    if (goal.id === 0 || goal.id) {
+      row.dataset.goalId = String(goal.id);
+    }
+
+    const safeTime = typeof goal.time === 'number' ? Math.max(0, goal.time) : 0;
+    const { minutes, seconds } = millisToMinSec(safeTime);
+    const timeText = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+    const period = goal.period === 0 || goal.period ? goal.period : '-';
+    const scorer = goal.playerNumber === 0 || goal.playerNumber ? goal.playerNumber : '-';
+    const primary =
+      goal.primaryAssistNumber === 0 || goal.primaryAssistNumber
+        ? goal.primaryAssistNumber
+        : goal.assistNumber && goal.assistNumber > 0
+          ? goal.assistNumber
+          : null;
+    const secondary = goal.secondaryAssistNumber === 0 || goal.secondaryAssistNumber ? goal.secondaryAssistNumber : null;
+    const assists: Array<number | string> = [];
+    if (primary !== null && primary !== undefined) assists.push(primary);
+    if (secondary !== null && secondary !== undefined) assists.push(secondary);
+    const assistsText = assists.length > 0 ? assists.map(String).join(' / ') : '–';
+
+    const periodCell = document.createElement('td');
+    periodCell.textContent = String(period);
+    row.appendChild(periodCell);
+
+    const timeCell = document.createElement('td');
+    timeCell.textContent = timeText;
+    row.appendChild(timeCell);
+
+    const scorerCell = document.createElement('td');
+    scorerCell.textContent = String(scorer);
+    row.appendChild(scorerCell);
+
+    const assistsCell = document.createElement('td');
+    assistsCell.innerHTML = assistsText; // Use innerHTML for &ndash;
+    row.appendChild(assistsCell);
+
+    listTBody.appendChild(row);
+  });
 };
 
-const renderUpdate = (data: any) => {
-  const nextState = deriveControlState(data);
-  Object.assign(State, nextState);
-  const view = buildControlView(nextState);
+const renderUpdate = (view: any) => {
+  if (view.clockText !== State.clockText) {
+    const clockText = document.getElementById('clock-text');
+    if (clockText) clockText.textContent = view.clockText;
+    const clockMoment = $('#clock-moment');
+    if (clockMoment) clockMoment.innerHTML = view.elapsedText;
+  }
+
+  if (view.periodText !== State.periodText) {
+    const periodDigit = $('#period .digit');
+    if (periodDigit) periodDigit.textContent = view.periodText;
+  }
+
+  if (view.running !== State.running) {
+    const toggle = document.getElementById('clock-toggle');
+    if (toggle) {
+      const icon = toggle.querySelector('.glyphicon');
+      const label = toggle.querySelector('.cta-text');
+      if (view.running) {
+        if (icon) icon.className = 'glyphicon glyphicon-pause';
+        if (label) label.textContent = 'Pause';
+      } else {
+        if (icon) icon.className = 'glyphicon glyphicon-play';
+        if (label) label.textContent = 'Start';
+      }
+    }
+  }
+
+  if (view.homeScoreText !== State.homeScoreText) {
+    const homeScoreText = document.getElementById('home-score');
+    if (homeScoreText) homeScoreText.textContent = view.homeScoreText;
+  }
+
+  if (view.awayScoreText !== State.awayScoreText) {
+    const awayScoreText = document.getElementById('away-score');
+    if (awayScoreText) awayScoreText.textContent = view.awayScoreText;
+  }
+
+  if (view.homeShotsText !== State.homeShotsText) {
+    const homeShots = document.getElementById('home-shots');
+    if (homeShots) homeShots.textContent = view.homeShotsText;
+  }
+
+  if (view.awayShotsText !== State.awayShotsText) {
+    const awayShots = document.getElementById('away-shots');
+    if (awayShots) awayShots.textContent = view.awayShotsText;
+  }
+
+  if (JSON.stringify(view.homePenalties) !== JSON.stringify(State.home.penalties)) {
+    const home = $('#home');
+    renderPenaltyTable(home, 'home', view.homePenalties);
+  }
+
+  if (JSON.stringify(view.awayPenalties) !== JSON.stringify(State.away.penalties)) {
+    const away = $('#away');
+    renderPenaltyTable(away, 'away', view.awayPenalties);
+  }
+
+  if (JSON.stringify(view.homeGoals) !== JSON.stringify(State.home.goals)) {
+    const home = $('#home');
+    renderGoalTable(home, view.homeGoals);
+  }
+
+  if (JSON.stringify(view.awayGoals) !== JSON.stringify(State.away.goals)) {
+    const away = $('#away');
+    renderGoalTable(away, view.awayGoals);
+  }
+
+  if (view.scoreboardOn !== State.scoreboardOn) {
+    const updatePowerFn = (window as any).updatePowerFromServer;
+    if (typeof updatePowerFn === 'function') {
+      updatePowerFn(view.scoreboardOn);
+    }
+  }
+
+  if (view.buzzerOn !== State.buzzerOn) {
+    document.body.classList.toggle('buzzer', view.buzzerOn);
+  }
+
+  Object.assign(State, view);
 
   const testHooks = ((window as any).__test ?? {}) as Record<string, unknown>;
   (window as any).__test = {
     ...testHooks,
-    lastUpdate: data,
+    lastUpdate: view,
   };
-
-  const home = $('#home');
-  const away = $('#away');
-
-  renderPenaltyTable(home, 'home', view.homePenalties);
-  renderPenaltyTable(away, 'away', view.awayPenalties);
-  renderGoalTable(home, nextState.home.goals);
-  renderGoalTable(away, nextState.away.goals);
-
-  const clockText = document.getElementById('clock-text');
-  if (clockText) clockText.textContent = view.clockText;
-
-  const clockMoment = $('#clock-moment');
-  if (clockMoment) clockMoment.innerHTML = view.elapsedText;
-
-  const periodDigit = $('#period .digit');
-  if (periodDigit) periodDigit.textContent = view.periodText;
-
-  const toggle = document.getElementById('clock-toggle');
-  if (toggle) {
-    const icon = toggle.querySelector('.glyphicon');
-    const label = toggle.querySelector('.cta-text');
-    if (nextState.running) {
-      if (icon) icon.className = 'glyphicon glyphicon-pause';
-      if (label) label.textContent = 'Pause';
-    } else {
-      if (icon) icon.className = 'glyphicon glyphicon-play';
-      if (label) label.textContent = 'Start';
-    }
-  }
-
-  const homeScoreText = document.getElementById('home-score');
-  const awayScoreText = document.getElementById('away-score');
-  if (homeScoreText) homeScoreText.textContent = view.homeScoreText;
-  if (awayScoreText) awayScoreText.textContent = view.awayScoreText;
-
-  const homeShots = document.getElementById('home-shots');
-  const awayShots = document.getElementById('away-shots');
-  if (homeShots) homeShots.textContent = view.homeShotsText;
-  if (awayShots) awayShots.textContent = view.awayShotsText;
-
-  const updatePowerFn = (window as any).updatePowerFromServer;
-  if (typeof updatePowerFn === 'function') {
-    updatePowerFn(view.scoreboardOn);
-  }
-
-  document.body.classList.toggle('buzzer', view.buzzerOn);
 };
 
 // Ports UI
@@ -369,57 +474,39 @@ const setPowerUI = (state: typeof powerState, text?: string) => {
 
 // Event handlers
 const initEvents = (goalDialog: GoalDialogController) => {
-  // Navbar buttons
-  const buzzerBtn = $('#buzzer');
-  if (buzzerBtn) buzzerBtn.addEventListener('click', () => Server.buzzer());
-
-  const clockStartBtn = $('#clock-start');
-  if (clockStartBtn) clockStartBtn.addEventListener('click', () => Server.startClock());
-
-  const clockPauseBtn = $('#clock-pause');
-  if (clockPauseBtn) clockPauseBtn.addEventListener('click', () => Server.pauseClock());
-
-  // Period controls
-  const periodUp = $('.period-up');
-  const periodDown = $('.period-down');
-  if (periodUp) periodUp.addEventListener('click', () => Server.setPeriod(State.period + 1));
-  if (periodDown) periodDown.addEventListener('click', () => Server.setPeriod(Math.max(0, State.period - 1)));
-
-  // Score buttons
-  $$('.score-up').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const team = (e.currentTarget as HTMLElement).dataset.team as TeamCode;
-      goalDialog.open(team);
-    })
-  );
-  $$('.score-down').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      const team = (e.currentTarget as HTMLElement).dataset.team as 'home' | 'away';
-      Server.undoGoal({ team });
-    })
-  );
-
-  // Shot buttons
   const blurTarget = (event: Event) => {
     const target = event.currentTarget as HTMLButtonElement | null;
     target?.blur();
   };
 
-  $$('.shots-up').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      const team = (e.currentTarget as HTMLElement).dataset.team as 'home' | 'away';
-      Server.shot({ team });
-      blurTarget(e);
-    })
-  );
-  $$('.shots-down').forEach((btn) =>
-    btn.addEventListener('click', (e) => {
-      const team = (e.currentTarget as HTMLElement).dataset.team as 'home' | 'away';
-      Server.undoShot({ team });
-      blurTarget(e);
-    })
-  );
+  on(document, 'click', '#buzzer', () => Server.buzzer());
+  on(document, 'click', '#clock-start', () => Server.startClock());
+  on(document, 'click', '#clock-pause', () => Server.pauseClock());
+  on(document, 'click', '.period-up', () => Server.setPeriod(State.period + 1));
+  on(document, 'click', '.period-down', () => Server.setPeriod(Math.max(0, State.period - 1)));
+
+  on(document, 'click', '.score-up', (e, t) => {
+    e.preventDefault();
+    const team = t.dataset.team as TeamCode;
+    goalDialog.open(team);
+  });
+
+  on(document, 'click', '.score-down', (e, t) => {
+    const team = t.dataset.team as 'home' | 'away';
+    Server.undoGoal({ team });
+  });
+
+  on(document, 'click', '.shots-up', (e, t) => {
+    const team = t.dataset.team as 'home' | 'away';
+    Server.shot({ team });
+    blurTarget(e);
+  });
+
+  on(document, 'click', '.shots-down', (e, t) => {
+    const team = t.dataset.team as 'home' | 'away';
+    Server.undoShot({ team });
+    blurTarget(e);
+  });
 
   // Delete penalty (delegated)
   on(document, 'click', 'a[data-action="delete-penalty"]', (e, t) => {
@@ -430,49 +517,43 @@ const initEvents = (goalDialog: GoalDialogController) => {
   });
 
   // Big clock toggle
-  const clockToggle = document.getElementById('clock-toggle');
-  if (clockToggle) {
-    clockToggle.addEventListener('click', () => {
-      if (State.running) Server.pauseClock();
-      else Server.startClock();
-    });
-  }
+  on(document, 'click', '#clock-toggle', () => {
+    if (State.running) Server.pauseClock();
+    else Server.startClock();
+  });
 
   // Power button
-  const powerBtn = $('#power-btn');
-  if (powerBtn) {
-    powerBtn.addEventListener('click', async () => {
-      if (powerState === 'on') {
-        // Turn off
-        setPowerUI('connecting', 'Turning off…');
-        try {
-          Server.powerOff();
-        } catch {}
-        // Assume quick off
-        setTimeout(() => setPowerUI('off'), 500);
-        return;
-      }
-      // Turn on flow
-      setPowerUI('connecting', 'Opening port…');
-      // Prepare ports list
+  on(document, 'click', '#power-btn', async () => {
+    if (powerState === 'on') {
+      // Turn off
+      setPowerUI('connecting', 'Turning off…');
       try {
-        const data = await api.get<any>('portNames');
-        State.portNames = data.portNames || [];
-        State.currentPort = data.currentPort || '';
-        refreshPortDialog();
+        Server.powerOff();
       } catch {}
-      // Step through ports if available, otherwise show modal with message
-      if (State.portNames && State.portNames.length) {
-        setPowerUI('assumed');
-        await beginPortStepper();
-      } else {
-        setPowerUI('error', 'No serial ports found');
-        resetConnectDialogUI();
-        Modals.showById('#scoreboard-connect');
-        setConnectMessage('No serial ports detected. Check USB/power and try again.');
-      }
-    });
-  }
+      // Assume quick off
+      setTimeout(() => setPowerUI('off'), 500);
+      return;
+    }
+    // Turn on flow
+    setPowerUI('connecting', 'Opening port…');
+    // Prepare ports list
+    try {
+      const data = await api.get<any>('portNames');
+      State.portNames = data.portNames || [];
+      State.currentPort = data.currentPort || '';
+      refreshPortDialog();
+    } catch {}
+    // Step through ports if available, otherwise show modal with message
+    if (State.portNames && State.portNames.length) {
+      setPowerUI('assumed');
+      await beginPortStepper();
+    } else {
+      setPowerUI('error', 'No serial ports found');
+      resetConnectDialogUI();
+      Modals.showById('#scoreboard-connect');
+      setConnectMessage('No serial ports detected. Check USB/power and try again.');
+    }
+  });
 
   // Confirmation from modal
   on(document, 'click', '#confirm-on', () => {
@@ -616,7 +697,24 @@ const initSocket = () => {
       (window as any).updatePowerFromServer(!!data.scoreboardOn);
     }
   });
-  socket.on('update', (data) => renderUpdate(data));
+  socket.on('update', (message) => {
+    if (message.changed) {
+      renderUpdate(message.data);
+    }
+  });
+};
+
+export const resetGameState = () => {
+  Object.assign(State, {
+    portNames: [],
+    currentPort: '',
+    time: 0,
+    period: 0,
+    running: false,
+    home: { score: 0, shots: 0, penalties: [], goals: [] },
+    away: { score: 0, shots: 0, penalties: [], goals: [] },
+  });
+  renderUpdate(State); // Render with the reset state
 };
 
 // Boot
@@ -631,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initClockSettingsDialog(() => State.time);
   initPenaltyDialog(() => ({ currentPeriod: State.period, currentTime: State.time }));
   initPenaltyDetailsPopup();
-  initGameDialog(Server as ServerActions);
+  initGameDialog(Server as ServerActions, resetGameState);
   initEvents(goalDialog);
   initKeyboardShortcuts({ openGoalDialog: (team) => goalDialog.open(team) });
   initSocket();

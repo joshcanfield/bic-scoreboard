@@ -199,7 +199,7 @@ const onShiftChanged = () => {
   }
 };
 
-export const initGameDialog = (Server: ServerActions) => {
+export const initGameDialog = (Server: ServerActions, resetGameState: () => void) => {
   const on = (
     el: HTMLElement | Document,
     type: string,
@@ -393,6 +393,7 @@ export const initGameDialog = (Server: ServerActions) => {
       if (intermission != null) cfg.intermissionDurationMinutes = intermission;
       Server.createGame(cfg);
       Modals.hide($('#new-game-dialog')!);
+      resetGameState();
     });
   }
 
