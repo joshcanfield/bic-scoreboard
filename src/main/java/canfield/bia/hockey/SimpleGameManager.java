@@ -65,7 +65,8 @@ public class SimpleGameManager {
                   if (intermission != null && intermission > 0) {
                     scoreBoard.setGameState(ScoreBoard.GameState.INTERMISSION);
                     scoreBoard.getGameClock().setTime(intermission, 0);
-                    scoreBoard.getGameClock().start();
+                    // Don't auto-start intermission timer - let user start it manually
+                    // This prevents buzzer issues and gives operators control
                   } else {
                     // No intermission: advance to next period and pause in READY state
                     scoreBoard.advancePeriod();
@@ -179,6 +180,18 @@ public class SimpleGameManager {
     }
   }
 
+  /**
+   * Manually exit intermission state and advance to next period.
+   * This is useful when the operator needs to skip or abort intermission.
+   */
+  public void exitIntermission() {
+    if (scoreBoard.getGameState() == ScoreBoard.GameState.INTERMISSION) {
+      scoreBoard.getGameClock().stop();
+      scoreBoard.advancePeriod();
+      scoreBoard.setGameState(ScoreBoard.GameState.READY_FOR_PERIOD);
+    }
+  }
+
   public void stopClock() {
     scoreBoard.getGameClock().stop();
   }
@@ -215,6 +228,7 @@ public class SimpleGameManager {
         awayShots += 1;
         break;
     }
+    updateShotsOnAdapter();
   }
 
   public void removeShot(Team team) {
@@ -225,6 +239,16 @@ public class SimpleGameManager {
       case away:
         if (awayShots > 0) awayShots -= 1;
         break;
+    }
+    updateShotsOnAdapter();
+  }
+
+  private void updateShotsOnAdapter() {
+    if (scoreboardAdapter instanceof canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl) {
+      canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl impl =
+          (canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl) scoreboardAdapter;
+      impl.setHomeShots(homeShots);
+      impl.setAwayShots(awayShots);
     }
   }
 
@@ -440,6 +464,7 @@ public class SimpleGameManager {
     setScore(Team.away, 0);
     homeShots = 0;
     awayShots = 0;
+    updateShotsOnAdapter();
     setTime((int) TimeUnit.MINUTES.toMillis(getPeriodLength()));
   }
 
@@ -476,6 +501,10 @@ public class SimpleGameManager {
 
   public boolean isBuzzerOn() {
     return scoreboardAdapter.isBuzzerOn();
+  }
+
+  public ScoreBoard.GameState getGameState() {
+    return scoreBoard.getGameState();
   }
 
   public void setShiftLengthSeconds(final Integer shiftLengthSeconds) {

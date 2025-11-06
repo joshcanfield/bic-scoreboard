@@ -32,6 +32,8 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   private long lastSend = 0;
 
   private final ScoreBoard scoreBoard;
+  private int homeShots = 0;
+  private int awayShots = 0;
 
   public ScoreboardAdapterImpl(ScoreBoard scoreBoard, String portName) {
     this.scoreBoard = scoreBoard;
@@ -104,6 +106,14 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   @Override
   public boolean isBuzzerOn() {
     return buzzer_stops > System.currentTimeMillis();
+  }
+
+  public void setHomeShots(int shots) {
+    this.homeShots = shots;
+  }
+
+  public void setAwayShots(int shots) {
+    this.awayShots = shots;
   }
 
   private void initListener(final ScoreBoard scoreBoard) {
@@ -310,54 +320,85 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
           scoreBoard.getAwayPenalty(1)
       };
 
-      boolean hasPenalty = false;
-      for (Penalty penalty : penalties) {
-        if (penalty != null) {
-          hasPenalty = true;
-          break;
-        }
-      }
+      // Count active penalties per team
+      int homePenaltyCount = (penalties[0] != null ? 1 : 0) + (penalties[1] != null ? 1 : 0);
+      int awayPenaltyCount = (penalties[2] != null ? 1 : 0) + (penalties[3] != null ? 1 : 0);
 
-      // If we don't have a penalty, and we didn't last time don't bother updating.
-      if ((!hasPenalty && !hadPenalty) || (now - lastUpdateMillis < 500)) {
+      boolean hasPenalty = homePenaltyCount > 0 || awayPenaltyCount > 0;
+      boolean hasSOG = homeShots > 0 || awayShots > 0;
+
+      // If we don't have a penalty or SOG, and we didn't last time don't bother updating.
+      if (!hasPenalty && !hasSOG && !hadPenalty && (now - lastUpdateMillis < 500)) {
         // only update the clock if the state could have changed
         return;
       }
 
-      hadPenalty = hasPenalty;
+      hadPenalty = hasPenalty || hasSOG;
       lastUpdateMillis = now;
 
       int index = 0;
       byte[] b = new byte[26];
       b[index++] = 0x2E;
       b[index++] = 0x7A;
-      for (Penalty penalty : penalties) {
-        if (penalty == null) {
-          b[index++] = (byte) 0xFF;
-          b[index++] = (byte) 0xFF;
-          b[index++] = (byte) 0xFF;
-        } else {
-          int remaining = penalty.getTime() - penalty.getElapsed();
 
+      // Build time display for each slot
+      for (int i = 0; i < 4; i++) {
+        Penalty penalty = penalties[i];
+        boolean isHome = i < 2;
+        int teamPenaltyCount = isHome ? homePenaltyCount : awayPenaltyCount;
+
+        if (penalty != null) {
+          // Display penalty time
+          int remaining = penalty.getTime() - penalty.getElapsed();
           byte minutes = (byte) (Clock.getMinutes(remaining) & 0xFF);
-          b[index++] = digit(1, minutes); // == 0 ? (byte) 0xFF : minutes;
+          b[index++] = digit(1, minutes);
           int seconds = Clock.getSeconds(remaining);
           b[index++] = digit(10, seconds);
           b[index++] = digit(1, seconds);
+        } else if (teamPenaltyCount < 2 && (isHome ? homeShots : awayShots) > 0 &&
+                   (isHome ? penalties[0] == null && i == 0 || penalties[1] == null && i == 1
+                           : penalties[2] == null && i == 2 || penalties[3] == null && i == 3)) {
+          // Display SOG in first empty slot for team
+          int shots = isHome ? homeShots : awayShots;
+          // Show as "S" in minutes (could be 5 to look like S), shots in seconds
+          b[index++] = digit(1, 5); // "5" might look like "S"
+          b[index++] = digit(10, shots);
+          b[index++] = digit(1, shots);
+        } else {
+          // Empty slot
+          b[index++] = (byte) 0xFF;
+          b[index++] = (byte) 0xFF;
+          b[index++] = (byte) 0xFF;
         }
       }
+
       b[index++] = (byte) 0xFF;
       b[index++] = 0x2E;
       b[index++] = 0x7E;
-      for (Penalty penalty : penalties) {
-        if (penalty == null) {
-          b[index++] = (byte) 0xFF;
-          b[index++] = (byte) 0xFF;
-        } else {
+
+      // Build player numbers for each slot
+      for (int i = 0; i < 4; i++) {
+        Penalty penalty = penalties[i];
+        boolean isHome = i < 2;
+        int teamPenaltyCount = isHome ? homePenaltyCount : awayPenaltyCount;
+
+        if (penalty != null) {
+          // Display player number
           int serving = penalty.getServingPlayerNumber();
           int player = serving != 0 ? serving : penalty.getPlayerNumber();
           b[index++] = digit(10, player, ZERO_VALUE_EMPTY);
           b[index++] = digit(1, player);
+        } else if (teamPenaltyCount < 2 && (isHome ? homeShots : awayShots) > 0 &&
+                   (isHome ? penalties[0] == null && i == 0 || penalties[1] == null && i == 1
+                           : penalties[2] == null && i == 2 || penalties[3] == null && i == 3)) {
+          // Display "SO" or "SG" as player number (could use special codes)
+          // Using "50" to represent "SOG" indicator
+          b[index++] = digit(10, 5, ZERO_VALUE_EMPTY);
+          b[index++] = digit(1, 0);
+        } else {
+          // Empty slot
+          b[index++] = (byte) 0xFF;
+          b[index++] = (byte) 0xFF;
         }
       }
       b[index] = (byte) 0xFF;

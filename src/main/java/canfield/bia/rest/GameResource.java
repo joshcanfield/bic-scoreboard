@@ -244,4 +244,11 @@ public class GameResource {
     return Response.ok().build();
   }
 
+  @POST
+  @Path("/exitIntermission")
+  public Response exitIntermission() {
+    game.exitIntermission();
+    return get();
+  }
+
 }

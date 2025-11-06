@@ -149,6 +149,9 @@ public class NativeWebSocketServer extends WebSocketServer {
                 Map<String, Integer> data = mapper.convertValue(dataObj, new TypeReference<Map<String, Integer>>(){});
                 Integer p = data.get("period");
                 if (p != null) gameManager.setPeriod(p);
+            } else if ("exit_intermission".equals(event)) {
+                gameManager.exitIntermission();
+                broadcastJson("update", buildUpdate());
             } else if ("buzzer".equals(event)) {
                 gameManager.playBuzzer(1000);
             } else if ("power".equals(event)) {

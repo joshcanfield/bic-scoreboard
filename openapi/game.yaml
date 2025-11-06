@@ -15,7 +15,7 @@ x-websocket:
     Messages follow a JSON envelope `{ "event": string, "data": any }`. Outbound `update`
     events mirror the REST `GET /game` payload with an extra `buzzerOn` flag; outbound `power`
     events carry `{ "scoreboardOn": boolean }`. Inbound events include `goal`, `shot`,
-    `undo_goal`, `undo_shot`, `clock_start`, `clock_pause`, `set_period`, `buzzer`, `power`,
+    `undo_goal`, `undo_shot`, `clock_start`, `clock_pause`, `set_period`, `exit_intermission`, `buzzer`, `power`,
     `power_on`, `power_off`, `power_state`, and `createGame` (see `components/schemas/WebSocketEventPayloads`).
 paths:
   /game:
@@ -162,6 +162,17 @@ paths:
       responses:
         '200':
           description: Power state toggled.
+  /game/exitIntermission:
+    post:
+      summary: Manually exit intermission state and advance to next period.
+      operationId: exitIntermission
+      responses:
+        '200':
+          description: Game state after exiting intermission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
 components:
   parameters:
     TeamParam:

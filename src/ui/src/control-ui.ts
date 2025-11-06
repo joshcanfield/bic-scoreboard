@@ -57,6 +57,7 @@ const on = (
 const State: ControlState & {
   portNames: string[];
   currentPort: string;
+  gameState?: string;
   penaltyDetails: {
     home: Array<{ period: string; player: string; duration: string; off: string; start: string; remaining: string }>;
     away: Array<{ period: string; player: string; duration: string; off: string; start: string; remaining: string }>;
@@ -192,6 +193,23 @@ const renderUpdate = (data: any) => {
   }
 
   document.body.classList.toggle('buzzer', view.buzzerOn);
+
+  // Update intermission control visibility and game state
+  const intermissionControl = $('#intermission-control');
+  const gameStateIndicator = $('#game-state-indicator');
+  const gameState = (data as any).gameState;
+  if (gameState) {
+    State.gameState = gameState;
+  }
+
+  if (intermissionControl && gameStateIndicator) {
+    if (State.gameState === 'INTERMISSION') {
+      intermissionControl.style.display = 'block';
+      gameStateIndicator.textContent = 'INTERMISSION';
+    } else {
+      intermissionControl.style.display = 'none';
+    }
+  }
 };
 
 // Ports UI
@@ -384,6 +402,10 @@ const initEvents = (goalDialog: GoalDialogController) => {
   const periodDown = $('.period-down');
   if (periodUp) periodUp.addEventListener('click', () => Server.setPeriod(State.period + 1));
   if (periodDown) periodDown.addEventListener('click', () => Server.setPeriod(Math.max(0, State.period - 1)));
+
+  // Intermission control
+  const exitIntermissionBtn = $('#exit-intermission-btn');
+  if (exitIntermissionBtn) exitIntermissionBtn.addEventListener('click', () => Server.exitIntermission());
 
   // Score buttons
   $$('.score-up').forEach((btn) =>

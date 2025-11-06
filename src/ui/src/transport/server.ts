@@ -46,6 +46,7 @@ export interface ServerOutboundEvents {
   power_off: undefined;
   power_state: undefined;
   set_period: SetPeriodPayload;
+  exit_intermission: undefined;
   createGame: CreateGamePayload;
 }
 
@@ -75,6 +76,7 @@ export interface ServerActions {
   powerOff(): void;
   powerState(): void;
   setPeriod(period: number): void;
+  exitIntermission(): void;
   createGame(payload: CreateGamePayload): void;
 }
 
@@ -112,6 +114,7 @@ export const createServerRuntime = (options: ServerRuntimeOptions = {}): ServerR
     powerOff: () => socket.emit('power_off'),
     powerState: () => socket.emit('power_state'),
     setPeriod: (period) => socket.emit('set_period', { period }),
+    exitIntermission: () => socket.emit('exit_intermission'),
     createGame: (payload) => socket.emit('createGame', payload),
   };
 
