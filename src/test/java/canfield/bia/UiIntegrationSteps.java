@@ -17,17 +17,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.*;
-
+import java.net.http.HttpClient;
+import java.net.http.WebSocket;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 
 import static canfield.bia.UiHooks.driver;
 
 public class UiIntegrationSteps {
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final URI WS_URI = URI.create("ws://localhost:8082/");
+    private static final HttpClient WS_CLIENT = HttpClient.newHttpClient();
     private static int initialTime;
     private String recordedHomeColor;
     private String recordedAwayColor;
@@ -37,6 +42,17 @@ public class UiIntegrationSteps {
                 "var el=document.querySelector(arguments[0]);" +
                         "return !!el && el === document.activeElement;", selector);
         return Boolean.TRUE.equals(result);
+    }
+
+    private void openScoreboardAndWait() {
+        driver.get("http://localhost:8080/");
+        waitForInitialState();
+    }
+
+    private void waitForInitialState() {
+        new WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(d -> Boolean.TRUE.equals(
+                        ((JavascriptExecutor) d).executeScript("return !!(window.__test && window.__test.lastUpdate);")));
     }
 
     private boolean isSelectorHovered(String selector) {
@@ -63,27 +79,39 @@ public class UiIntegrationSteps {
 
     @Before
     public void resetGame() throws Exception {
-        postJson(new HashMap<>());
+        sendWsCommand("CREATE_GAME", Map.of(
+                "templateId", "USAH_ADULT_20",
+                "overrides", Map.of()
+        ));
+        sendWsCommand("RESET_GAME", Map.of());
     }
 
-    private static void postJson(Map<String, Object> body) throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) URI.create("http://localhost:8080/api/game").toURL().openConnection();
-        conn.setRequestMethod("POST");
-        conn.setConnectTimeout(2000);
-        conn.setReadTimeout(2000);
-        conn.setDoOutput(true);
-        conn.setRequestProperty("Content-Type", "application/json");
-        try (OutputStream out = conn.getOutputStream()) {
-            MAPPER.writeValue(out, body);
-        }
-        try (InputStream in = conn.getInputStream()) {
-            in.readAllBytes();
-        }
+    private static void sendWsCommand(String command, Map<String, Object> payload) throws Exception {
+        Map<String, Object> envelope = new HashMap<>();
+        envelope.put("type", "COMMAND");
+        envelope.put("command", command);
+        envelope.put("payload", payload);
+
+        String json = MAPPER.writeValueAsString(envelope);
+        CompletableFuture<Void> sent = new CompletableFuture<>();
+
+        WebSocket ws = WS_CLIENT.newWebSocketBuilder()
+                .buildAsync(WS_URI, new WebSocket.Listener() {
+                    @Override
+                    public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
+                        webSocket.request(1);
+                        return null;
+                    }
+                }).join();
+
+        ws.sendText(json, true).thenRun(() -> sent.complete(null));
+        sent.get(2, TimeUnit.SECONDS);
+        ws.sendClose(WebSocket.NORMAL_CLOSURE, "done").join();
     }
 
     @When("I open the index page")
     public void openIndexPage() {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
     }
 
     @And("I record the current team colors")
@@ -199,9 +227,29 @@ public class UiIntegrationSteps {
         Assert.assertEquals(driver.getTitle(), title, "Index page should contain scoreboard title");
     }
 
+    @Then("the intermission indicator should be active")
+    public void intermissionIndicatorShouldBeActive() {
+        assertIndicatorState("intermission", true);
+    }
+
+    @Then("the intermission indicator should be inactive")
+    public void intermissionIndicatorShouldBeInactive() {
+        assertIndicatorState("intermission", false);
+    }
+
+    @Then("the buzzer indicator should be active")
+    public void buzzerIndicatorShouldBeActive() {
+        assertIndicatorState("buzzer", true);
+    }
+
+    @Then("the buzzer indicator should be inactive")
+    public void buzzerIndicatorShouldBeInactive() {
+        assertIndicatorState("buzzer", false);
+    }
+
     @When("I open the scoreboard page")
     public void openScoreboardPage() {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
     }
 
     @Then("I should see an element with id {string}")
@@ -214,7 +262,7 @@ public class UiIntegrationSteps {
 
     @Given("the game state is modified")
     public void modifyGameState() throws Exception {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
         jsClick("a.period-up");
         jsClick("#home button.score-up");
         waitForModalVisible("#add-goal");
@@ -508,7 +556,7 @@ public class UiIntegrationSteps {
 
     @Given("the clock is stopped")
     public void theClockIsStopped() {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
         // the clock starts at 0 when the page loads - wait for it to load
         // wait until the clock text is not 00:00
         new WebDriverWait(driver, Duration.ofSeconds(2)).until(
@@ -538,6 +586,13 @@ public class UiIntegrationSteps {
         Thread.sleep(ms);
     }
 
+    @When("I set the clock to {string}")
+    public void setClockTo(String spec) throws Exception {
+        long millis = parseClockSpec(spec);
+        sendWsCommand("SET_CLOCK", Map.of("timeMillis", millis));
+        Thread.sleep(200);
+    }
+
     @Then("the clock should count down")
     public void clockShouldCountDown() {
         new WebDriverWait(driver, Duration.ofSeconds(3))
@@ -559,7 +614,7 @@ public class UiIntegrationSteps {
 
     @Given("the game is in period {int}")
     public void setGamePeriod(int period) throws InterruptedException {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
         int current = Integer.parseInt(driver.findElement(By.cssSelector("#period .digit")).getText());
         while (current < period) {
             jsClick(".period-up");
@@ -649,6 +704,57 @@ public class UiIntegrationSteps {
         int minutes = Integer.parseInt(parts[0]);
         int seconds = Integer.parseInt(parts[1]);
         return (minutes * 60 + seconds) * 1000;
+    }
+
+    private long parseClockSpec(String spec) {
+        String trimmed = spec.trim();
+        if (trimmed.contains(":")) {
+            String[] parts = trimmed.split(":");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Invalid clock specification: " + spec);
+            }
+            int minutes = Integer.parseInt(parts[0]);
+            int seconds = Integer.parseInt(parts[1]);
+            return (minutes * 60L + seconds) * 1000L;
+        }
+        return Long.parseLong(trimmed);
+    }
+
+    private void assertIndicatorState(String indicator, boolean expectedActive) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+        boolean ok;
+        try {
+            ok = Boolean.TRUE.equals(wait.until(d -> {
+                try {
+                    WebElement el = d.findElement(By.cssSelector("#period-indicators [data-indicator='" + indicator + "']"));
+                    String state = el.getAttribute("data-state");
+                    return expectedActive ? "active".equalsIgnoreCase(state) : !"active".equalsIgnoreCase(state);
+                } catch (NoSuchElementException ex) {
+                    return false;
+                }
+            }));
+        } catch (org.openqa.selenium.TimeoutException ex) {
+            ok = false;
+        }
+        String engineField = indicatorEngineField(indicator);
+        Object engineValue = null;
+        if (engineField != null) {
+            engineValue = ((JavascriptExecutor) driver).executeScript(
+                    "return window.__test && window.__test.lastUpdate ? window.__test.lastUpdate['" + engineField + "'] : null;");
+        }
+        WebElement element = driver.findElement(By.cssSelector("#period-indicators [data-indicator='" + indicator + "']"));
+        String domState = element.getAttribute("data-state");
+        Assert.assertTrue(Boolean.TRUE.equals(ok),
+                "Expected indicator '" + indicator + "' to be " + (expectedActive ? "active" : "inactive")
+                        + " but DOM state was '" + domState + "' and engine field " + engineField + "=" + engineValue);
+    }
+
+    private String indicatorEngineField(String indicator) {
+        return switch (indicator) {
+            case "buzzer" -> "buzzerOn";
+            case "intermission" -> "status";
+            default -> null;
+        };
     }
 
     private void assertShots(String teamSelector, int expected) {
@@ -769,7 +875,7 @@ public class UiIntegrationSteps {
 
     @When("I click the home goal button")
     public void clickHomeGoalButton() {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
         WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
                 .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .score .score-up")));
         btn.click();
@@ -804,7 +910,7 @@ public class UiIntegrationSteps {
 
     @When("I click the home penalty button")
     public void clickHomePenaltyButton() {
-        driver.get("http://localhost:8080/");
+        openScoreboardAndWait();
         WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
                 .until(ExpectedConditions.elementToBeClickable(By.cssSelector("#home .penalties a.btn[data-team=\"home\"]")));
         btn.click();

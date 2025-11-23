@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #messages { border: 1px solid #ccc; padding: 10px; min-height: 200px; overflow-y: scroll; margin-top: 10px; }
+        .message { margin-bottom: 5px; }
+        .command { color: blue; }
+        .response { color: green; }
+        .error { color: red; }
+        button { margin-top: 10px; padding: 8px 15px; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test Client</h1>
+    <p>Open your browser's developer console (F12) to see detailed WebSocket messages.</p>
+
+    <button id="connectButton">Connect to WebSocket</button>
+    <button id="createGameButton" disabled>Create Game</button>
+    <button id="startClockButton" disabled>Start Clock</button>
+    <button id="pauseClockButton" disabled>Pause Clock</button>
+
+    <div id="messages"></div>
+
+    <script>
+        let ws;
+        const messagesDiv = document.getElementById('messages');
+        const connectButton = document.getElementById('connectButton');
+        const createGameButton = document.getElementById('createGameButton');
+        const startClockButton = document.getElementById('startClockButton');
+        const pauseClockButton = document.getElementById('pauseClockButton');
+
+        function logMessage(type, message) {
+            const p = document.createElement('p');
+            p.className = 'message ' + type;
+            p.textContent = message;
+            messagesDiv.appendChild(p);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to bottom
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        connectButton.onclick = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                logMessage('info', 'WebSocket already connected.');
+                return;
+            }
+
+            ws = new WebSocket("ws://localhost:8082/");
+
+            ws.onopen = function(event) {
+                logMessage('info', "WebSocket connection opened.");
+                connectButton.disabled = true;
+                createGameButton.disabled = false;
+                startClockButton.disabled = false;
+                pauseClockButton.disabled = false;
+            };
+
+            ws.onmessage = function(event) {
+                logMessage('response', "Received: " + event.data);
+            };
+
+            ws.onclose = function(event) {
+                logMessage('info', "WebSocket connection closed.");
+                connectButton.disabled = false;
+                createGameButton.disabled = true;
+                startClockButton.disabled = true;
+                pauseClockButton.disabled = true;
+            };
+
+            ws.onerror = function(event) {
+                logMessage('error', "WebSocket error: " + event);
+            };
+        };
+
+        createGameButton.onclick = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const command = {"type": "COMMAND", "command": "CREATE_GAME", "payload": {"templateId": "USAH_ADULT_20", "overrides": {}}};
+                ws.send(JSON.stringify(command));
+                logMessage('command', "Sent: " + JSON.stringify(command));
+            } else {
+                logMessage('error', 'WebSocket not connected.');
+            }
+        };
+
+        startClockButton.onclick = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const command = {"type": "COMMAND", "command": "START_CLOCK", "payload": {}};
+                ws.send(JSON.stringify(command));
+                logMessage('command', "Sent: " + JSON.stringify(command));
+            } else {
+                logMessage('error', 'WebSocket not connected.');
+            }
+        };
+
+        pauseClockButton.onclick = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const command = {"type": "COMMAND", "command": "PAUSE_CLOCK", "payload": {}};
+                ws.send(JSON.stringify(command));
+                logMessage('command', "Sent: " + JSON.stringify(command));
+            } else {
+                logMessage('error', 'WebSocket not connected.');
+            }
+        };
+    </script>
+</body>
+</html>

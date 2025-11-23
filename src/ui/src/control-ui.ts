@@ -5,9 +5,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty */
 
-import api from './api/http';
-import { type Goal } from './state/control-state';
-import { createServerRuntime, type ServerActions, type TeamCode } from './transport/server';
+import { type GoalEvent, type Penalty, type GameState, type Command } from './api/game.types'; // Import new types
+import { websocketClient } from './websocket'; // Import the new WebSocket client
 import { initClockSettingsDialog } from './view/clock-settings';
 import { initGameDialog } from './view/game-dialog';
 import { initGoalDialog, type GoalDialogController } from './view/goal-dialog';
@@ -28,7 +27,6 @@ import {
 import { initTeamColorPickers } from './view/team-colors';
 import { TeamLayout } from './view/team-layout';
 import { initKeyboardShortcuts } from './view/keyboard-shortcuts';
-import { resetGameState } from './control-ui';
 import { pad, millisToMinSec } from './utils/time';
 
 // DOM helpers
@@ -51,22 +49,33 @@ const on = (
   });
 };
 
-// Application state
-const State: any = {
-  portNames: [],
-  currentPort: '',
-  time: 0,
-  period: 0,
-  running: false,
-  home: { score: 0, shots: 0, penalties: [], goals: [] },
-  away: { score: 0, shots: 0, penalties: [], goals: [] },
+// Application state - now managed by websocketClient
+let currentGameState: GameState | null = null;
+const pendingStateActions: Array<(state: GameState) => void> = [];
+
+const withGameState = (handler: (state: GameState) => void) => {
+  if (currentGameState) {
+    handler(currentGameState);
+  } else {
+    pendingStateActions.push(handler);
+  }
 };
 
-// Transport
-const { transport, socket, server: Server } = createServerRuntime();
+const getConfiguredPeriodLimit = (state: GameState | null): number => {
+  if (!state) return 3;
+  const config = (state as Record<string, unknown> & { config?: { periods?: number } }).config;
+  const configured = config && typeof config.periods === 'number' ? config.periods : null;
+  return configured && configured > 0 ? configured : 3;
+};
 
 // Rendering
-const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'away', penalties: any[]) => {
+type TeamCode = 'home' | 'away';
+
+const sendCommand = (command: Command) => {
+  websocketClient.sendCommand(command);
+};
+
+const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'away', penalties: Penalty[]) => {
   const listTBody = teamElem?.querySelector<HTMLElement>('tbody.list');
   const phTBody = teamElem?.querySelector<HTMLElement>('tbody.placeholders');
 
@@ -85,35 +94,34 @@ const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'awa
     const row = document.createElement('tr');
 
     const periodCell = document.createElement('td');
-    periodCell.textContent = detail.period;
+    periodCell.textContent = String(detail.period);
     row.appendChild(periodCell);
 
     const playerCell = document.createElement('td');
     const playerSpan = document.createElement('span');
     playerSpan.className = 'pn';
-    playerSpan.textContent = detail.player;
-    if (detail.servingPlayer && detail.servingPlayer !== detail.player) {
-      playerSpan.dataset.serving = detail.servingPlayer;
+    playerSpan.textContent = String(detail.playerNumber);
+    if (detail.servingPlayerNumber && detail.servingPlayerNumber !== detail.playerNumber) {
+      playerSpan.dataset.serving = String(detail.servingPlayerNumber);
     }
     playerCell.appendChild(playerSpan);
     row.appendChild(playerCell);
 
     const remainingCell = document.createElement('td');
-    remainingCell.textContent = detail.remaining;
+    const { minutes, seconds } = millisToMinSec(detail.timeRemainingMillis);
+    remainingCell.textContent = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
     row.appendChild(remainingCell);
 
     const actionsCell = document.createElement('td');
     const detailsLink = document.createElement('a');
     detailsLink.href = '#';
     detailsLink.dataset.action = 'penalty-details';
-    detailsLink.dataset.team = detail.team;
-    detailsLink.dataset.pid = detail.id;
-    detailsLink.dataset.player = detail.player;
-    detailsLink.dataset.period = detail.period;
-    detailsLink.dataset.duration = detail.duration;
-    detailsLink.dataset.off = detail.off;
-    detailsLink.dataset.start = detail.start;
-    detailsLink.dataset.remaining = detail.remaining;
+    detailsLink.dataset.team = detail.teamId;
+    detailsLink.dataset.pid = detail.penaltyId;
+    detailsLink.dataset.player = String(detail.playerNumber);
+    detailsLink.dataset.period = String(detail.period);
+    detailsLink.dataset.duration = String(detail.durationMillis);
+    detailsLink.dataset.remaining = String(detail.timeRemainingMillis);
     detailsLink.title = 'Details';
     detailsLink.textContent = 'Details';
     actionsCell.appendChild(detailsLink);
@@ -123,8 +131,8 @@ const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'awa
     const deleteLink = document.createElement('a');
     deleteLink.href = '#';
     deleteLink.dataset.action = 'delete-penalty';
-    deleteLink.dataset.team = detail.team;
-    deleteLink.dataset.pid = detail.id;
+    deleteLink.dataset.team = detail.teamId;
+    deleteLink.dataset.pid = detail.penaltyId;
     deleteLink.textContent = 'x';
     actionsCell.appendChild(deleteLink);
 
@@ -147,7 +155,7 @@ const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'awa
   }
 };
 
-const renderGoalTable = (teamElem: HTMLElement | null, goals: ReadonlyArray<Goal>) => {
+const renderGoalTable = (teamElem: HTMLElement | null, goals: GoalEvent[]) => {
   if (!teamElem) return;
   const listTBody = teamElem.querySelector<HTMLElement>('tbody.goal-list');
   if (!listTBody) return;
@@ -170,26 +178,16 @@ const renderGoalTable = (teamElem: HTMLElement | null, goals: ReadonlyArray<Goal
 
   goals.forEach((goal) => {
     const row = document.createElement('tr');
-    if (goal.id === 0 || goal.id) {
-      row.dataset.goalId = String(goal.id);
+    if (goal.goalId) {
+      row.dataset.goalId = goal.goalId;
     }
 
-    const safeTime = typeof goal.time === 'number' ? Math.max(0, goal.time) : 0;
+    const safeTime = typeof goal.timeInPeriodMillis === 'number' ? Math.max(0, goal.timeInPeriodMillis) : 0;
     const { minutes, seconds } = millisToMinSec(safeTime);
     const timeText = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
-    const period = goal.period === 0 || goal.period ? goal.period : '-';
-    const scorer = goal.playerNumber === 0 || goal.playerNumber ? goal.playerNumber : '-';
-    const primary =
-      goal.primaryAssistNumber === 0 || goal.primaryAssistNumber
-        ? goal.primaryAssistNumber
-        : goal.assistNumber && goal.assistNumber > 0
-          ? goal.assistNumber
-          : null;
-    const secondary = goal.secondaryAssistNumber === 0 || goal.secondaryAssistNumber ? goal.secondaryAssistNumber : null;
-    const assists: Array<number | string> = [];
-    if (primary !== null && primary !== undefined) assists.push(primary);
-    if (secondary !== null && secondary !== undefined) assists.push(secondary);
-    const assistsText = assists.length > 0 ? assists.map(String).join(' / ') : '–';
+    const period = goal.period;
+    const scorer = goal.scorerNumber;
+    const assistsText = goal.assistNumbers && goal.assistNumbers.length > 0 ? goal.assistNumbers.map(String).join(' / ') : '–';
 
     const periodCell = document.createElement('td');
     periodCell.textContent = String(period);
@@ -211,25 +209,28 @@ const renderGoalTable = (teamElem: HTMLElement | null, goals: ReadonlyArray<Goal
   });
 };
 
-const renderUpdate = (view: any) => {
-  if (view.clockText !== State.clockText) {
+const renderUpdate = (newState: GameState) => {
+  const previousState = currentGameState;
+  let latestHomeScoreText: string | null = null;
+  let latestAwayScoreText: string | null = null;
+
+  // Clock
+  const oldClock = previousState?.clock;
+  const newClock = newState.clock;
+  if (!oldClock || oldClock.timeRemainingMillis !== newClock.timeRemainingMillis) {
     const clockText = document.getElementById('clock-text');
-    if (clockText) clockText.textContent = view.clockText;
-    const clockMoment = $('#clock-moment');
-    if (clockMoment) clockMoment.innerHTML = view.elapsedText;
+    const { minutes, seconds } = millisToMinSec(newClock.timeRemainingMillis);
+    if (clockText) clockText.textContent = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+    // const clockMoment = $('#clock-moment'); // No direct equivalent in new state for elapsedText
+    // if (clockMoment) clockMoment.innerHTML = view.elapsedText;
   }
 
-  if (view.periodText !== State.periodText) {
-    const periodDigit = $('#period .digit');
-    if (periodDigit) periodDigit.textContent = view.periodText;
-  }
-
-  if (view.running !== State.running) {
+  if (!oldClock || oldClock.isRunning !== newClock.isRunning) {
     const toggle = document.getElementById('clock-toggle');
     if (toggle) {
       const icon = toggle.querySelector('.glyphicon');
       const label = toggle.querySelector('.cta-text');
-      if (view.running) {
+      if (newClock.isRunning) {
         if (icon) icon.className = 'glyphicon glyphicon-pause';
         if (label) label.textContent = 'Pause';
       } else {
@@ -239,188 +240,213 @@ const renderUpdate = (view: any) => {
     }
   }
 
-  if (view.homeScoreText !== State.homeScoreText) {
+  // Period
+  if (!previousState || previousState.period !== newState.period) {
+    const periodDigit = $('#period .digit');
+    if (periodDigit) periodDigit.textContent = String(newState.period);
+  }
+  const buzzerIndicator = document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="buzzer"]');
+  if (buzzerIndicator) {
+    buzzerIndicator.dataset.state = newState.buzzerOn ? 'active' : 'idle';
+  }
+  const intermissionIndicator = document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="intermission"]');
+  if (intermissionIndicator) {
+    const statusText = String((newState as Record<string, unknown> & { status?: string }).status ?? '').toUpperCase();
+    intermissionIndicator.dataset.state = statusText === 'INTERMISSION' ? 'active' : 'idle';
+  }
+  const periodUpBtn = document.querySelector<HTMLButtonElement>('.period-up');
+  if (periodUpBtn) {
+    periodUpBtn.disabled = newState.period >= getConfiguredPeriodLimit(newState);
+  }
+  const periodDownBtn = document.querySelector<HTMLButtonElement>('.period-down');
+  if (periodDownBtn) {
+    periodDownBtn.disabled = newState.period <= 0;
+  }
+
+  // Home Team
+  const oldHome = previousState?.home;
+  const newHome = newState.home;
+  if (!oldHome || oldHome.goals.length !== newHome.goals.length) { // Score is derived from goals length
     const homeScoreText = document.getElementById('home-score');
-    if (homeScoreText) homeScoreText.textContent = view.homeScoreText;
-  }
-
-  if (view.awayScoreText !== State.awayScoreText) {
-    const awayScoreText = document.getElementById('away-score');
-    if (awayScoreText) awayScoreText.textContent = view.awayScoreText;
-  }
-
-  if (view.homeShotsText !== State.homeShotsText) {
-    const homeShots = document.getElementById('home-shots');
-    if (homeShots) homeShots.textContent = view.homeShotsText;
-  }
-
-  if (view.awayShotsText !== State.awayShotsText) {
-    const awayShots = document.getElementById('away-shots');
-    if (awayShots) awayShots.textContent = view.awayShotsText;
-  }
-
-  if (JSON.stringify(view.homePenalties) !== JSON.stringify(State.home.penalties)) {
-    const home = $('#home');
-    renderPenaltyTable(home, 'home', view.homePenalties);
-  }
-
-  if (JSON.stringify(view.awayPenalties) !== JSON.stringify(State.away.penalties)) {
-    const away = $('#away');
-    renderPenaltyTable(away, 'away', view.awayPenalties);
-  }
-
-  if (JSON.stringify(view.homeGoals) !== JSON.stringify(State.home.goals)) {
-    const home = $('#home');
-    renderGoalTable(home, view.homeGoals);
-  }
-
-  if (JSON.stringify(view.awayGoals) !== JSON.stringify(State.away.goals)) {
-    const away = $('#away');
-    renderGoalTable(away, view.awayGoals);
-  }
-
-  if (view.scoreboardOn !== State.scoreboardOn) {
-    const updatePowerFn = (window as any).updatePowerFromServer;
-    if (typeof updatePowerFn === 'function') {
-      updatePowerFn(view.scoreboardOn);
+    if (homeScoreText) {
+      latestHomeScoreText = pad(newHome.goals.length, 2);
+      homeScoreText.textContent = latestHomeScoreText;
     }
   }
-
-  if (view.buzzerOn !== State.buzzerOn) {
-    document.body.classList.toggle('buzzer', view.buzzerOn);
+  if (!oldHome || oldHome.shots !== newHome.shots) {
+    const homeShots = document.getElementById('home-shots');
+    if (homeShots) homeShots.textContent = String(newHome.shots);
+  }
+  if (!oldHome || JSON.stringify(oldHome.penalties) !== JSON.stringify(newHome.penalties)) {
+    const home = $('#home');
+    renderPenaltyTable(home, 'home', newHome.penalties);
+  }
+  if (!oldHome || JSON.stringify(oldHome.goals) !== JSON.stringify(newHome.goals)) {
+    const home = $('#home');
+    renderGoalTable(home, newHome.goals);
   }
 
-  Object.assign(State, view);
+  // Away Team
+  const oldAway = previousState?.away;
+  const newAway = newState.away;
+  if (!oldAway || oldAway.goals.length !== newAway.goals.length) { // Score is derived from goals length
+    const awayScoreText = document.getElementById('away-score');
+    if (awayScoreText) {
+      latestAwayScoreText = pad(newAway.goals.length, 2);
+      awayScoreText.textContent = latestAwayScoreText;
+    }
+  }
+  if (!oldAway || oldAway.shots !== newAway.shots) {
+    const awayShots = document.getElementById('away-shots');
+    if (awayShots) awayShots.textContent = String(newAway.shots);
+  }
+  if (!oldAway || JSON.stringify(oldAway.penalties) !== JSON.stringify(newAway.penalties)) {
+    const away = $('#away');
+    renderPenaltyTable(away, 'away', newAway.penalties);
+  }
+  if (!oldAway || JSON.stringify(oldAway.goals) !== JSON.stringify(newAway.goals)) {
+    const away = $('#away');
+    renderGoalTable(away, newAway.goals);
+  }
+
+  // Buzzer
+  if ((previousState?.buzzerOn ?? null) !== newState.buzzerOn) {
+    document.body.classList.toggle('buzzer', newState.buzzerOn);
+  }
+
+  // Update the global state reference
+  currentGameState = newState;
+
+  if (!previousState && pendingStateActions.length && currentGameState) {
+    const actions = pendingStateActions.splice(0, pendingStateActions.length);
+    actions.forEach((fn) => fn(currentGameState));
+  }
 
   const testHooks = ((window as any).__test ?? {}) as Record<string, unknown>;
   (window as any).__test = {
     ...testHooks,
-    lastUpdate: view,
+    lastUpdate: newState,
+    domHomeScore: latestHomeScoreText ?? (testHooks.domHomeScore as string | undefined) ?? null,
+    domAwayScore: latestAwayScoreText ?? (testHooks.domAwayScore as string | undefined) ?? null,
   };
 };
 
-// Ports UI
-let portStepper: PortStepperState = defaultPortStepperState();
-let notOnCountdownHandle: CountdownHandle | null = null;
+// Ports UI (Legacy - will need refactoring or removal)
+// let portStepper: PortStepperState = defaultPortStepperState();
 
-const refreshPortDialog = () => {
-  const wrap = $('#connect-portNames');
-  if (wrap) wrap.innerHTML = '';
-};
+// const refreshPortDialog = () => {
+//   const wrap = $('#connect-portNames');
+//   if (wrap) wrap.innerHTML = '';
+// };
 
-const renderPortChips = (activeIndex = 0) => {
-  renderPortPills($('#connect-portNames'), portStepper.ports || [], activeIndex);
-};
+// const renderPortChips = (activeIndex = 0) => {
+//   renderPortPills($('#connect-portNames'), portStepper.ports || [], activeIndex);
+// };
 
-const setConnectMessage = (msg: string) => {
-  setPortMessage($('#connect-message'), msg || '');
-};
+// const setConnectMessage = (msg: string) => {
+//   setPortMessage($('#connect-message'), msg || '');
+// };
 
-const getPortDialogElements = () => {
-  const modal = $('#scoreboard-connect');
-  return {
-    container: $('#connect-portNames'),
-    progress: modal ? modal.querySelector<HTMLElement>('.progress') : null,
-    notOnButton: $('#not-on') as HTMLButtonElement | null,
-    confirmButton: $('#confirm-on') as HTMLButtonElement | null,
-    retryButton: $('#retry-ports') as HTMLButtonElement | null,
-    giveUpButton: $('#give-up') as HTMLButtonElement | null,
-    messageEl: $('#connect-message'),
-  };
-};
+// const getPortDialogElements = () => {
+//   const modal = $('#scoreboard-connect');
+//   return {
+//     container: $('#connect-portNames'),
+//     progress: modal ? modal.querySelector<HTMLElement>('.progress') : null,
+//     notOnButton: $('#not-on') as HTMLButtonElement | null,
+//     confirmButton: $('#confirm-on') as HTMLButtonElement | null,
+//     retryButton: $('#retry-ports') as HTMLButtonButtonElement | null,
+//     giveUpButton: $('#give-up') as HTMLButtonElement | null,
+//     messageEl: $('#connect-message'),
+//   };
+// };
 
-const resetConnectDialogUI = () => {
-  const elements = getPortDialogElements();
-  resetPortDialog(elements, notOnCountdownHandle);
-  notOnCountdownHandle = null;
-  renderPortChips(0);
-};
+// const resetConnectDialogUI = () => {
+//   const elements = getPortDialogElements();
+//   resetPortDialog(elements, notOnCountdownHandle);
+//   notOnCountdownHandle = null;
+//   renderPortChips(0);
+// };
 
-const updatePortStateFromResponse = (resp: any, fallbackPort: string) => {
-  if (resp) {
-    State.portNames = resp.portNames || State.portNames;
-    State.currentPort = resp.currentPort || fallbackPort;
-  } else {
-    State.currentPort = fallbackPort;
-  }
-};
+// const updatePortStateFromResponse = (resp: any, fallbackPort: string) => {
+//   if (resp) {
+//     // State.portNames = resp.portNames || State.portNames; // No longer using global State for this
+//     // State.currentPort = resp.currentPort || fallbackPort; // No longer using global State for this
+//   } else {
+//     // State.currentPort = fallbackPort; // No longer using global State for this
+//   }
+// };
 
-const tryPortAtIndex = async (i: number) => {
-  const elements = getPortDialogElements();
-  const name = portStepper.ports[i];
-  const notOnBtn = elements.notOnButton;
-  const confirmBtn = elements.confirmButton;
-  const retryBtn = elements.retryButton;
+// const tryPortAtIndex = async (i: number) => {
+//   const elements = getPortDialogElements();
+//   const name = portStepper.ports[i];
+//   const notOnBtn = elements.notOnButton;
+//   const confirmBtn = elements.confirmButton;
+//   const retryBtn = elements.retryButton;
 
-  if (!name) {
-    if (elements.progress) elements.progress.style.display = 'none';
-    setConnectMessage('No more ports to try. Check USB/power and cables.');
-    portStepper.active = false;
-    try {
-      Server.powerOff();
-    } catch {}
-    setPowerUI('off');
-    renderPortChips(portStepper.ports.length);
-    if (notOnBtn) resetNotOnButton(notOnBtn);
-    if (notOnCountdownHandle) {
-      notOnCountdownHandle.cancel();
-      notOnCountdownHandle = null;
-    }
-    if (retryBtn) retryBtn.style.display = '';
-    if (confirmBtn) confirmBtn.textContent = "It's On!";
-    return;
-  }
+//   if (!name) {
+//     if (elements.progress) elements.progress.style.display = 'none';
+//     setConnectMessage('No more ports to try. Check USB/power and cables.');
+//     portStepper.active = false;
+//     // Server.powerOff(); // Legacy call
+//     setPowerUI('off');
+//     renderPortChips(portStepper.ports.length);
+//     if (notOnBtn) resetNotOnButton(notOnBtn);
+//     if (notOnCountdownHandle) {
+//       notOnCountdownHandle.cancel();
+//       notOnCountdownHandle = null;
+//     }
+//     if (retryBtn) retryBtn.style.display = '';
+//     if (confirmBtn) confirmBtn.textContent = "It's On!";
+//     return;
+//   }
 
-  renderPortChips(i);
-  try {
-    await tryPortSelection(
-      name,
-      elements,
-      (resp, attemptedPort) => updatePortStateFromResponse(resp, attemptedPort)
-    );
-  } catch (err: any) {
-    const message = err && err.message ? err.message : String(err || 'Unknown error');
-    setConnectMessage(`Unable to communicate with ${name}: ${message}`);
-    if (notOnCountdownHandle) {
-      notOnCountdownHandle.cancel();
-      notOnCountdownHandle = null;
-    }
-    if (notOnBtn) {
-      resetNotOnButton(notOnBtn);
-      notOnBtn.style.display = '';
-      notOnBtn.disabled = false;
-    }
-    if (retryBtn) retryBtn.style.display = '';
-    if (confirmBtn) {
-      confirmBtn.style.display = '';
-      confirmBtn.textContent = 'Retry';
-      confirmBtn.className = 'btn btn-warning';
-    }
-    return;
-  }
+//   renderPortChips(i);
+//   try {
+//     await tryPortSelection(
+//       name,
+//       elements,
+//       (resp, attemptedPort) => updatePortStateFromResponse(resp, attemptedPort)
+//     );
+//   } catch (err: any) {
+//     const message = err && err.message ? err.message : String(err || 'Unknown error');
+//     setConnectMessage(`Unable to communicate with ${name}: ${message}`);
+//     if (notOnCountdownHandle) {
+//       notOnCountdownHandle.cancel();
+//       notOnCountdownHandle = null;
+//     }
+//     if (notOnBtn) {
+//       resetNotOnButton(notOnBtn);
+//       notOnBtn.style.display = '';
+//       notOnBtn.disabled = false;
+//     }
+//     if (retryBtn) retryBtn.style.display = '';
+//     if (confirmBtn) {
+//       confirmBtn.style.display = '';
+//       confirmBtn.textContent = 'Retry';
+//       confirmBtn.className = 'btn btn-warning';
+//     }
+//     return;
+//   }
 
-  try {
-    Server.powerOff();
-  } catch {}
-  try {
-    Server.powerOn();
-  } catch {}
+//   // Server.powerOff(); // Legacy call
+//   // Server.powerOn(); // Legacy call
 
-  if (notOnCountdownHandle) notOnCountdownHandle.cancel();
-  const nextName = portStepper.ports[i + 1] || '';
-  notOnCountdownHandle = startNotOnCountdown(notOnBtn, 5, nextName);
-};
+//   if (notOnCountdownHandle) notOnCountdownHandle.cancel();
+//   const nextName = portStepper.ports[i + 1] || '';
+//   notOnCountdownHandle = startNotOnCountdown(notOnBtn, 5, nextName);
+// };
 
-const beginPortStepper = async () => {
-  portStepper = defaultPortStepperState();
-  initializeStepper(portStepper, State.portNames || [], State.currentPort, $('#connect-portNames'));
-  resetConnectDialogUI();
-  Modals.showById('#scoreboard-connect');
-  await tryPortAtIndex(portStepper.index);
-};
+// const beginPortStepper = async () => {
+//   portStepper = defaultPortStepperState();
+//   // initializeStepper(portStepper, State.portNames || [], State.currentPort, $('#connect-portNames')); // State.portNames and State.currentPort are gone
+//   resetConnectDialogUI();
+//   Modals.showById('#scoreboard-connect');
+//   await tryPortAtIndex(portStepper.index);
+// };
 
 // Power control
 let powerState: 'off' | 'connecting' | 'assumed' | 'on' | 'error' = 'off';
+let notOnCountdownHandle: CountdownHandle | null = null;
 
 const setPowerUI = (state: typeof powerState, text?: string) => {
   powerState = state;
@@ -465,6 +491,10 @@ const setPowerUI = (state: typeof powerState, text?: string) => {
   }
 };
 
+const setConnectMessage = (msg: string) => {
+  setPortMessage($('#connect-message'), msg || '');
+};
+
 // Expose for legacy compatibility
 (window as any).updatePowerFromServer = (on: boolean) => {
   // If server reports a boolean, reflect it unless we're mid-assumed confirmation
@@ -479,47 +509,83 @@ const initEvents = (goalDialog: GoalDialogController) => {
     target?.blur();
   };
 
-  on(document, 'click', '#buzzer', () => Server.buzzer());
-  on(document, 'click', '#clock-start', () => Server.startClock());
-  on(document, 'click', '#clock-pause', () => Server.pauseClock());
-  on(document, 'click', '.period-up', () => Server.setPeriod(State.period + 1));
-  on(document, 'click', '.period-down', () => Server.setPeriod(Math.max(0, State.period - 1)));
+  on(document, 'click', '#buzzer', () => websocketClient.sendCommand({ type: 'TRIGGER_BUZZER', payload: {} }));
+  on(document, 'click', '#clock-start', () => websocketClient.sendCommand({ type: 'START_CLOCK', payload: {} }));
+  on(document, 'click', '#clock-pause', () => websocketClient.sendCommand({ type: 'PAUSE_CLOCK', payload: {} }));
+  on(document, 'click', '.period-up', () => {
+    withGameState((state) => {
+      const maxPeriod = getConfiguredPeriodLimit(state);
+      if (state.period >= maxPeriod) {
+        return;
+      }
+      websocketClient.sendCommand({ type: 'SET_PERIOD', payload: { period: state.period + 1 } });
+    });
+  });
+  on(document, 'click', '.period-down', () => {
+    withGameState((state) => {
+      if (state.period <= 0) {
+        return;
+      }
+      websocketClient.sendCommand({ type: 'SET_PERIOD', payload: { period: state.period - 1 } });
+    });
+  });
 
   on(document, 'click', '.score-up', (e, t) => {
     e.preventDefault();
-    const team = t.dataset.team as TeamCode;
-    goalDialog.open(team);
+    const team = t.dataset.team as TeamCode; // TeamCode is from legacy, need to map to 'home' | 'away'
+    goalDialog.open(team); // This will eventually call websocketClient.sendCommand
   });
 
   on(document, 'click', '.score-down', (e, t) => {
     const team = t.dataset.team as 'home' | 'away';
-    Server.undoGoal({ team });
+    withGameState((state) => {
+      const goals = team === 'home' ? state.home.goals : state.away.goals;
+      if (goals.length > 0) {
+        const lastGoal = goals[goals.length - 1];
+        websocketClient.sendCommand({ type: 'REMOVE_GOAL', payload: { goalId: lastGoal.goalId } });
+      }
+    });
+    blurTarget(e);
   });
 
   on(document, 'click', '.shots-up', (e, t) => {
     const team = t.dataset.team as 'home' | 'away';
-    Server.shot({ team });
+    websocketClient.sendCommand({ type: 'ADD_SHOT', payload: { teamId: team } });
     blurTarget(e);
   });
 
   on(document, 'click', '.shots-down', (e, t) => {
     const team = t.dataset.team as 'home' | 'away';
-    Server.undoShot({ team });
+    websocketClient.sendCommand({ type: 'UNDO_LAST_SHOT', payload: { teamId: team } });
     blurTarget(e);
   });
 
   // Delete penalty (delegated)
   on(document, 'click', 'a[data-action="delete-penalty"]', (e, t) => {
     e.preventDefault();
-    const team = t.dataset.team;
     const pid = t.dataset.pid;
-    api.del(`${team}/penalty/${pid}`).catch(() => {});
+    if (pid) {
+      websocketClient.sendCommand({ type: 'CANCEL_PENALTY', payload: { penaltyId: pid } });
+    }
   });
 
   // Big clock toggle
   on(document, 'click', '#clock-toggle', () => {
-    if (State.running) Server.pauseClock();
-    else Server.startClock();
+    withGameState((state) => {
+      if (state.clock.isRunning) {
+        websocketClient.sendCommand({ type: 'PAUSE_CLOCK', payload: {} });
+      } else {
+        websocketClient.sendCommand({ type: 'START_CLOCK', payload: {} });
+      }
+    });
+  });
+  on(document, 'click', '#clock-start', (e) => {
+    e.preventDefault();
+    websocketClient.sendCommand({ type: 'START_CLOCK', payload: {} });
+  });
+  on(document, 'click', '#clock-pause', (e) => {
+    e.preventDefault();
+    websocketClient.sendCommand({ type: 'PAUSE_CLOCK', payload: {} });
   });
 
   // Power button
@@ -528,30 +594,25 @@ const initEvents = (goalDialog: GoalDialogController) => {
       // Turn off
       setPowerUI('connecting', 'Turning off…');
       try {
-        Server.powerOff();
-      } catch {}
+        websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+      } catch (e) {
+        console.error("Error sending STOP_ADAPTER command:", e);
+      }
       // Assume quick off
       setTimeout(() => setPowerUI('off'), 500);
       return;
     }
     // Turn on flow
     setPowerUI('connecting', 'Opening port…');
-    // Prepare ports list
-    try {
-      const data = await api.get<any>('portNames');
-      State.portNames = data.portNames || [];
-      State.currentPort = data.currentPort || '';
-      refreshPortDialog();
-    } catch {}
-    // Step through ports if available, otherwise show modal with message
-    if (State.portNames && State.portNames.length) {
+    // In the new architecture, the server manages port selection.
+    // We just send a command to start the adapter.
+    if (currentGameState?.config.templateId) {
       setPowerUI('assumed');
-      await beginPortStepper();
+      websocketClient.sendCommand({ type: 'START_ADAPTER', payload: {} }); // New command
     } else {
-      setPowerUI('error', 'No serial ports found');
-      resetConnectDialogUI();
+      setPowerUI('error', 'Game not initialized. Create a game first.');
       Modals.showById('#scoreboard-connect');
-      setConnectMessage('No serial ports detected. Check USB/power and try again.');
+      setConnectMessage('Game not initialized. Create a game first.');
     }
   });
 
@@ -563,34 +624,17 @@ const initEvents = (goalDialog: GoalDialogController) => {
   on(document, 'click', '#not-on', async () => {
     // User indicates the board didn't turn on
     try {
-      Server.powerOff();
-    } catch {}
+      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+    } catch (e) {
+      console.error("Error sending STOP_ADAPTER command:", e);
+    }
     if (notOnCountdownHandle) {
       notOnCountdownHandle.cancel();
       notOnCountdownHandle = null;
     }
-    const confirmBtn = $('#confirm-on') as HTMLButtonElement | null;
-    const retryBtn = $('#retry-ports') as HTMLButtonElement | null;
-    const giveUpBtn = $('#give-up') as HTMLButtonElement | null;
-    const notOnBtn = $('#not-on') as HTMLButtonElement | null;
-    if (portStepper.active) {
-      const isLast = portStepper.index >= portStepper.ports.length - 1;
-      if (!isLast) {
-        portStepper.index += 1;
-        await tryPortAtIndex(portStepper.index);
-      } else {
-        // Last port: show Retry + Give Up, hide confirm
-        setConnectMessage('No more ports to try. You can Retry or Give Up.');
-        if (confirmBtn) confirmBtn.style.display = '';
-        if (retryBtn) retryBtn.style.display = '';
-        if (giveUpBtn) giveUpBtn.style.display = '';
-        if (notOnBtn) resetNotOnButton(notOnBtn);
-      }
-    } else {
-      const modal = $('#scoreboard-connect');
-      if (modal) Modals.hide(modal);
-      setPowerUI('off');
-    }
+    const modal = $('#scoreboard-connect');
+    if (modal) Modals.hide(modal);
+    setPowerUI('off');
   });
 
   // Retry through ports again
@@ -598,7 +642,7 @@ const initEvents = (goalDialog: GoalDialogController) => {
     const notOnBtn = $('#not-on') as HTMLButtonElement | null;
     const confirmBtn = $('#confirm-on');
     const retryBtn = $('#retry-ports');
-    const giveUpBtn = $('#give-up');
+    const giveUpBtn = $('#giveUpButton');
     if (retryBtn) retryBtn.style.display = 'none';
     if (giveUpBtn) giveUpBtn.style.display = 'none';
     if (notOnBtn) {
@@ -610,39 +654,30 @@ const initEvents = (goalDialog: GoalDialogController) => {
       confirmBtn.textContent = "It's On!";
       confirmBtn.className = 'btn btn-success';
     }
-    // Refresh port list
-    try {
-      const data = await api.get<any>('portNames');
-      State.portNames = data.portNames || [];
-      State.currentPort = data.currentPort || '';
-    } catch {}
+    // In the new architecture, the server manages port selection.
+    // We just send a command to start the adapter.
     setPowerUI('assumed');
-    await beginPortStepper();
+    try {
+      websocketClient.sendCommand({ type: 'START_ADAPTER', payload: {} }); // New command
+    } catch (e) {
+      console.error("Error sending START_ADAPTER command:", e);
+    }
   });
 
   // Give up: close port and dialog, reflect Off
   on(document, 'click', '#give-up', () => {
     const modal = $('#scoreboard-connect');
     try {
-      Server.powerOff();
-    } catch {}
+      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+    } catch (e) {
+      console.error("Error sending STOP_ADAPTER command:", e);
+    }
     setPowerUI('off');
     if (modal) Modals.hide(modal);
   });
 
   // Initialize power UI
-  setPowerUI(State.scoreboardOn ? 'on' : 'off');
-};
-
-// Socket events
-const output = (html: string) => {
-  const consoleBox = $('#console');
-  if (!consoleBox) return;
-  // Prune old messages (keep ~10 seconds worth visually)
-  while (consoleBox.children.length > 20) consoleBox.removeChild(consoleBox.lastChild!);
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  consoleBox.prepend(el);
+  // setPowerUI(State.scoreboardOn ? 'on' : 'off'); // State.scoreboardOn is gone
 };
 
 const initSocket = () => {
@@ -660,61 +695,29 @@ const initSocket = () => {
     overlay.style.display = state === 'ok' ? 'none' : 'flex';
     if (overlayText) overlayText.textContent = text || '';
   };
-  transport.onStatus({
-    connect: async () => {
+
+  websocketClient.subscribe((newState) => {
+    // Update UI based on new state
+    renderUpdate(newState);
+  });
+
+  websocketClient.subscribeConnection((connectionState) => {
+    if (connectionState === 'open') {
       setStatus('ok', 'Connected');
       setOverlay('ok', '');
-      output('<span class="connect-msg">Connected</span>');
-      try {
-        const data = await api.get<any>('portNames');
-        State.portNames = data.portNames || [];
-        State.currentPort = data.currentPort || '';
-        // Refresh power label with port if already on
-        if (State.scoreboardOn) setPowerUI('on');
-        else setPowerUI('off');
-      } catch {}
-    },
-    disconnect: () => {
-      setStatus('down', 'Disconnected');
-      setOverlay('down', 'Reconnecting...');
-      output('<span class="disconnect-msg">Disconnected! Make sure the app is running!</span>');
-    },
-    reconnecting: () => {
-      setStatus('reconnecting', 'Reconnecting...');
-      setOverlay('reconnecting', 'Reconnecting...');
-    },
-    error: () => {
-      setStatus('down', 'Connect error');
-      setOverlay('down', 'Reconnecting...');
-    },
-  });
-  socket.on('message', (data) => output(`<pre>Message ${JSON.stringify(data)}</pre>`));
-  socket.on('power', (data) => {
-    output(
-      `<span class="disconnect-msg">The Scoreboard has been turned ${data.scoreboardOn ? 'ON' : 'OFF'}</span>`
-    );
-    if (typeof (window as any).updatePowerFromServer === 'function') {
-      (window as any).updatePowerFromServer(!!data.scoreboardOn);
-    }
-  });
-  socket.on('update', (message) => {
-    if (message.changed) {
-      renderUpdate(message.data);
+    } else if (connectionState === 'connecting') {
+      setStatus('connecting', 'Connecting...');
+      setOverlay('connecting', 'Connecting to scoreboard...');
+    } else if (connectionState === 'closed') {
+      setStatus('error', 'Disconnected');
+      setOverlay('error', 'Unable to reach the scoreboard server. Retrying...');
     }
   });
 };
 
 export const resetGameState = () => {
-  Object.assign(State, {
-    portNames: [],
-    currentPort: '',
-    time: 0,
-    period: 0,
-    running: false,
-    home: { score: 0, shots: 0, penalties: [], goals: [] },
-    away: { score: 0, shots: 0, penalties: [], goals: [] },
-  });
-  renderUpdate(State); // Render with the reset state
+  // This function will now reset the state of the GameEngine via a command
+  websocketClient.sendCommand({ type: 'RESET_GAME', payload: {} });
 };
 
 // Boot
@@ -722,14 +725,17 @@ document.addEventListener('DOMContentLoaded', () => {
   Modals.init();
   initTeamColorPickers();
   TeamLayout.init();
-  const goalDialog = initGoalDialog(Server as ServerActions, () => ({
-    currentPeriod: State.period,
-    currentTime: State.time,
+  const goalDialog = initGoalDialog(sendCommand, () => ({
+    currentPeriod: currentGameState?.period || 0,
+    currentTime: currentGameState?.clock.timeRemainingMillis || 0,
   }));
-  initClockSettingsDialog(() => State.time);
-  initPenaltyDialog(() => ({ currentPeriod: State.period, currentTime: State.time }));
+  initClockSettingsDialog(() => currentGameState?.clock.timeRemainingMillis || 0);
+  initPenaltyDialog(sendCommand, () => ({
+    currentPeriod: currentGameState?.period || 0,
+    currentTime: currentGameState?.clock.timeRemainingMillis || 0,
+  }));
   initPenaltyDetailsPopup();
-  initGameDialog(Server as ServerActions, resetGameState);
+  initGameDialog(sendCommand, resetGameState);
   initEvents(goalDialog);
   initKeyboardShortcuts({ openGoalDialog: (team) => goalDialog.open(team) });
   initSocket();

@@ -1,5 +1,5 @@
 import { millisToMinSec, pad } from '../utils/time';
-import type { GoalCommandPayload, ServerActions, TeamCode } from '../transport/server';
+import type { Command } from '../api/game.types';
 import Modals from './modals';
 
 export interface GoalDialogState {
@@ -7,9 +7,14 @@ export interface GoalDialogState {
   currentTime: number;
 }
 
+type TeamCode = 'home' | 'away';
+
 export interface GoalDialogController {
   open(team: TeamCode): void;
 }
+
+type GoalCommand = Command;
+type CommandSender = (command: GoalCommand) => void;
 
 const formatClock = (millis: number): string => {
   const { minutes, seconds } = millisToMinSec(millis);
@@ -17,7 +22,7 @@ const formatClock = (millis: number): string => {
 };
 
 export const initGoalDialog = (
-  server: ServerActions,
+  sendCommand: CommandSender,
   getState: () => GoalDialogState
 ): GoalDialogController => {
   const resolveGoalModal = (): (HTMLElement & { __trigger?: HTMLElement }) | null => {
@@ -42,8 +47,10 @@ export const initGoalDialog = (
     // Fallback: if modal is missing, fall back to simple goal increment.
     return {
       open(team: TeamCode) {
-        const payload: GoalCommandPayload = { team };
-        server.goal(payload);
+        sendCommand({
+          type: 'ADD_GOAL',
+          payload: { teamId: team, scorerNumber: 0, assistNumbers: [], isEmptyNet: false },
+        });
       },
     };
   }
@@ -97,11 +104,25 @@ export const initGoalDialog = (
       playerInput?.focus();
       return;
     }
+    const scorerNumber = Number(playerValue);
+    if (!Number.isFinite(scorerNumber)) {
+      playerInput?.closest('.form-group')?.classList.add('has-error');
+      if (errorBox) errorBox.textContent = 'Scorer must be a number.';
+      playerInput?.focus();
+      return;
+    }
     const assistValue = (assistInput?.value || '').trim();
-    const payload: GoalCommandPayload = { team };
-    if (playerValue) payload.player = playerValue;
-    if (assistValue) payload.assist = assistValue;
-    server.goal(payload);
+    const assistNumbers = assistValue ? [Number(assistValue)].filter(Number.isFinite) : [];
+
+    sendCommand({
+      type: 'ADD_GOAL',
+      payload: {
+        teamId: team,
+        scorerNumber,
+        assistNumbers,
+        isEmptyNet: false,
+      },
+    });
     Modals.hide(modal);
   };
 

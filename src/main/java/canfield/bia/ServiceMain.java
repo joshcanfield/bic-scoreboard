@@ -1,5 +1,10 @@
 package canfield.bia;
 
+import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
+import canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl;
+import canfield.bia.hockey.v2.engine.*;
+import canfield.bia.hockey.v2.spec.CreateGameCommand;
+import canfield.bia.hockey.v2.web.GameWebSocketV2;
 import canfield.bia.rest.GameApplication;
 import dagger.ObjectGraph;
 import org.apache.commons.io.IOUtils;
@@ -12,12 +17,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.function.BiConsumer;
 
 /**
  *
  */
 public class ServiceMain {
     private static HockeyGameServer hockeyGameServer;
+    private static GameWebSocketV2 gameWebSocketV2; // New WebSocket server
     private static final Logger log = LoggerFactory.getLogger(ServiceMain.class);
     private static volatile JFrame startupFrame;
 
@@ -29,6 +37,36 @@ public class ServiceMain {
 
                 normalizeAppWorkingDir();
                 maybeShowStartupWindow();
+
+                // --- New Architecture Components Initialization ---
+                JsonTemplateRepository templateRepository = new JsonTemplateRepository();
+                
+                // Legacy ScoreBoard and Adapter
+                ScoreBoardImpl legacyScoreBoard = new ScoreBoardImpl();
+                ScoreboardAdapterImpl legacyScoreboardAdapter = new ScoreboardAdapterImpl(legacyScoreBoard, "COM1"); // Default port, can be configured
+                legacyScoreboardAdapter.start(); // Start the legacy adapter
+
+                LegacyScoreboardHardwareAdapter hardwareOutputAdapter = new LegacyScoreboardHardwareAdapter(legacyScoreBoard);
+                ScheduledGameTimer gameTimer = new ScheduledGameTimer();
+                StateDiffer stateDiffer = new StateDiffer();
+
+                // Initialize GameWebSocketV2 first, so we can pass its broadcast method to GameEngine
+                gameWebSocketV2 = new GameWebSocketV2(8082, stateDiffer); // Port 8082 for new WebSocket
+                
+                // GameEngine now takes a consumer for state changes
+                GameEngine gameEngine = new GameEngine(templateRepository, hardwareOutputAdapter, gameTimer, (oldState, newState) -> gameWebSocketV2.broadcastStateChange(oldState, newState));
+                gameWebSocketV2.setGameEngine(gameEngine); // Set GameEngine in GameWebSocketV2 after it's fully constructed
+
+                try {
+                    gameEngine.processCommand(new CreateGameCommand("USAH_ADULT_20", Collections.emptyMap()), System.currentTimeMillis());
+                } catch (Exception e) {
+                    log.warn("Failed to initialize default game state", e);
+                }
+
+                gameWebSocketV2.start();
+                // --- End New Architecture Components Initialization ---
+
+
                 final ObjectGraph objectGraph = GameApplication.getObjectGraph();
                 hockeyGameServer = objectGraph.get(HockeyGameServer.class);
                 addShutdownHook();
@@ -53,6 +91,9 @@ public class ServiceMain {
             if (hockeyGameServer != null) {
                 log.info("Stopping server...");
                 hockeyGameServer.stop();
+                if (gameWebSocketV2 != null) { // Stop new WebSocket server
+                    try { gameWebSocketV2.stop(); } catch (InterruptedException e) { log.error("Error stopping new WebSocket server", e); }
+                }
                 if (startupFrame != null) {
                     try { startupFrame.dispose(); } catch (Exception ignored) {}
                     startupFrame = null;
@@ -177,6 +218,9 @@ public class ServiceMain {
                     if (hockeyGameServer != null) hockeyGameServer.stop();
                 } catch (Exception ignored) {}
                 try {
+                    if (gameWebSocketV2 != null) gameWebSocketV2.stop(); // Stop new WebSocket server in shutdown hook
+                } catch (Exception ignored) {}
+                try {
                     if (startupFrame != null) startupFrame.dispose();
                 } catch (Exception ignored) {}
                 // Do not touch Swing from shutdown hook; avoid invokeAndWait deadlocks
@@ -194,6 +238,7 @@ public class ServiceMain {
         // Perform shutdown and exit off the EDT to avoid blocking UI
         Thread exitThread = new Thread(() -> {
             try { if (hockeyGameServer != null) hockeyGameServer.stop(); } catch (Exception ignored) {}
+            try { if (gameWebSocketV2 != null) gameWebSocketV2.stop(); } catch (Exception ignored) {} // Stop new WebSocket server
             try { if (startupFrame != null) startupFrame.dispose(); } catch (Exception ignored) {}
             try { disposeAllWindows(); } catch (Exception ignored) {}
             try {

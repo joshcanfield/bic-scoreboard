@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   root: '.',
-  publicDir: path.resolve(__dirname, '../main/dist/web'),
+  publicDir: path.resolve(__dirname, 'public'),
   server: {
     port: 5173,
     open: false,

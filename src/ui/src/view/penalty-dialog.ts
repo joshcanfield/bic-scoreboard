@@ -2,8 +2,8 @@
  * Penalty dialog management for adding penalties and handling 2+10 combinations.
  */
 
-import api from '../api/http';
-import { parseClockMillis, millisToMinSec, formatClock, roundToSecond } from '../utils/time';
+import { parseClockMillis, millisToMinSec, formatClock } from '../utils/time';
+import type { Command } from '../api/game.types';
 
 import Modals from './modals';
 
@@ -12,7 +12,10 @@ export interface PenaltyDialogState {
   currentTime: number;
 }
 
-export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
+type TeamCode = 'home' | 'away';
+type CommandSender = (command: Command) => void;
+
+export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => PenaltyDialogState) => {
   const on = (
     el: HTMLElement | Document,
     type: string,
@@ -72,7 +75,7 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
     addButton.addEventListener('click', () => {
       const dlg = $('#add-penalty');
       if (!dlg) return;
-      const team = (dlg.dataset.team as 'home' | 'away') || 'home';
+      const team = (dlg.dataset.team as TeamCode) || 'home';
       const header = dlg.querySelector<HTMLElement>('.modal-header');
       if (header) {
         header.classList.add('penalty-modal-header');
@@ -82,32 +85,37 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
       const playerField = $('#add-penalty-player') as HTMLInputElement | null;
       const servingField = $('#add-penalty-serving') as HTMLInputElement | null;
       const timeField = $('#add-penalty-time') as HTMLInputElement | null;
-      const offField = $('#add-penalty-off_ice') as HTMLInputElement | null;
       const groups = $$(`.modal-body .form-group`, dlg);
       groups.forEach((g) => g.classList.remove('has-error'));
 
       let error = false;
-      const penalty: Record<string, unknown> = {
-        servingPlayerNumber: servingField?.value || '',
-      };
-      penalty.playerNumber = (playerField?.value || '').trim();
-      if (!penalty.playerNumber) {
+      const playerValue = (playerField?.value || '').trim();
+      const playerNumber = Number(playerValue);
+      if (!playerValue || !Number.isFinite(playerNumber)) {
         playerField?.closest('.form-group')?.classList.add('has-error');
         error = true;
       }
-      penalty.time = parseClockMillis((timeField?.value || '').trim());
-      if (!penalty.time) {
+      const timeValue = (timeField?.value || '').trim();
+      const durationMillis = parseClockMillis(timeValue);
+      if (durationMillis == null) {
         timeField?.closest('.form-group')?.classList.add('has-error');
         error = true;
       }
-      penalty.offIceTime = parseClockMillis((offField?.value || '').trim());
-      if (!penalty.offIceTime) {
-        offField?.closest('.form-group')?.classList.add('has-error');
-        error = true;
+      if (error || durationMillis == null) return;
+      const durationMinutes = Math.max(1, Math.ceil(durationMillis / 60_000));
+      let servingNumber = Number((servingField?.value || '').trim());
+      if (!Number.isFinite(servingNumber)) {
+        servingNumber = playerNumber;
       }
-      if (error) return;
-      penalty.period = getState().currentPeriod;
-      api.post(`${team}/penalty`, penalty).catch(() => {});
+      sendCommand({
+        type: 'ADD_PENALTY',
+        payload: {
+          teamId: team,
+          playerNumber,
+          servingPlayerNumber: servingNumber,
+          durationMinutes,
+        },
+      });
       Modals.hide(dlg);
     });
   }
@@ -116,49 +124,41 @@ export const initPenaltyDialog = (getState: () => PenaltyDialogState) => {
   const add2plus10 = () => {
     const dlg = $('#add-penalty');
     if (!dlg) return;
-    const team = (dlg.dataset.team as 'home' | 'away') || 'home';
+    const team = (dlg.dataset.team as TeamCode) || 'home';
     const playerField = $('#add-penalty-player') as HTMLInputElement | null;
     const servingField = $('#add-penalty-serving') as HTMLInputElement | null;
-    const offField = $('#add-penalty-off_ice') as HTMLInputElement | null;
     const groups = $$(`.modal-body .form-group`, dlg);
     groups.forEach((g) => g.classList.remove('has-error'));
 
     let error = false;
-    const player = (playerField?.value || '').trim();
-    if (!player) {
+    const playerValue = (playerField?.value || '').trim();
+    const playerNumber = Number(playerValue);
+    if (!playerValue || !Number.isFinite(playerNumber)) {
       playerField?.closest('.form-group')?.classList.add('has-error');
       error = true;
     }
-    const serving = (servingField?.value || '').trim();
-    if (!serving) {
+    const servingValue = (servingField?.value || '').trim();
+    if (!servingValue) {
       servingField?.closest('.form-group')?.classList.add('has-error');
-      error = true;
-    }
-    const off = parseClockMillis((offField?.value || '').trim());
-    if (!off) {
-      offField?.closest('.form-group')?.classList.add('has-error');
       error = true;
     }
     if (error) return;
 
-    const state = getState();
-    const base = { period: state.currentPeriod, playerNumber: player };
-    // 2-minute minor: served by the serving player
-    const p2 = Object.assign({}, base, {
-      servingPlayerNumber: serving,
-      time: 2 * 60 * 1000,
-      offIceTime: off,
-    });
-    // 10-minute misconduct: served by the original offender
-    // Start immediately to run concurrently with the 2
-    const p10 = Object.assign({}, base, {
-      servingPlayerNumber: player,
-      time: 10 * 60 * 1000,
-      offIceTime: off,
-      startTime: roundToSecond(state.currentTime),
-    });
-    api.post(`${team}/penalty`, p2).catch(() => {});
-    api.post(`${team}/penalty`, p10).catch(() => {});
+    const servingNumber = Number(servingValue);
+    const teamPlayer = Number.isFinite(servingNumber) ? servingNumber : playerNumber;
+    const sendPenalty = (durationMinutes: number, serving: number) => {
+      sendCommand({
+        type: 'ADD_PENALTY',
+        payload: {
+          teamId: team,
+          playerNumber,
+          servingPlayerNumber: serving,
+          durationMinutes,
+        },
+      });
+    };
+    sendPenalty(2, teamPlayer);
+    sendPenalty(10, playerNumber);
     Modals.hide(dlg);
   };
 

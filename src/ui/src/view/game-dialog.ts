@@ -4,8 +4,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { computeRecPeriods } from '../utils/rec-time';
-import { type ServerActions } from '../transport/server';
+import type { Command } from '../api/game.types';
 import {
   buildRecHelperText,
   buildSplitHint,
@@ -199,7 +198,7 @@ const onShiftChanged = () => {
   }
 };
 
-export const initGameDialog = (Server: ServerActions, resetGameState: () => void) => {
+export const initGameDialog = (sendCommand: (command: Command) => void, resetGameState: () => void) => {
   const on = (
     el: HTMLElement | Document,
     type: string,
@@ -386,12 +385,20 @@ export const initGameDialog = (Server: ServerActions, resetGameState: () => void
       } catch (_) {
         // Ignore storage errors
       }
-      const cfg: { periodLengths: number[]; intermissionDurationMinutes?: number } = {
-        periodLengths: periods,
+      const selectedTemplateId = standardTemplateSelect?.value?.trim();
+      const warmupMinutes = typeof periods[0] === 'number' ? periods[0] : periods[1] || 0;
+      const cfg = {
+        templateId: selectedTemplateId && selectedTemplateId.length > 0 ? selectedTemplateId : 'USAH_ADULT_20',
+        overrides: {
+          warmupMinutes,
+          periodLengthMinutes: periods[1], // Assuming period 1 length for simplicity
+          intermissionLengthMinutes: intermission || 0,
+          periods: periods.length - 1, // Assuming periods[0] is warmup
+          // clockType: 'STOP_TIME', // Default for standard
+          // shiftLengthSeconds: null,
+        }
       };
-      // Always include intermission; 0 disables per backend semantics
-      if (intermission != null) cfg.intermissionDurationMinutes = intermission;
-      Server.createGame(cfg);
+      sendCommand({ type: 'CREATE_GAME', payload: cfg });
       Modals.hide($('#new-game-dialog')!);
       resetGameState();
     });
@@ -529,7 +536,17 @@ export const initGameDialog = (Server: ServerActions, resetGameState: () => void
         // Ignore storage errors
       }
 
-      Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: periods });
+      sendCommand({ type: 'CREATE_GAME', payload: {
+        templateId: 'REC_LEAGUE', // Or a specific REC_LEAGUE template
+        overrides: {
+          warmupMinutes: periods[0] ?? 0,
+          periodLengthMinutes: minutesForGame,
+          intermissionLengthMinutes: 0, // Assuming no intermission for rec league
+          periods: periods.length - 1,
+          clockType: 'RUN_TIME',
+          shiftLengthSeconds: shift > 0 ? shift : null,
+        }
+      }});
       Modals.hide($('#new-game-dialog')!);
     });
   }

@@ -2,8 +2,8 @@
  * Clock setting dialog management with preset times and custom input.
  */
 
-import api from '../api/http';
 import { parseClockMillis, millisToMinSec, formatClock } from '../utils/time';
+import { websocketClient } from '../websocket';
 
 import Modals from './modals';
 
@@ -19,15 +19,13 @@ export const initClockSettingsDialog = (currentTimeMillis: () => number) => {
     const millis = parseClockMillis(time);
     if (millis == null) return;
     const errorEl = setClockDialog.querySelector('.error');
-    api
-      .put('', { time: millis })
-      .then(() => {
-        Modals.hide(setClockDialog);
-        if (errorEl) errorEl.textContent = '';
-      })
-      .catch(() => {
-        if (errorEl) errorEl.textContent = 'Failed to update the time';
-      });
+    try {
+      websocketClient.sendCommand({ type: 'SET_CLOCK', payload: { timeMillis: millis } });
+      Modals.hide(setClockDialog);
+      if (errorEl) errorEl.textContent = '';
+    } catch {
+      if (errorEl) errorEl.textContent = 'Failed to update the time';
+    }
   });
 
   // Handle custom time save
@@ -44,7 +42,7 @@ export const initClockSettingsDialog = (currentTimeMillis: () => number) => {
         return;
       }
       try {
-        await api.put('', { time: millis });
+        websocketClient.sendCommand({ type: 'SET_CLOCK', payload: { timeMillis: millis } });
         Modals.hide(setClockDialog);
         if (err) err.textContent = '';
       } catch {

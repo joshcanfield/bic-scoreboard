@@ -134,6 +134,16 @@
 
       <div id="period-block">
         <div id="period"><div class="digits"><div class="digit">0</div></div></div>
+        <div id="period-indicators" aria-live="polite">
+          <div class="indicator" data-indicator="buzzer">
+            <span class="icon glyphicon glyphicon-bell" aria-hidden="true"></span>
+            <span class="label">Buzzer</span>
+          </div>
+          <div class="indicator" data-indicator="intermission">
+            <span class="icon glyphicon glyphicon-time" aria-hidden="true"></span>
+            <span class="label">Intermission</span>
+          </div>
+        </div>
         <a href="javascript:" class="period-down"><span class="glyphicon glyphicon-minus"></span></a>
         <a href="javascript:" class="period-up"><span class="glyphicon glyphicon-plus"></span></a>
       </div>
@@ -404,8 +414,8 @@
                 <div class="error"></div>
                 <!-- Standard template dropdown (legacy behavior) -->
                 <div class="period-form form-group" style="margin-bottom:12px">
-                  <label for="standard-template" class="col-lg-6 control-label">Template</label>
-                  <div class="col-lg-6">
+                  <label for="standard-template" class="col-md-6 col-lg-6 control-label">Template</label>
+                  <div class="col-md-6 col-lg-6">
                     <select id="standard-template" class="form-control input-sm">
                       <option value="">Custom (remember last)</option>
                       <option value="jr">Jr &mdash; 20 min periods</option>
@@ -414,36 +424,19 @@
                       <option value="pphl">PPHL adults</option>
                     </select>
                   </div>
-                  <div class="col-lg-12">
+                  <div class="col-md-12 col-lg-12">
                     <span class="help-block template-help">
                       Selecting a template fills warmup, periods, and intermission in one click.
                     </span>
                   </div>
                 </div>
                 <div class="period-form form-group">
-                  <span class="col-lg-6 control-label">Period</span>
-                  <div class="col-xs-2"><span class="col-lg-6 control-label">Minutes</span></div>
+                  <span class="col-md-6 col-lg-6 control-label">Period</span>
+                  <div class="col-xs-2"><span class="col-md-6 col-lg-6 control-label">Minutes</span></div>
                   <div class="col-xs-4">&nbsp;</div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="standard-template" class="col-lg-6 control-label">Template</label>
-                  <div class="col-lg-6">
-                    <select id="standard-template" class="form-control input-sm">
-                      <option value="">Custom (remember last)</option>
-                      <option value="jr">Jr &mdash; 20 min periods</option>
-                      <option value="youth60">Youth 60 minute slot</option>
-                      <option value="youth75">Youth 75 minute slot</option>
-                      <option value="pphl">PPHL adults</option>
-                    </select>
-                  </div>
-                  <div class="col-lg-12">
-                    <span class="help-block template-help">
-                      Selecting a template fills warmup, periods, and intermission in one click.
-                    </span>
-                  </div>
-                </div>
-                <div class="period-form form-group">
-                  <div class="col-lg-12">
+                  <div class="col-md-12 col-lg-12">
                     <span>Set all periods to </span>
                     <a href="#" data-action="set-periods" data-value="15">15</a>
                     <span> | </span>
@@ -453,13 +446,13 @@
                   </div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="period-0" class="col-lg-6 control-label">warmup</label>
+                  <label for="period-0" class="col-md-6 col-lg-6 control-label">warmup</label>
                   <div class="col-xs-2"><input id="period-0" class="form-control input-sm" type="text" maxlength="2" size="2" value="5"/></div>
                   <div class="col-xs-4"><a href="#" data-action="set-value" data-target="#period-0" data-value="0">skip</a></div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="period-1" class="col-lg-6 control-label">1</label>
-                  <div class="col-lg-2"><input id="period-1" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                  <label for="period-1" class="col-md-6 col-lg-6 control-label">1</label>
+                  <div class="col-md-2 col-lg-2"><input id="period-1" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
                   <div class="col-xs-4">
                       <a href="#" data-action="set-value" data-target="#period-1" data-value="12">12</a>
                       <span> | </span>
@@ -471,8 +464,8 @@
                   </div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="period-2" class="col-lg-6 control-label">2</label>
-                  <div class="col-lg-2"><input id="period-2" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                  <label for="period-2" class="col-md-6 col-lg-6 control-label">2</label>
+                  <div class="col-md-2 col-lg-2"><input id="period-2" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
                   <div class="col-xs-4">
                       <a href="#" data-action="set-value" data-target="#period-2" data-value="12">12</a>
                       <span> | </span>
@@ -484,8 +477,8 @@
                   </div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="period-3" class="col-lg-6 control-label">3</label>
-                  <div class="col-lg-2"><input id="period-3" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
+                  <label for="period-3" class="col-md-6 col-lg-6 control-label">3</label>
+                  <div class="col-md-2 col-lg-2"><input id="period-3" class="form-control input-sm" type="text" maxlength="2" size="2" value="20"/></div>
                   <div class="col-xs-4">
                       <a href="#" data-action="set-value" data-target="#period-3" data-value="12">12</a>
                       <span> | </span>
@@ -497,8 +490,8 @@
                   </div>
                 </div>
                 <div class="period-form form-group">
-                  <label for="intermission-minutes" class="col-lg-6 control-label">Intermission</label>
-                  <div class="col-lg-2"><input id="intermission-minutes" class="form-control input-sm" type="text" maxlength="2" size="2" value="1"/></div>
+                  <label for="intermission-minutes" class="col-md-6 col-lg-6 control-label">Intermission</label>
+                  <div class="col-md-2 col-lg-2"><input id="intermission-minutes" class="form-control input-sm" type="text" maxlength="2" size="2" value="1"/></div>
                   <div class="col-xs-4">
                     <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="0">none</a>
                     <span> | </span>
