@@ -165,7 +165,7 @@ class StateDifferTest {
     @Test
     void testAwayPenaltiesChange() {
         GameState oldState = createInitialState();
-        Penalty newPenalty = new Penalty("pen-1", "away", 20, 20, 120000L, 120000L, 0L);
+        Penalty newPenalty = new Penalty("pen-1", "away", 20, 20, 120000L, 120000L, 0L, 1);
         TeamState newAway = new TeamState(oldState.away().goals(), oldState.away().shots(), List.of(newPenalty)); // Changed
         GameState newState = new GameState(
             oldState.gameId(),

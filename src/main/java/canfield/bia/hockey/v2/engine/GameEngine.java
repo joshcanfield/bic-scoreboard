@@ -328,6 +328,11 @@ public class GameEngine {
         int durationMinutes = command.durationMinutes();
         long durationMillis = durationMinutes * 60 * 1000L;
 
+        // If clock is running during actual play (not intermission), sync penalty
+        // to game clock's startTimeWallClock so they tick in unison
+        boolean isPlayingTime = state.clock().isRunning() && state.status() == GameStatus.PLAYING;
+        long penaltyStartTime = isPlayingTime ? state.clock().startTimeWallClock() : 0L;
+
         var newPenalty = new Penalty(
             java.util.UUID.randomUUID().toString(),
             teamId,
@@ -335,7 +340,8 @@ public class GameEngine {
             servingPlayerNumber,
             durationMillis,
             durationMillis,
-            0L
+            penaltyStartTime,
+            state.period()
         );
 
         TeamState newHomeState = state.home();
@@ -372,6 +378,7 @@ public class GameEngine {
             gameTimer.stop();
             buzzerOnSince = currentTimeMillis; // Track when buzzer was turned on
             if (state.period() == 0) {
+                // Warmup ended - go to period 1
                 int nextPeriod = state.config().periods() > 0 ? 1 : 0;
                 scheduleBuzzerAutoReset();
                 return new GameState(
@@ -386,6 +393,23 @@ public class GameEngine {
                     state.eventHistory()
                 );
             }
+            if (state.status() == GameStatus.INTERMISSION) {
+                // Intermission ended - go to next period
+                int nextPeriod = state.period() + 1;
+                scheduleBuzzerAutoReset();
+                return new GameState(
+                    state.gameId(),
+                    state.config(),
+                    GameStatus.READY_FOR_PERIOD,
+                    nextPeriod,
+                    new ClockState(resolvePeriodDuration(state.config(), nextPeriod), false, 0L),
+                    state.home(),
+                    state.away(),
+                    true,
+                    state.eventHistory()
+                );
+            }
+            // Period ended - go to intermission
             scheduleBuzzerAutoReset();
             return new GameState(
                 state.gameId(),
@@ -400,17 +424,56 @@ public class GameEngine {
             );
         }
 
+        // Update penalty times (only during actual game play, not intermission)
+        TeamState updatedHome = state.home();
+        TeamState updatedAway = state.away();
+        if (state.status() == GameStatus.PLAYING) {
+            updatedHome = updatePenaltyTimes(state.home(), currentTimeMillis);
+            updatedAway = updatePenaltyTimes(state.away(), currentTimeMillis);
+        }
+
         return new GameState(
             state.gameId(),
             state.config(),
             state.status(),
             state.period(),
             updatedClock,
-            state.home(),
-            state.away(),
+            updatedHome,
+            updatedAway,
             state.buzzerOn(),
             state.eventHistory()
         );
+    }
+
+    private TeamState updatePenaltyTimes(TeamState team, long currentTimeMillis) {
+        List<Penalty> updatedPenalties = new ArrayList<>();
+        for (Penalty p : team.penalties()) {
+            if (p.startTimeWallClock() == 0L) {
+                // Penalty not running, keep as is
+                updatedPenalties.add(p);
+            } else {
+                long elapsed = currentTimeMillis - p.startTimeWallClock();
+                long newRemaining = p.timeRemainingMillis() - elapsed;
+                if (newRemaining > 0) {
+                    // Update penalty with new remaining time and reset start time
+                    updatedPenalties.add(new Penalty(
+                        p.penaltyId(),
+                        p.teamId(),
+                        p.playerNumber(),
+                        p.servingPlayerNumber(),
+                        p.durationMillis(),
+                        newRemaining,
+                        currentTimeMillis,
+                        p.period()
+                    ));
+                }
+                // If newRemaining <= 0, penalty expired - don't add to list
+            }
+        }
+        if (updatedPenalties.size() == team.penalties().size() && updatedPenalties.equals(team.penalties())) {
+            return team; // No changes
+        }
+        return new TeamState(team.goals(), team.shots(), Collections.unmodifiableList(updatedPenalties));
     }
 
     private GameState pauseClock(GameState state, long currentTimeMillis) {
@@ -423,17 +486,63 @@ public class GameEngine {
         long elapsed = currentTimeMillis - state.clock().startTimeWallClock();
         long newTimeRemaining = state.clock().timeRemainingMillis() - elapsed;
 
+        // Freeze penalty times
+        TeamState pausedHome = freezePenaltyTimes(state.home(), currentTimeMillis);
+        TeamState pausedAway = freezePenaltyTimes(state.away(), currentTimeMillis);
+
         return new GameState(
             state.gameId(),
             state.config(),
             GameStatus.PAUSED,
             state.period(),
             new ClockState(newTimeRemaining, false, 0L),
-            state.home(),
-            state.away(),
+            pausedHome,
+            pausedAway,
             state.buzzerOn(),
             state.eventHistory()
         );
+    }
+
+    private TeamState freezePenaltyTimes(TeamState team, long currentTimeMillis) {
+        List<Penalty> frozenPenalties = new ArrayList<>();
+        for (Penalty p : team.penalties()) {
+            if (p.startTimeWallClock() == 0L) {
+                frozenPenalties.add(p);
+            } else {
+                long elapsed = currentTimeMillis - p.startTimeWallClock();
+                long newRemaining = Math.max(0, p.timeRemainingMillis() - elapsed);
+                frozenPenalties.add(new Penalty(
+                    p.penaltyId(),
+                    p.teamId(),
+                    p.playerNumber(),
+                    p.servingPlayerNumber(),
+                    p.durationMillis(),
+                    newRemaining,
+                    0L, // Frozen
+                    p.period()
+                ));
+            }
+        }
+        return new TeamState(team.goals(), team.shots(), Collections.unmodifiableList(frozenPenalties));
+    }
+
+    private TeamState startPenaltyTimers(TeamState team, long currentTimeMillis) {
+        List<Penalty> startedPenalties = new ArrayList<>();
+        for (Penalty p : team.penalties()) {
+            if (p.timeRemainingMillis() > 0) {
+                startedPenalties.add(new Penalty(
+                    p.penaltyId(),
+                    p.teamId(),
+                    p.playerNumber(),
+                    p.servingPlayerNumber(),
+                    p.durationMillis(),
+                    p.timeRemainingMillis(),
+                    currentTimeMillis, // Start counting
+                    p.period()
+                ));
+            }
+        }
+        return new TeamState(team.goals(), team.shots(), Collections.unmodifiableList(startedPenalties));
     }
 
     private GameState startClock(GameState state, long currentTimeMillis) {
@@ -453,14 +562,22 @@ public class GameEngine {
 
         GameStatus nextStatus = state.status() == GameStatus.INTERMISSION ? GameStatus.INTERMISSION : GameStatus.PLAYING;
 
+        // Start penalty timers only during actual play (not intermission)
+        TeamState startedHome = state.home();
+        TeamState startedAway = state.away();
+        if (nextStatus == GameStatus.PLAYING) {
+            startedHome = startPenaltyTimers(state.home(), currentTimeMillis);
+            startedAway = startPenaltyTimers(state.away(), currentTimeMillis);
+        }
+
         return new GameState(
             state.gameId(),
             state.config(),
             nextStatus,
             state.period(),
             new ClockState(state.clock().timeRemainingMillis(), true, currentTimeMillis),
-            state.home(),
-            state.away(),
+            startedHome,
+            startedAway,
             state.buzzerOn(),
             state.eventHistory()
         );

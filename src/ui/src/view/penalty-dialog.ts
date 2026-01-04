@@ -3,7 +3,7 @@
  */
 
 import type { Command } from '../api/v2-types';
-import { parseClockMillis, millisToMinSec, formatClock } from '../utils/time';
+import { parseClockMillis, millisToMinSec, formatClock, formatTime } from '../utils/time';
 
 import Modals from './modals';
 
@@ -198,10 +198,10 @@ export const initPenaltyDetailsPopup = () => {
     set('#pd-team', (t.dataset.team || '').toUpperCase());
     set('#pd-period', t.dataset.period || '—');
     set('#pd-player', t.dataset.player || '—');
-    set('#pd-duration', t.dataset.duration || '—');
+    set('#pd-duration', t.dataset.duration ? formatTime(Number(t.dataset.duration)) : '—');
     set('#pd-off', t.dataset.off || '—');
     set('#pd-start', t.dataset.start || '—');
-    set('#pd-remaining', t.dataset.remaining || '—');
+    set('#pd-remaining', t.dataset.remaining ? formatTime(Number(t.dataset.remaining)) : '—');
     Modals.show(dlg);
   });
 };
