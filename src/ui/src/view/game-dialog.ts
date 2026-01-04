@@ -70,7 +70,9 @@ const updateRecHelper = () => {
   const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
   const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
   const shift = getShiftTotal();
-  el.textContent = buildRecHelperText(minutes, shift);
+  // Show actual game time (normalized) so user sees what will really happen
+  const actualMinutes = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
+  el.textContent = buildRecHelperText(actualMinutes, shift);
 };
 
 const updateSplitHint = () => {
@@ -79,7 +81,9 @@ const updateSplitHint = () => {
   const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
   const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
   const shift = getShiftTotal();
-  hint.textContent = buildSplitHint(minutes, shift);
+  // Use normalized minutes for period split calculation
+  const actualMinutes = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
+  hint.textContent = buildSplitHint(actualMinutes, shift);
 };
 
 const updateDivisibleHint = () => {
@@ -107,12 +111,15 @@ const setEndsFromMinutes = () => {
   const minutes = parseInt(recMinutesField.value || '0', 10) || 0;
   if (!minutes) return;
   const shift = getShiftTotal();
+  // Use normalized time for the "ends at" dropdown so user sees actual end time,
+  // but don't overwrite the minutes field - let them type what they want.
+  // The hint will show what it rounds to.
   const adjusted = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
   recSyncing = true;
   const now = new Date();
   const target = roundRecToFive(new Date(now.getTime() + adjusted * 60000));
   renderEndsOptions(target);
-  recMinutesField.value = String(adjusted);
+  // Don't overwrite recMinutesField.value - preserve user input
   recSyncing = false;
   updateRecHelper();
   updateDivisibleHint();
@@ -180,23 +187,14 @@ const updateShiftDisabledUI = () => {
 };
 
 const onShiftChanged = () => {
-  const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
-  if (recMinutesField) {
-    const minutes = parseInt(recMinutesField.value || '0', 10) || 0;
-    if (minutes > 0) {
-      const shift = getShiftTotal();
-      const normalized = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
-      recMinutesField.value = String(normalized);
-    }
-  }
+  // Don't overwrite the minutes field when shift changes - just update hints
+  // to show how the user's input will be rounded with the new shift.
   setEndsFromMinutes();
   updateShiftDisabledUI();
-  if (recMinutesField && !parseInt(recMinutesField.value || '0', 10)) {
-    updateRecHelper();
-    updateDivisibleHint();
-    updateSplitHint();
-    updateLastBuzzerHint();
-  }
+  updateRecHelper();
+  updateDivisibleHint();
+  updateSplitHint();
+  updateLastBuzzerHint();
 };
 
 export const initGameDialog = (sendCommand: (command: Command) => void) => {
@@ -503,19 +501,23 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
       let minutes = 0;
       const recEndsField = $('#rec_ends_at') as HTMLSelectElement | null;
       const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
-      const endsValue = (recEndsField && recEndsField.value) || '';
-      if (endsValue.includes(':')) {
-        const computed = computeMinutesFromEnds(endsValue);
-        if (computed == null) {
-          if (recEndsField) recEndsField.closest('.form-group')?.classList.add('has-error');
-          if (errorBox) errorBox.textContent = 'Please enter a valid end time (HH:MM).';
-          return;
-        }
-        minutes = Math.max(1, computed);
-        if (recMinutesField) recMinutesField.value = String(minutes);
+      // Prefer the typed minutes value - don't recalculate from ends-at time
+      // since time passes between when user types and when they click create
+      const typedMinutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10);
+      if (typedMinutes > 0) {
+        minutes = typedMinutes;
       } else {
-        minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10);
-        if (!minutes) {
+        // Fall back to computing from ends-at if no minutes entered
+        const endsValue = (recEndsField && recEndsField.value) || '';
+        if (endsValue.includes(':')) {
+          const computed = computeMinutesFromEnds(endsValue);
+          if (computed == null) {
+            if (recEndsField) recEndsField.closest('.form-group')?.classList.add('has-error');
+            if (errorBox) errorBox.textContent = 'Please enter a valid end time (HH:MM).';
+            return;
+          }
+          minutes = Math.max(1, computed);
+        } else {
           if (recMinutesField) recMinutesField.closest('.form-group')?.classList.add('has-error');
           if (errorBox) errorBox.textContent = 'Please enter game length in minutes.';
           return;

@@ -592,12 +592,16 @@ public class GameEngine {
         GameConfig baseConfig = templateRepository.load(templateId);
         GameConfig config = applyOverrides(baseConfig, command.overrides(), templateId);
 
+        // Skip warmup (period 0) if warmup duration is 0
+        int initialPeriod = config.warmupLengthMillis() > 0 ? 0 : 1;
+        long initialClock = resolvePeriodDuration(config, initialPeriod);
+
         return new GameState(
             java.util.UUID.randomUUID().toString(),
             config,
             GameStatus.READY_FOR_PERIOD,
-            0,
-            new ClockState(config.warmupLengthMillis(), false, 0L),
+            initialPeriod,
+            new ClockState(initialClock, false, 0L),
             new TeamState(List.of(), 0, List.of()),
             new TeamState(List.of(), 0, List.of()),
             false,

@@ -75,8 +75,7 @@ class WebSocketClient {
         this.setConnectionState('connecting');
         this.ws = new WebSocket(this.url);
 
-        this.ws.onopen = (event) => {
-            console.log("WebSocket connected:", event);
+        this.ws.onopen = () => {
             // Clear any reconnect attempts on successful connection
             if (this.reconnectInterval) {
                 clearInterval(this.reconnectInterval);
@@ -90,7 +89,6 @@ class WebSocketClient {
                 const message = JSON.parse(event.data);
                 if (message.type === "INITIAL_STATE") {
                     this.state.gameState = message.data;
-                    console.log("Initial state received:", this.state.gameState);
                     this.notifySubscribers();
                 } else if (message.type === "STATE_PATCH") {
                     if (this.state.gameState) {
@@ -101,24 +99,19 @@ class WebSocketClient {
                         );
                         this.state.gameState = patched as unknown as GameState;
                         this.notifySubscribers();
-                        console.log("State patch applied, new state:", this.state.gameState);
-                    } else {
-                        console.warn("Received STATE_PATCH but no initial state is set.");
                     }
-                } else {
-                    console.warn("Unknown message type:", message.type);
+                    // Silently ignore patches without initial state - will resync on reconnect
                 }
             } catch (e) {
                 console.error("Error parsing WebSocket message:", e);
             }
         };
 
-        this.ws.onclose = (event) => {
-            console.warn("WebSocket disconnected:", event);
+        this.ws.onclose = () => {
             this.setConnectionState('closed');
             // Attempt to reconnect after some delay
             if (!this.reconnectInterval) {
-                this.reconnectInterval = setInterval(() => this.connect(), 3000); // Try reconnecting every 3 seconds
+                this.reconnectInterval = setInterval(() => this.connect(), 3000);
             }
         };
 
@@ -164,16 +157,14 @@ class WebSocketClient {
         if (this.ws?.readyState === WebSocket.OPEN) {
             try {
                 this.ws.send(JSON.stringify({ type: "COMMAND", command: command.type, payload: command.payload }));
-                console.log("Command sent:", command);
                 const win = window as ScoreboardWindow;
                 const testHooks = win.__test ?? {};
                 win.__test = { ...testHooks, lastCommand: command.type };
-            } catch (e) {
-                console.error("Error sending command:", e);
+            } catch {
+                // Command send failed - connection will handle reconnect
             }
-        } else {
-            console.warn("WebSocket not open. Command not sent:", command);
         }
+        // Silently drop commands when not connected - UI shows connection status
     }
 
     public getGameState(): GameState | null {

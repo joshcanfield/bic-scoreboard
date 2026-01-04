@@ -42,6 +42,44 @@ const on = (
 let currentGameState: GameState | null = null;
 const pendingStateActions: Array<(state: GameState) => void> = [];
 
+// Cached element references for performance (initialized on first use)
+let cachedElements: {
+  clockText: HTMLElement | null;
+  clockToggle: HTMLElement | null;
+  periodDigit: HTMLElement | null;
+  buzzerIndicator: HTMLDivElement | null;
+  intermissionIndicator: HTMLDivElement | null;
+  periodUpBtn: HTMLButtonElement | null;
+  periodDownBtn: HTMLButtonElement | null;
+  homeScore: HTMLElement | null;
+  homeShots: HTMLElement | null;
+  homeTeam: HTMLElement | null;
+  awayScore: HTMLElement | null;
+  awayShots: HTMLElement | null;
+  awayTeam: HTMLElement | null;
+} | null = null;
+
+const getElements = () => {
+  if (!cachedElements) {
+    cachedElements = {
+      clockText: document.getElementById('clock-text'),
+      clockToggle: document.getElementById('clock-toggle'),
+      periodDigit: $('#period .digit'),
+      buzzerIndicator: document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="buzzer"]'),
+      intermissionIndicator: document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="intermission"]'),
+      periodUpBtn: document.querySelector<HTMLButtonElement>('.period-up'),
+      periodDownBtn: document.querySelector<HTMLButtonElement>('.period-down'),
+      homeScore: document.getElementById('home-score'),
+      homeShots: document.getElementById('home-shots'),
+      homeTeam: $('#home'),
+      awayScore: document.getElementById('away-score'),
+      awayShots: document.getElementById('away-shots'),
+      awayTeam: $('#away'),
+    };
+  }
+  return cachedElements;
+};
+
 const withGameState = (handler: (state: GameState) => void) => {
   if (currentGameState) {
     handler(currentGameState);
@@ -61,6 +99,51 @@ type TeamCode = 'home' | 'away';
 
 const sendCommand = (command: Command) => {
   websocketClient.sendCommand(command);
+};
+
+/**
+ * Compare penalties by stable fields only (not timeRemainingMillis).
+ * Used to determine if penalty table structure needs to be rebuilt.
+ */
+const penaltiesStructureEqual = (a: Penalty[], b: Penalty[]): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].penaltyId !== b[i].penaltyId ||
+      a[i].playerNumber !== b[i].playerNumber ||
+      a[i].servingPlayerNumber !== b[i].servingPlayerNumber ||
+      a[i].period !== b[i].period ||
+      a[i].durationMillis !== b[i].durationMillis
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
+ * Update penalty times in-place without recreating DOM elements.
+ */
+const updatePenaltyTimes = (teamElem: HTMLElement | null, penalties: Penalty[]) => {
+  const listTBody = teamElem?.querySelector<HTMLElement>('tbody.list');
+  if (!listTBody) return;
+
+  const rows = listTBody.querySelectorAll<HTMLTableRowElement>('tr:not(.placeholder)');
+  rows.forEach((row, idx) => {
+    if (idx >= penalties.length) return;
+    const penalty = penalties[idx];
+    // Update time in the 3rd cell (index 2)
+    const cells = row.querySelectorAll('td');
+    if (cells[2]) {
+      const { minutes, seconds } = millisToMinSec(penalty.timeRemainingMillis);
+      cells[2].textContent = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
+    }
+    // Update the remaining data attribute on the details link
+    const detailsLink = row.querySelector<HTMLAnchorElement>('a[data-action="penalty-details"]');
+    if (detailsLink) {
+      detailsLink.dataset.remaining = String(penalty.timeRemainingMillis);
+    }
+  });
 };
 
 const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'away', penalties: Penalty[]) => {
@@ -199,25 +282,22 @@ const renderGoalTable = (teamElem: HTMLElement | null, goals: GoalEvent[]) => {
 
 const renderUpdate = (newState: GameState) => {
   const previousState = currentGameState;
+  const els = getElements();
   let latestHomeScoreText: string | null = null;
   let latestAwayScoreText: string | null = null;
 
-  // Clock
+  // Clock - use cached element
   const oldClock = previousState?.clock;
   const newClock = newState.clock;
   if (!oldClock || oldClock.timeRemainingMillis !== newClock.timeRemainingMillis) {
-    const clockText = document.getElementById('clock-text');
     const { minutes, seconds } = millisToMinSec(newClock.timeRemainingMillis);
-    if (clockText) clockText.textContent = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
-    // const clockMoment = $('#clock-moment'); // No direct equivalent in new state for elapsedText
-    // if (clockMoment) clockMoment.innerHTML = view.elapsedText;
+    if (els.clockText) els.clockText.textContent = `${pad(minutes, 2)}:${pad(seconds, 2)}`;
   }
 
   if (!oldClock || oldClock.isRunning !== newClock.isRunning) {
-    const toggle = document.getElementById('clock-toggle');
-    if (toggle) {
-      const icon = toggle.querySelector('.glyphicon');
-      const label = toggle.querySelector('.cta-text');
+    if (els.clockToggle) {
+      const icon = els.clockToggle.querySelector('.glyphicon');
+      const label = els.clockToggle.querySelector('.cta-text');
       if (newClock.isRunning) {
         if (icon) icon.className = 'glyphicon glyphicon-pause';
         if (label) label.textContent = 'Pause';
@@ -228,72 +308,66 @@ const renderUpdate = (newState: GameState) => {
     }
   }
 
-  // Period
+  // Period - use cached elements
   if (!previousState || previousState.period !== newState.period) {
-    const periodDigit = $('#period .digit');
-    if (periodDigit) periodDigit.textContent = String(newState.period);
+    if (els.periodDigit) els.periodDigit.textContent = String(newState.period);
   }
-  const buzzerIndicator = document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="buzzer"]');
-  if (buzzerIndicator) {
-    buzzerIndicator.dataset.state = newState.buzzerOn ? 'active' : 'idle';
+  if (els.buzzerIndicator) {
+    els.buzzerIndicator.dataset.state = newState.buzzerOn ? 'active' : 'idle';
   }
-  const intermissionIndicator = document.querySelector<HTMLDivElement>('#period-indicators [data-indicator="intermission"]');
-  if (intermissionIndicator) {
-    intermissionIndicator.dataset.state = newState.status === 'INTERMISSION' ? 'active' : 'idle';
+  if (els.intermissionIndicator) {
+    els.intermissionIndicator.dataset.state = newState.status === 'INTERMISSION' ? 'active' : 'idle';
   }
-  const periodUpBtn = document.querySelector<HTMLButtonElement>('.period-up');
-  if (periodUpBtn) {
-    periodUpBtn.disabled = newState.period >= getConfiguredPeriodLimit(newState);
+  if (els.periodUpBtn) {
+    els.periodUpBtn.disabled = newState.period >= getConfiguredPeriodLimit(newState);
   }
-  const periodDownBtn = document.querySelector<HTMLButtonElement>('.period-down');
-  if (periodDownBtn) {
-    periodDownBtn.disabled = newState.period <= 0;
+  if (els.periodDownBtn) {
+    els.periodDownBtn.disabled = newState.period <= 0;
   }
 
-  // Home Team
+  // Home Team - use cached elements
   const oldHome = previousState?.home;
   const newHome = newState.home;
-  if (!oldHome || oldHome.goals.length !== newHome.goals.length) { // Score is derived from goals length
-    const homeScoreText = document.getElementById('home-score');
-    if (homeScoreText) {
+  if (!oldHome || oldHome.goals.length !== newHome.goals.length) {
+    if (els.homeScore) {
       latestHomeScoreText = pad(newHome.goals.length, 2);
-      homeScoreText.textContent = latestHomeScoreText;
+      els.homeScore.textContent = latestHomeScoreText;
     }
   }
   if (!oldHome || oldHome.shots !== newHome.shots) {
-    const homeShots = document.getElementById('home-shots');
-    if (homeShots) homeShots.textContent = String(newHome.shots);
+    if (els.homeShots) els.homeShots.textContent = String(newHome.shots);
   }
-  if (!oldHome || JSON.stringify(oldHome.penalties) !== JSON.stringify(newHome.penalties)) {
-    const home = $('#home');
-    renderPenaltyTable(home, 'home', newHome.penalties);
+  // Only rebuild penalty table when structure changes, otherwise just update times in-place
+  if (!oldHome || !penaltiesStructureEqual(oldHome.penalties, newHome.penalties)) {
+    renderPenaltyTable(els.homeTeam, 'home', newHome.penalties);
+  } else if (newHome.penalties.length > 0) {
+    updatePenaltyTimes(els.homeTeam, newHome.penalties);
   }
   if (!oldHome || JSON.stringify(oldHome.goals) !== JSON.stringify(newHome.goals)) {
-    const home = $('#home');
-    renderGoalTable(home, newHome.goals);
+    renderGoalTable(els.homeTeam, newHome.goals);
   }
 
-  // Away Team
+  // Away Team - use cached elements
   const oldAway = previousState?.away;
   const newAway = newState.away;
-  if (!oldAway || oldAway.goals.length !== newAway.goals.length) { // Score is derived from goals length
-    const awayScoreText = document.getElementById('away-score');
-    if (awayScoreText) {
+  if (!oldAway || oldAway.goals.length !== newAway.goals.length) {
+    if (els.awayScore) {
       latestAwayScoreText = pad(newAway.goals.length, 2);
-      awayScoreText.textContent = latestAwayScoreText;
+      els.awayScore.textContent = latestAwayScoreText;
     }
   }
   if (!oldAway || oldAway.shots !== newAway.shots) {
-    const awayShots = document.getElementById('away-shots');
-    if (awayShots) awayShots.textContent = String(newAway.shots);
+    if (els.awayShots) els.awayShots.textContent = String(newAway.shots);
   }
-  if (!oldAway || JSON.stringify(oldAway.penalties) !== JSON.stringify(newAway.penalties)) {
-    const away = $('#away');
-    renderPenaltyTable(away, 'away', newAway.penalties);
+  // Only rebuild penalty table when structure changes, otherwise just update times in-place
+  if (!oldAway || !penaltiesStructureEqual(oldAway.penalties, newAway.penalties)) {
+    renderPenaltyTable(els.awayTeam, 'away', newAway.penalties);
+  } else if (newAway.penalties.length > 0) {
+    // Structure same but times may have changed - update in-place
+    updatePenaltyTimes(els.awayTeam, newAway.penalties);
   }
   if (!oldAway || JSON.stringify(oldAway.goals) !== JSON.stringify(newAway.goals)) {
-    const away = $('#away');
-    renderGoalTable(away, newAway.goals);
+    renderGoalTable(els.awayTeam, newAway.goals);
   }
 
   // Buzzer
