@@ -1,6 +1,9 @@
 import { computeRecPeriods, minutesStepForShiftOnly, normalizeMinutes as normalizeMinutesForShift } from '../utils/rec-time';
 import { pad } from '../utils/time';
 
+// Re-export for use in game-dialog
+export { computeRecPeriods };
+
 export interface RecGameSettings {
   minutes: number;
   shiftSeconds: number;

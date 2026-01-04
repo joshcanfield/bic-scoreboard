@@ -4,7 +4,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { Command } from '../api/game.types';
+import type { Command } from '../api/v2-types';
 import {
   buildRecHelperText,
   buildSplitHint,
@@ -15,6 +15,7 @@ import {
   computeMinutesFromEnds,
   roundToNearestFive as roundRecToFive,
   toShiftTotal,
+  computeRecPeriods,
 } from '../rec/game-time';
 
 import Modals from './modals';
@@ -198,7 +199,7 @@ const onShiftChanged = () => {
   }
 };
 
-export const initGameDialog = (sendCommand: (command: Command) => void, resetGameState: () => void) => {
+export const initGameDialog = (sendCommand: (command: Command) => void) => {
   const on = (
     el: HTMLElement | Document,
     type: string,
@@ -400,7 +401,6 @@ export const initGameDialog = (sendCommand: (command: Command) => void, resetGam
       };
       sendCommand({ type: 'CREATE_GAME', payload: cfg });
       Modals.hide($('#new-game-dialog')!);
-      resetGameState();
     });
   }
 

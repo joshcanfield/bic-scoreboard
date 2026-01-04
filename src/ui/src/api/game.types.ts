@@ -624,3 +624,30 @@ export interface operations {
         };
     };
 }
+
+// Convenience type aliases for common schema types
+export type GameState = components['schemas']['GameState'];
+export type TeamState = components['schemas']['TeamState'];
+export type Penalty = components['schemas']['Penalty'];
+export type UpdateEventPayload = components['schemas']['UpdateEventPayload'];
+export type Team = components['schemas']['Team'];
+
+// v2 Architecture types (not from OpenAPI spec)
+export interface GoalEvent {
+    goalId: string;
+    teamId: string;
+    period: number;
+    timeInPeriodMillis: number;
+    scorerNumber: number;
+    assistNumbers: number[];
+    isEmptyNet: boolean;
+}
+
+export interface Command {
+    type: string;
+    payload?: Record<string, unknown>;
+}
+
+export interface StatePatch {
+    [key: string]: unknown;
+}

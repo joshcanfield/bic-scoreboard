@@ -1,5 +1,6 @@
+import type { Command } from '../api/v2-types';
 import { millisToMinSec, pad } from '../utils/time';
-import type { Command } from '../api/game.types';
+
 import Modals from './modals';
 
 export interface GoalDialogState {

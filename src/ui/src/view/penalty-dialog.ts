@@ -2,8 +2,8 @@
  * Penalty dialog management for adding penalties and handling 2+10 combinations.
  */
 
+import type { Command } from '../api/v2-types';
 import { parseClockMillis, millisToMinSec, formatClock } from '../utils/time';
-import type { Command } from '../api/game.types';
 
 import Modals from './modals';
 

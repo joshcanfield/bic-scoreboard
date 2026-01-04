@@ -1,12 +1,13 @@
 // src/ui/src/websocket.ts
 
-import { GameState, Command, StatePatch } from './api/game.types'; // Assuming these types are correctly generated
+import { GameState, Command } from './api/v2-types';
 import { applyPatch } from './utils/state-patch'; // A helper to apply patches
 
 type ScoreboardWindow = Window & {
     __SCOREBOARD_WS_URL__?: string;
     __SCOREBOARD_WS_PORT__?: number | string;
     __SCOREBOARD_WS_PATH__?: string;
+    __test?: Record<string, unknown>;
 };
 
 const DEFAULT_WS_PORT = 8082;
@@ -57,7 +58,7 @@ class WebSocketClient {
     private ws: WebSocket | null = null;
     private state: AppState = { gameState: null };
     private subscribers: StateUpdateCallback[] = [];
-    private reconnectInterval: number | null = null;
+    private reconnectInterval: ReturnType<typeof setInterval> | null = null;
     private connectionState: ConnectionState = 'connecting';
     private connectionSubscribers: ConnectionUpdateCallback[] = [];
 
@@ -93,7 +94,12 @@ class WebSocketClient {
                     this.notifySubscribers();
                 } else if (message.type === "STATE_PATCH") {
                     if (this.state.gameState) {
-                        this.state.gameState = applyPatch(this.state.gameState, message.data);
+                        // Cast through unknown to apply patch to GameState
+                        const patched = applyPatch(
+                            this.state.gameState as unknown as Record<string, unknown>,
+                            message.data as Record<string, unknown>
+                        );
+                        this.state.gameState = patched as unknown as GameState;
                         this.notifySubscribers();
                         console.log("State patch applied, new state:", this.state.gameState);
                     } else {
@@ -159,8 +165,9 @@ class WebSocketClient {
             try {
                 this.ws.send(JSON.stringify({ type: "COMMAND", command: command.type, payload: command.payload }));
                 console.log("Command sent:", command);
-                const testHooks = ((window as any).__test ?? {}) as Record<string, unknown>;
-                (window as any).__test = { ...testHooks, lastCommand: command.type };
+                const win = window as ScoreboardWindow;
+                const testHooks = win.__test ?? {};
+                win.__test = { ...testHooks, lastCommand: command.type };
             } catch (e) {
                 console.error("Error sending command:", e);
             }

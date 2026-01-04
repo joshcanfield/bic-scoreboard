@@ -117,6 +117,7 @@ public class GameWebSocketV2 extends WebSocketServer {
         if (!patch.isEmpty()) {
             try {
                 String patchJson = objectMapper.writeValueAsString(Map.of("type", "STATE_PATCH", "data", patch));
+                log.debug("Broadcasting patch to {} clients: {}", connections.size(), patch.keySet());
                 for (WebSocket client : connections) {
                     client.send(patchJson);
                 }

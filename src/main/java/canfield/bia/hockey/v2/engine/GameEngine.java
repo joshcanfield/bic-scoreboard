@@ -34,7 +34,9 @@ public class GameEngine {
             return t;
         });
     private ScheduledFuture<?> buzzerResetFuture;
-    private GameState currentState; // GameEngine now holds the current state
+    private volatile GameState currentState; // GameEngine now holds the current state (volatile for thread visibility)
+    private volatile long buzzerOnSince = 0; // Track when buzzer was turned on (for simulated-time reset)
+    private static final long BUZZER_AUTO_RESET_MILLIS = 3000;
 
     public GameEngine(TemplateRepository templateRepository, HardwareOutputAdapter hardwareOutputAdapter, GameTimer gameTimer, BiConsumer<GameState, GameState> stateChangeConsumer) {
         this.templateRepository = templateRepository;
@@ -67,6 +69,8 @@ public class GameEngine {
             this.currentState = addPenalty(this.currentState, addPenaltyCommand);
         } else if (command instanceof TickCommand) {
             this.currentState = tick(this.currentState, currentTimeMillis);
+            // Check for simulated-time buzzer auto-reset
+            this.currentState = checkBuzzerAutoReset(this.currentState, currentTimeMillis);
         } else if (command instanceof AddGoalCommand addGoalCommand) {
             this.currentState = addGoal(this.currentState, addGoalCommand, currentTimeMillis);
         } else if (command instanceof RemoveGoalCommand removeGoalCommand) {
@@ -84,7 +88,7 @@ public class GameEngine {
         } else if (command instanceof SetClockCommand setClockCommand) {
             this.currentState = setClockTime(this.currentState, setClockCommand);
         } else if (command instanceof TriggerBuzzerCommand) {
-            this.currentState = toggleBuzzer(this.currentState);
+            this.currentState = toggleBuzzerAt(this.currentState, currentTimeMillis);
         }
         // Only update hardware if the state actually changed
         if (!oldState.equals(this.currentState)) {
@@ -95,6 +99,10 @@ public class GameEngine {
     }
 
     private GameState toggleBuzzer(GameState state) {
+        return toggleBuzzerAt(state, System.currentTimeMillis());
+    }
+
+    private GameState toggleBuzzerAt(GameState state, long currentTimeMillis) {
         boolean turningOn = !state.buzzerOn();
         GameState newState = new GameState(
             state.gameId(),
@@ -108,11 +116,36 @@ public class GameEngine {
             state.eventHistory()
         );
         if (turningOn) {
+            buzzerOnSince = currentTimeMillis;
             scheduleBuzzerAutoReset();
         } else {
+            buzzerOnSince = 0;
             cancelBuzzerAutoReset();
         }
         return newState;
+    }
+
+    private GameState checkBuzzerAutoReset(GameState state, long currentTimeMillis) {
+        if (!state.buzzerOn() || buzzerOnSince == 0) {
+            return state;
+        }
+        if (currentTimeMillis - buzzerOnSince >= BUZZER_AUTO_RESET_MILLIS) {
+            log.info("Auto resetting buzzer after simulated-time timeout");
+            buzzerOnSince = 0;
+            cancelBuzzerAutoReset();
+            return new GameState(
+                state.gameId(),
+                state.config(),
+                state.status(),
+                state.period(),
+                state.clock(),
+                state.home(),
+                state.away(),
+                false, // Turn off buzzer
+                state.eventHistory()
+            );
+        }
+        return state;
     }
 
     private GameState resetGame(GameState state) {
@@ -328,10 +361,16 @@ public class GameEngine {
         long elapsed = currentTimeMillis - state.clock().startTimeWallClock();
         long newTimeRemaining = state.clock().timeRemainingMillis() - elapsed;
 
+        if (log.isDebugEnabled()) {
+            log.debug("TICK: elapsed={}ms, oldTime={}ms, newTime={}ms",
+                elapsed, state.clock().timeRemainingMillis(), newTimeRemaining);
+        }
+
         ClockState updatedClock = new ClockState(newTimeRemaining, true, currentTimeMillis);
 
         if (newTimeRemaining <= 0) {
             gameTimer.stop();
+            buzzerOnSince = currentTimeMillis; // Track when buzzer was turned on
             if (state.period() == 0) {
                 int nextPeriod = state.config().periods() > 0 ? 1 : 0;
                 scheduleBuzzerAutoReset();
@@ -590,9 +629,15 @@ public class GameEngine {
 
     private void autoResetBuzzer() {
         if (this.currentState == null || !this.currentState.buzzerOn()) {
+            log.debug("autoResetBuzzer: skipped (state={}, buzzerOn={})",
+                this.currentState != null ? "present" : "null",
+                this.currentState != null ? this.currentState.buzzerOn() : "n/a");
             return;
         }
-        log.info("Auto resetting buzzer after timeout");
+        log.info("Auto resetting buzzer after real-time timeout");
+        GameState before = this.currentState;
         processCommand(new TriggerBuzzerCommand(), System.currentTimeMillis());
+        log.debug("autoResetBuzzer: buzzerOn changed from {} to {}",
+            before.buzzerOn(), this.currentState.buzzerOn());
     }
 }

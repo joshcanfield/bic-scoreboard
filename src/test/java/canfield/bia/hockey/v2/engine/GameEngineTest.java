@@ -561,6 +561,47 @@ class GameEngineTest {
     }
 
     @Test
+    void testTickDecrementsClockTime() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        GameState stateAfterStart = gameEngine.getCurrentState();
+        assertTrue(stateAfterStart.clock().isRunning());
+        long initialTimeRemaining = stateAfterStart.clock().timeRemainingMillis();
+
+        // Simulate a tick 1 second later
+        long tickTime = initialTime + 1000L;
+        gameEngine.processCommand(new TickCommand(), tickTime);
+
+        GameState stateAfterTick = gameEngine.getCurrentState();
+        long timeAfterTick = stateAfterTick.clock().timeRemainingMillis();
+
+        // Time should have decreased by ~1 second (1000ms)
+        long elapsedMillis = initialTimeRemaining - timeAfterTick;
+        assertTrue(elapsedMillis >= 900 && elapsedMillis <= 1100,
+            "Expected elapsed time ~1000ms, got " + elapsedMillis + "ms");
+        assertTrue(stateAfterTick.clock().isRunning());
+    }
+
+    @Test
+    void testStateChangeConsumerCalledOnTick() {
+        createTestGame(initialTime);
+        reset(mockStateChangeConsumer); // Clear any previous invocations
+
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+        verify(mockStateChangeConsumer, times(1)).accept(any(), any());
+
+        reset(mockStateChangeConsumer);
+
+        // Simulate a tick
+        long tickTime = initialTime + 1000L;
+        gameEngine.processCommand(new TickCommand(), tickTime);
+
+        // StateChangeConsumer should be called because clock time changed
+        verify(mockStateChangeConsumer, times(1)).accept(any(), any());
+    }
+
+    @Test
     void testEndGame() {
         createTestGame(initialTime); // Add this line
         EndGameCommand endGameCommand = new EndGameCommand();
