@@ -858,4 +858,118 @@ class GameEngineTest {
         assertEquals(GameStatus.PRE_GAME, afterReset.status());
         assertEquals(0, afterReset.clock().timeRemainingMillis());
     }
+
+    @Test
+    void testShiftTimerTriggersBuzzer() {
+        // Create a game with a short shift timer (5 seconds for testing)
+        Map<String, Object> overrides = new HashMap<>();
+        overrides.put("periodLengthMinutes", 20);
+        overrides.put("intermissionLengthMinutes", 1);
+        overrides.put("periods", 1);
+        overrides.put("shiftLengthSeconds", 5); // 5 second shifts
+        gameEngine.processCommand(new CreateGameCommand("USAH_ADULT_20", overrides), initialTime);
+
+        // Set to period 1 and start clock
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        GameState playing = gameEngine.getCurrentState();
+        assertEquals(GameStatus.PLAYING, playing.status());
+        assertFalse(playing.buzzerOn(), "Buzzer should be off initially");
+
+        // Tick after 3 seconds - shift should not have expired yet
+        long threeSecondsLater = initialTime + 3000L;
+        gameEngine.processCommand(new TickCommand(), threeSecondsLater);
+        GameState afterThreeSeconds = gameEngine.getCurrentState();
+        assertFalse(afterThreeSeconds.buzzerOn(), "Buzzer should still be off before shift expires");
+
+        // Tick after 5+ seconds - shift should expire and buzzer should sound
+        long sixSecondsLater = initialTime + 6000L;
+        gameEngine.processCommand(new TickCommand(), sixSecondsLater);
+        GameState afterShiftExpires = gameEngine.getCurrentState();
+        assertTrue(afterShiftExpires.buzzerOn(), "Buzzer should turn on when shift expires");
+    }
+
+    @Test
+    void testShiftTimerResetsAfterBuzzer() {
+        // Create a game with a short shift timer (3 seconds for testing)
+        Map<String, Object> overrides = new HashMap<>();
+        overrides.put("periodLengthMinutes", 20);
+        overrides.put("intermissionLengthMinutes", 1);
+        overrides.put("periods", 1);
+        overrides.put("shiftLengthSeconds", 3); // 3 second shifts
+        gameEngine.processCommand(new CreateGameCommand("USAH_ADULT_20", overrides), initialTime);
+
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // First shift expires
+        long firstShiftEnd = initialTime + 4000L;
+        gameEngine.processCommand(new TickCommand(), firstShiftEnd);
+        GameState afterFirstShift = gameEngine.getCurrentState();
+        assertTrue(afterFirstShift.buzzerOn(), "Buzzer should sound after first shift");
+
+        // Buzzer auto-reset (simulated by toggling it off)
+        gameEngine.processCommand(new TriggerBuzzerCommand(), firstShiftEnd + 100);
+        GameState buzzerOff = gameEngine.getCurrentState();
+        assertFalse(buzzerOff.buzzerOn(), "Buzzer should be off after toggle");
+
+        // Second shift expires (3 more seconds after first shift ended)
+        long secondShiftEnd = firstShiftEnd + 4000L;
+        gameEngine.processCommand(new TickCommand(), secondShiftEnd);
+        GameState afterSecondShift = gameEngine.getCurrentState();
+        assertTrue(afterSecondShift.buzzerOn(), "Buzzer should sound again after second shift");
+    }
+
+    @Test
+    void testShiftTimerPausesWithClock() {
+        // Create a game with shift timer
+        Map<String, Object> overrides = new HashMap<>();
+        overrides.put("periodLengthMinutes", 20);
+        overrides.put("periods", 1);
+        overrides.put("shiftLengthSeconds", 10); // 10 second shifts
+        gameEngine.processCommand(new CreateGameCommand("USAH_ADULT_20", overrides), initialTime);
+
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Let 4 seconds elapse
+        long fourSecondsLater = initialTime + 4000L;
+        gameEngine.processCommand(new TickCommand(), fourSecondsLater);
+
+        // Pause the clock
+        gameEngine.processCommand(new PauseClockCommand(), fourSecondsLater);
+        GameState paused = gameEngine.getCurrentState();
+        assertEquals(GameStatus.PAUSED, paused.status());
+        assertFalse(paused.buzzerOn(), "Buzzer should not sound while paused");
+
+        // Wait a long time while paused (this should NOT count toward shift)
+        long longPauseEnd = fourSecondsLater + 30000L; // 30 seconds of pause
+
+        // Resume clock
+        gameEngine.processCommand(new StartClockCommand(), longPauseEnd);
+
+        // Only 2 more seconds should be needed to complete the shift (4 + 6 = 10)
+        long sixMoreSeconds = longPauseEnd + 7000L;
+        gameEngine.processCommand(new TickCommand(), sixMoreSeconds);
+        GameState afterResume = gameEngine.getCurrentState();
+        assertTrue(afterResume.buzzerOn(), "Shift timer should resume from where it paused");
+    }
+
+    @Test
+    void testNoShiftTimerWhenNotConfigured() {
+        // Create a regular game without shift timer
+        createTestGame(initialTime);
+
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Tick forward significantly
+        long muchLater = initialTime + 60000L; // 60 seconds
+        gameEngine.processCommand(new TickCommand(), muchLater);
+
+        GameState state = gameEngine.getCurrentState();
+        // Buzzer should NOT turn on just from time passing (only from period end)
+        assertFalse(state.buzzerOn(), "Buzzer should not sound without shift timer configured");
+    }
 }

@@ -38,6 +38,9 @@ public class GameEngine {
     private volatile long buzzerOnSince = 0; // Track when buzzer was turned on (for simulated-time reset)
     private static final long BUZZER_AUTO_RESET_MILLIS = 3000;
 
+    // Shift timer tracking for drop-in games (based on game clock time)
+    private volatile long shiftStartGameTimeMillis = -1; // Game clock time when current shift started (-1 = not initialized)
+
     public GameEngine(TemplateRepository templateRepository, HardwareOutputAdapter hardwareOutputAdapter, GameTimer gameTimer, BiConsumer<GameState, GameState> stateChangeConsumer) {
         this.templateRepository = templateRepository;
         this.hardwareOutputAdapter = hardwareOutputAdapter;
@@ -150,6 +153,8 @@ public class GameEngine {
 
     private GameState resetGame(GameState state) {
         gameTimer.stop();
+        // Reset shift timer
+        shiftStartGameTimeMillis = -1;
         long resetClockMillis = state.config() != null ? resolvePeriodDuration(state.config(), 0) : 0L;
         return new GameState(
             state.gameId(), // Keep the same game ID
@@ -410,6 +415,8 @@ public class GameEngine {
                 );
             }
             // Period ended - go to intermission
+            // Reset shift timer for next period
+            shiftStartGameTimeMillis = -1;
             scheduleBuzzerAutoReset();
             return new GameState(
                 state.gameId(),
@@ -432,7 +439,26 @@ public class GameEngine {
             updatedAway = updatePenaltyTimes(state.away(), currentTimeMillis);
         }
 
-        return new GameState(
+        // Check shift timer for drop-in games (only during PLAYING status)
+        // Uses GAME CLOCK time, not wall clock time
+        boolean shiftBuzzer = false;
+        if (state.status() == GameStatus.PLAYING && state.config() != null && state.config().shiftLengthSeconds() != null) {
+            int shiftLengthSeconds = state.config().shiftLengthSeconds();
+            if (shiftLengthSeconds > 0 && shiftStartGameTimeMillis >= 0) {
+                // Game clock counts DOWN, so elapsed = start - current
+                long gameTimeElapsed = shiftStartGameTimeMillis - newTimeRemaining;
+                long shiftLengthMillis = shiftLengthSeconds * 1000L;
+                if (gameTimeElapsed >= shiftLengthMillis) {
+                    log.info("Shift timer expired: gameTimeElapsed={}ms, shiftLength={}s, clockAt={}ms",
+                        gameTimeElapsed, shiftLengthSeconds, newTimeRemaining);
+                    shiftBuzzer = true;
+                    // Reset shift timer for next shift (start from current game time)
+                    shiftStartGameTimeMillis = newTimeRemaining;
+                }
+            }
+        }
+
+        GameState result = new GameState(
             state.gameId(),
             state.config(),
             state.status(),
@@ -440,9 +466,17 @@ public class GameEngine {
             updatedClock,
             updatedHome,
             updatedAway,
-            state.buzzerOn(),
+            shiftBuzzer || state.buzzerOn(), // Turn on buzzer if shift expired
             state.eventHistory()
         );
+
+        // Schedule buzzer auto-reset if shift triggered it
+        if (shiftBuzzer && !state.buzzerOn()) {
+            buzzerOnSince = currentTimeMillis;
+            scheduleBuzzerAutoReset();
+        }
+
+        return result;
     }
 
     private TeamState updatePenaltyTimes(TeamState team, long currentTimeMillis) {
@@ -489,6 +523,9 @@ public class GameEngine {
         // Freeze penalty times
         TeamState pausedHome = freezePenaltyTimes(state.home(), currentTimeMillis);
         TeamState pausedAway = freezePenaltyTimes(state.away(), currentTimeMillis);
+
+        // Note: Shift timer uses game clock time, so no special handling needed on pause
+        // The game clock time is preserved in the state, and shift timer will resume correctly
 
         return new GameState(
             state.gameId(),
@@ -568,6 +605,18 @@ public class GameEngine {
         if (nextStatus == GameStatus.PLAYING) {
             startedHome = startPenaltyTimers(state.home(), currentTimeMillis);
             startedAway = startPenaltyTimers(state.away(), currentTimeMillis);
+
+            // Start/resume shift timer for drop-in games (uses game clock time)
+            if (state.config().shiftLengthSeconds() != null && state.config().shiftLengthSeconds() > 0) {
+                if (shiftStartGameTimeMillis < 0) {
+                    // Initialize shift timer with current game clock time
+                    shiftStartGameTimeMillis = state.clock().timeRemainingMillis();
+                    log.debug("Shift timer initialized: shiftLength={}s, startGameTime={}ms",
+                        state.config().shiftLengthSeconds(), shiftStartGameTimeMillis);
+                }
+                // If already initialized (resuming from pause), keep the existing value
+                // since game clock time is preserved across pause/resume
+            }
         }
 
         return new GameState(
