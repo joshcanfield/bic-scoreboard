@@ -19,7 +19,6 @@ jobs:
         with:
           distribution: liberica
           java-version: '21'
-          architecture: 'x86'
 
       - name: Install Google Chrome
         uses: browser-actions/setup-chrome@v1
@@ -73,16 +72,24 @@ jobs:
   package-app-image:
     needs: build-and-test
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x86, x64]
+        include:
+          - arch: x86
+            label: win32
+          - arch: x64
+            label: win64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 21
+      - name: Set up Java 21 (${{ matrix.arch }})
         uses: actions/setup-java@v4
         with:
           distribution: liberica
           java-version: '21'
-          architecture: 'x86'
+          architecture: ${{ matrix.arch }}
 
       - name: Cache Gradle Node downloads
         uses: actions/cache@v4
@@ -106,10 +113,10 @@ jobs:
           $safe = $env:GITHUB_REF_NAME -replace '/', '-'
           echo "REF_SAFE=$safe" >> $env:GITHUB_ENV
 
-      - name: Upload app image artifact
+      - name: Upload app image artifact (${{ matrix.label }})
         uses: actions/upload-artifact@v4
         with:
-          name: scoreboard-app-image-${{ env.REF_SAFE }}-${{ github.sha }}
+          name: scoreboard-app-image-${{ matrix.label }}-${{ env.REF_SAFE }}-${{ github.sha }}
           path: build/artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
