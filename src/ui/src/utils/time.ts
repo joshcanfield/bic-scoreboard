@@ -50,6 +50,11 @@ export function millisToMinSec(millis: number): ClockParts {
   };
 }
 
+export function formatTime(millis: number): string {
+  const parts = millisToMinSec(millis);
+  return formatClock(parts.minutes, parts.seconds);
+}
+
 export function roundToSecond(millis: number | null | undefined): number {
   const value = Number(millis) || 0;
   return Math.floor((value + 999) / 1000) * 1000;

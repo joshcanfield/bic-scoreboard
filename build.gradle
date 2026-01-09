@@ -4,6 +4,7 @@ plugins {
     id 'idea'
     id 'groovy'
     id 'application'
+    id 'jacoco'
     // For creating a custom runtime and Windows installers/app images
     id 'org.beryx.jlink' version '3.1.1'
     // For creating a fat JAR used by the fallback jpackage task
@@ -29,10 +30,7 @@ application {
 }
 
 project.ext {
-    // Jetty 11 uses Jakarta Servlet API (required for RESTEasy 6)
     jetty = [version: "11.0.24"]
-    // RESTEasy 6 uses Jakarta (jakarta.ws.rs)
-    resteasy = [version: "6.2.12.Final"]
 }
 
 repositories {
@@ -49,28 +47,8 @@ node {
     nodeProjectDir = file("${project.projectDir}/src/ui")
 }
 
-// This simulates Maven's "provided" scope, until it is officially supported by Gradle
-// See http://jira.codehaus.org/browse/GRADLE-784
-
-configurations {
-    provided
-}
-
-sourceSets {
-    main {
-        compileClasspath += configurations.provided
-    }
-    test {
-        compileClasspath += configurations.provided
-        runtimeClasspath += configurations.provided
-    }
-}
 
 dependencies {
-    implementation "com.squareup.dagger:dagger:1.1.0"
-    // Dagger compiler is compile-time only; keep as annotation processor, not runtime
-    annotationProcessor "com.squareup.dagger:dagger-compiler:1.1.0"
-
     implementation "com.fazecast:jSerialComm:2.10.4"
 
     implementation "joda-time:joda-time:2.1"
@@ -79,31 +57,19 @@ dependencies {
     implementation 'org.slf4j:jul-to-slf4j:1.7.10'
 
     implementation "org.eclipse.jetty:jetty-server:${project.jetty.version}"
-    implementation "org.eclipse.jetty:jetty-servlet:${project.jetty.version}"
 
-
-    // RESTEasy 6 (Jakarta): core SPI + core + servlet integration + Jackson 2 provider
-    implementation ("org.jboss.resteasy:resteasy-core-spi:${project.resteasy.version}") {
-        exclude group: 'org.slf4j'
-    }
-    implementation ("org.jboss.resteasy:resteasy-core:${project.resteasy.version}") {
-        exclude group: 'org.slf4j'
-    }
-    implementation ("org.jboss.resteasy:resteasy-servlet-initializer:${project.resteasy.version}") {
-        exclude group: 'org.slf4j'
-    }
-    implementation "org.jboss.resteasy:resteasy-jackson2-provider:${project.resteasy.version}"
-    // FasterXML Jackson 2 core libs
+    // FasterXML Jackson 2 for JSON serialization
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.17.2'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.17.2'
-    implementation 'commons-io:commons-io:2.11.0'
 
-    // Lightweight native WebSocket server for modern UI transport
+    // WebSocket server for v2 UI transport
     implementation 'org.java-websocket:Java-WebSocket:1.5.6'
 
     testImplementation "org.codehaus.groovy:groovy-all:2.0.5"
     testImplementation "org.testng:testng:7.10.2"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testImplementation "org.mockito:mockito-all:1.9.5"
 
     testImplementation('org.seleniumhq.selenium:selenium-java:4.35.0') { // https://www.selenium.dev/downloads/
@@ -139,10 +105,20 @@ gradle.afterProject {
 
 test {
     useTestNG()
+    useJUnitPlatform()
 
     jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
 
     enableAssertions = true
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }
 tasks.named('run') {
     args 'start'
@@ -173,7 +149,7 @@ tasks.register('uiCheck', com.github.gradle.node.npm.task.NpmTask) {
     npmCommand = ['run', 'check']
     inputs.dir('src/ui/src')
     inputs.file('src/ui/package.json')
-    inputs.file('src/ui/.eslintrc.json')
+    inputs.file('src/ui/.eslintrc.cjs')
     inputs.file('src/ui/tsconfig.json')
 }
 

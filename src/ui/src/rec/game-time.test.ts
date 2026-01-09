@@ -22,8 +22,11 @@ describe('rec game helpers', () => {
   })
 
   it('normalizes minutes using shift granularity', () => {
-    expect(normalizeMinutes(63, 120)).toBe(60)
+    // With baseStepMinutes=1, step for 120s shift is 2 (gcd(60,120)=60, 120/60=2, lcm(1,2)=2)
+    expect(normalizeMinutes(63, 120)).toBe(62)
     expect(normalizeMinutes(30, 0)).toBe(30)
+    // 3:30 (210s) shift: step is 7 (gcd(60,210)=30, 210/30=7, lcm(1,7)=7)
+    expect(normalizeMinutes(60, 210)).toBe(56)
   })
 
   it('renders helper strings for minutes and shifts', () => {

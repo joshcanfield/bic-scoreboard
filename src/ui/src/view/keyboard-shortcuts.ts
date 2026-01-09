@@ -2,6 +2,11 @@ import { TeamLayout } from './team-layout';
 
 type TeamKey = 'home' | 'away';
 
+// Extend Window to include test hooks
+interface WindowWithTestHooks extends Window {
+  __test?: Record<string, unknown>;
+}
+
 export interface KeyboardShortcutOptions {
   openGoalDialog: (team: TeamKey) => void;
 }
@@ -26,8 +31,9 @@ const cloneBindings = (): BindingMap =>
   Object.fromEntries(Object.entries(latestBindings).map(([name, bindings]) => [name, [...bindings]]));
 
 const updateShortcutTestHooks = () => {
-  const existingTestHooks = ((window as any).__test ?? {}) as Record<string, unknown>;
-  (window as any).__test = {
+  const win = window as WindowWithTestHooks;
+  const existingTestHooks = win.__test ?? {};
+  win.__test = {
     ...existingTestHooks,
     shortcutsReady: () => Promise.resolve(),
     shortcutsLoadError: () => false,

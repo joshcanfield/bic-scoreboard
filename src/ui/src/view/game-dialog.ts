@@ -4,8 +4,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { computeRecPeriods } from '../utils/rec-time';
-import { type ServerActions } from '../transport/server';
+import type { Command } from '../api/v2-types';
 import {
   buildRecHelperText,
   buildSplitHint,
@@ -16,6 +15,7 @@ import {
   computeMinutesFromEnds,
   roundToNearestFive as roundRecToFive,
   toShiftTotal,
+  computeRecPeriods,
 } from '../rec/game-time';
 
 import Modals from './modals';
@@ -70,7 +70,9 @@ const updateRecHelper = () => {
   const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
   const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
   const shift = getShiftTotal();
-  el.textContent = buildRecHelperText(minutes, shift);
+  // Show actual game time (normalized) so user sees what will really happen
+  const actualMinutes = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
+  el.textContent = buildRecHelperText(actualMinutes, shift);
 };
 
 const updateSplitHint = () => {
@@ -79,7 +81,9 @@ const updateSplitHint = () => {
   const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
   const minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10) || 0;
   const shift = getShiftTotal();
-  hint.textContent = buildSplitHint(minutes, shift);
+  // Use normalized minutes for period split calculation
+  const actualMinutes = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
+  hint.textContent = buildSplitHint(actualMinutes, shift);
 };
 
 const updateDivisibleHint = () => {
@@ -107,12 +111,15 @@ const setEndsFromMinutes = () => {
   const minutes = parseInt(recMinutesField.value || '0', 10) || 0;
   if (!minutes) return;
   const shift = getShiftTotal();
+  // Use normalized time for the "ends at" dropdown so user sees actual end time,
+  // but don't overwrite the minutes field - let them type what they want.
+  // The hint will show what it rounds to.
   const adjusted = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
   recSyncing = true;
   const now = new Date();
   const target = roundRecToFive(new Date(now.getTime() + adjusted * 60000));
   renderEndsOptions(target);
-  recMinutesField.value = String(adjusted);
+  // Don't overwrite recMinutesField.value - preserve user input
   recSyncing = false;
   updateRecHelper();
   updateDivisibleHint();
@@ -180,26 +187,17 @@ const updateShiftDisabledUI = () => {
 };
 
 const onShiftChanged = () => {
-  const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
-  if (recMinutesField) {
-    const minutes = parseInt(recMinutesField.value || '0', 10) || 0;
-    if (minutes > 0) {
-      const shift = getShiftTotal();
-      const normalized = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
-      recMinutesField.value = String(normalized);
-    }
-  }
+  // Don't overwrite the minutes field when shift changes - just update hints
+  // to show how the user's input will be rounded with the new shift.
   setEndsFromMinutes();
   updateShiftDisabledUI();
-  if (recMinutesField && !parseInt(recMinutesField.value || '0', 10)) {
-    updateRecHelper();
-    updateDivisibleHint();
-    updateSplitHint();
-    updateLastBuzzerHint();
-  }
+  updateRecHelper();
+  updateDivisibleHint();
+  updateSplitHint();
+  updateLastBuzzerHint();
 };
 
-export const initGameDialog = (Server: ServerActions, resetGameState: () => void) => {
+export const initGameDialog = (sendCommand: (command: Command) => void) => {
   const on = (
     el: HTMLElement | Document,
     type: string,
@@ -386,14 +384,21 @@ export const initGameDialog = (Server: ServerActions, resetGameState: () => void
       } catch (_) {
         // Ignore storage errors
       }
-      const cfg: { periodLengths: number[]; intermissionDurationMinutes?: number } = {
-        periodLengths: periods,
+      const selectedTemplateId = standardTemplateSelect?.value?.trim();
+      const warmupMinutes = typeof periods[0] === 'number' ? periods[0] : periods[1] || 0;
+      const cfg = {
+        templateId: selectedTemplateId && selectedTemplateId.length > 0 ? selectedTemplateId : 'USAH_ADULT_20',
+        overrides: {
+          warmupMinutes,
+          periodLengthMinutes: periods[1], // Assuming period 1 length for simplicity
+          intermissionLengthMinutes: intermission || 0,
+          periods: periods.length - 1, // Assuming periods[0] is warmup
+          // clockType: 'STOP_TIME', // Default for standard
+          // shiftLengthSeconds: null,
+        }
       };
-      // Always include intermission; 0 disables per backend semantics
-      if (intermission != null) cfg.intermissionDurationMinutes = intermission;
-      Server.createGame(cfg);
+      sendCommand({ type: 'CREATE_GAME', payload: cfg });
       Modals.hide($('#new-game-dialog')!);
-      resetGameState();
     });
   }
 
@@ -496,19 +501,23 @@ export const initGameDialog = (Server: ServerActions, resetGameState: () => void
       let minutes = 0;
       const recEndsField = $('#rec_ends_at') as HTMLSelectElement | null;
       const recMinutesField = $('#rec_minutes') as HTMLInputElement | null;
-      const endsValue = (recEndsField && recEndsField.value) || '';
-      if (endsValue.includes(':')) {
-        const computed = computeMinutesFromEnds(endsValue);
-        if (computed == null) {
-          if (recEndsField) recEndsField.closest('.form-group')?.classList.add('has-error');
-          if (errorBox) errorBox.textContent = 'Please enter a valid end time (HH:MM).';
-          return;
-        }
-        minutes = Math.max(1, computed);
-        if (recMinutesField) recMinutesField.value = String(minutes);
+      // Prefer the typed minutes value - don't recalculate from ends-at time
+      // since time passes between when user types and when they click create
+      const typedMinutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10);
+      if (typedMinutes > 0) {
+        minutes = typedMinutes;
       } else {
-        minutes = parseInt((recMinutesField && recMinutesField.value) || '0', 10);
-        if (!minutes) {
+        // Fall back to computing from ends-at if no minutes entered
+        const endsValue = (recEndsField && recEndsField.value) || '';
+        if (endsValue.includes(':')) {
+          const computed = computeMinutesFromEnds(endsValue);
+          if (computed == null) {
+            if (recEndsField) recEndsField.closest('.form-group')?.classList.add('has-error');
+            if (errorBox) errorBox.textContent = 'Please enter a valid end time (HH:MM).';
+            return;
+          }
+          minutes = Math.max(1, computed);
+        } else {
           if (recMinutesField) recMinutesField.closest('.form-group')?.classList.add('has-error');
           if (errorBox) errorBox.textContent = 'Please enter game length in minutes.';
           return;
@@ -529,7 +538,17 @@ export const initGameDialog = (Server: ServerActions, resetGameState: () => void
         // Ignore storage errors
       }
 
-      Server.createGame({ buzzerIntervalSeconds: shift, periodLengths: periods });
+      sendCommand({ type: 'CREATE_GAME', payload: {
+        templateId: 'REC_LEAGUE', // Or a specific REC_LEAGUE template
+        overrides: {
+          warmupMinutes: periods[0] ?? 0,
+          periodLengthMinutes: minutesForGame,
+          intermissionLengthMinutes: 0, // Assuming no intermission for rec league
+          periods: periods.length - 1,
+          clockType: 'RUN_TIME',
+          shiftLengthSeconds: shift > 0 ? shift : null,
+        }
+      }});
       Modals.hide($('#new-game-dialog')!);
     });
   }

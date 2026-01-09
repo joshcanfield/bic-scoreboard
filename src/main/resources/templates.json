@@ -1,0 +1,58 @@
+{
+  "USAH_ADULT_20": {
+    "description": "USA Hockey Adult (20 min stop-time)",
+    "periodLengthMinutes": 20,
+    "intermissionLengthMinutes": 1,
+    "periods": 3,
+    "clockType": "STOP_TIME",
+    "shiftLengthSeconds": null
+  },
+  "REC_LEAGUE_14": {
+    "description": "Recreational League (14 min run-time)",
+    "periodLengthMinutes": 14,
+    "intermissionLengthMinutes": 1,
+    "periods": 3,
+    "clockType": "RUN_TIME",
+    "shiftLengthSeconds": 90
+  },
+  "jr": {
+    "description": "Junior Hockey (20 min stop-time)",
+    "periodLengthMinutes": 20,
+    "intermissionLengthMinutes": 15,
+    "periods": 3,
+    "clockType": "STOP_TIME",
+    "shiftLengthSeconds": null
+  },
+  "youth60": {
+    "description": "Youth 60 (15 min stop-time)",
+    "periodLengthMinutes": 15,
+    "intermissionLengthMinutes": 1,
+    "periods": 3,
+    "clockType": "STOP_TIME",
+    "shiftLengthSeconds": null
+  },
+  "youth75": {
+    "description": "Youth 75 (13 min stop-time)",
+    "periodLengthMinutes": 13,
+    "intermissionLengthMinutes": 1,
+    "periods": 3,
+    "clockType": "STOP_TIME",
+    "shiftLengthSeconds": null
+  },
+  "pphl": {
+    "description": "PPHL (17 min stop-time)",
+    "periodLengthMinutes": 17,
+    "intermissionLengthMinutes": 1,
+    "periods": 3,
+    "clockType": "STOP_TIME",
+    "shiftLengthSeconds": null
+  },
+  "REC_LEAGUE": {
+    "description": "Recreational League (customizable run-time)",
+    "periodLengthMinutes": 15,
+    "intermissionLengthMinutes": 0,
+    "periods": 3,
+    "clockType": "RUN_TIME",
+    "shiftLengthSeconds": 90
+  }
+}

@@ -54,3 +54,13 @@ Feature: Game Flow
     And I wait 200 milliseconds
     Then the clock should stay the same
 
+  Scenario: Intermission indicator lights up when period completes
+    Given the clock is stopped
+    And the game is in period 1
+    When I set the clock to "00:01"
+    And I start the clock
+    And I wait 1500 milliseconds
+    Then the buzzer indicator should be active
+    And the intermission indicator should be active
+    And I wait 3500 milliseconds
+    Then the buzzer indicator should be inactive

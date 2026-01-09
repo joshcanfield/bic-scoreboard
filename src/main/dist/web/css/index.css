@@ -3,8 +3,18 @@ body {
     background-color: #9acfea;
 }
 
+.modal-dialog {
+    min-width: 600px;
+    max-width: 95vw;
+}
+
 body.buzzer {
     background-color: #dca7a7;
+}
+
+.modal-dialog {
+    min-width: 600px;
+    max-width: 95vw;
 }
 
 .navbar-default {
@@ -368,7 +378,7 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
 #clock_box .clock .clock-text { display: block; width: 100%; text-align: center; font-variant-numeric: tabular-nums; font-size: 70px; line-height: 60px; color: var(--led); text-shadow: 0 0 12px rgba(255,100,100,0.45), 0 0 3px rgba(255,255,255,0.15); }
 
 /* Period */
-#period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; color: var(--muted); }
+#period-block { display: flex; align-items: center; gap: 10px; justify-content: center; margin-top: 10px; }
 #period-block a { color: var(--accent); }
 
 /* Penalties & Goals tables */
@@ -487,6 +497,38 @@ h2 { font-size: 28px; letter-spacing: 0.08em; color: var(--muted); text-transfor
     border-radius: 10px;
     color: white;
     font-size: 50px;
+}
+#period-indicators {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+#period-indicators .indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+}
+#period-indicators .indicator .icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+#period-indicators .indicator[data-state="active"] {
+    color: #f1c40f;
+}
+#period-indicators .indicator[data-state="active"] .icon {
+    background: #f1c40f;
+    border-color: #f1c40f;
+    box-shadow: 0 0 8px rgba(241,196,15,0.6);
+    color: #0b1020;
 }
 #set-clock .modal-dialog {
     width: 500px;

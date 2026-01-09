@@ -1,6 +1,9 @@
 import { computeRecPeriods, minutesStepForShiftOnly, normalizeMinutes as normalizeMinutesForShift } from '../utils/rec-time';
 import { pad } from '../utils/time';
 
+// Re-export for use in game-dialog
+export { computeRecPeriods };
+
 export interface RecGameSettings {
   minutes: number;
   shiftSeconds: number;
@@ -16,7 +19,9 @@ export const toShiftTotal = (value: string | null | undefined, enabled: boolean)
 export const normalizeMinutes = (minutes: number, shiftSeconds: number): number => {
   if (minutes <= 0) return 0;
   if (shiftSeconds <= 0) return minutes;
-  return normalizeMinutesForShift(minutes, shiftSeconds);
+  // Use baseStepMinutes=1 to align only with shift length, not a fixed 15-minute increment.
+  // This allows values like 56, 63, 70 for 3:30 shifts instead of forcing 105-minute steps.
+  return normalizeMinutesForShift(minutes, shiftSeconds, 1);
 };
 
 export const buildRecHelperText = (minutes: number, shift: number): string => {
