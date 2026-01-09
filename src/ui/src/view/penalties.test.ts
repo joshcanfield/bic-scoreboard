@@ -51,4 +51,54 @@ describe('penalty view helpers', () => {
     expect(table.details).toEqual([]);
     expect(table.placeholderHtml).toBe(buildPlaceholderRows(2));
   });
+
+  it('handles penalty with null servingPlayerNumber', () => {
+    const penalties: Penalty[] = [
+      {
+        ...basePenalty({ penaltyId: '1', playerNumber: 12 }),
+        servingPlayerNumber: null as unknown as number, // simulate null from backend
+      },
+    ];
+
+    const table = buildPenaltyTable('home', penalties);
+
+    expect(table.activePenalties).toHaveLength(1);
+    expect(table.details[0].servingPlayer).toBe('');
+    expect(table.rowsHtml).not.toContain('data-serving=');
+    expect(table.rowsHtml).toContain('<td>-</td>'); // '-' shown when no serving player
+  });
+
+  it('renders serving player column as dash when same as player', () => {
+    const penalties: Penalty[] = [
+      basePenalty({ penaltyId: '1', playerNumber: 12, servingPlayerNumber: 12 }),
+    ];
+
+    const table = buildPenaltyTable('home', penalties);
+
+    // When servingPlayerNumber equals playerNumber, servingPlayer is still shown
+    expect(table.details[0].servingPlayer).toBe('12');
+    expect(table.rowsHtml).toContain('data-serving="12"');
+  });
+
+  it('builds one placeholder when one penalty active', () => {
+    const penalties: Penalty[] = [basePenalty({ penaltyId: '1' })];
+
+    const table = buildPenaltyTable('away', penalties);
+
+    expect(table.activePenalties).toHaveLength(1);
+    expect(table.placeholderHtml).toBe(buildPlaceholderRows(1));
+  });
+
+  it('builds no placeholders when penalties exceed minimum', () => {
+    const penalties: Penalty[] = [
+      basePenalty({ penaltyId: '1' }),
+      basePenalty({ penaltyId: '2' }),
+      basePenalty({ penaltyId: '3' }),
+    ];
+
+    const table = buildPenaltyTable('home', penalties);
+
+    expect(table.activePenalties).toHaveLength(3);
+    expect(table.placeholderHtml).toBe('');
+  });
 });

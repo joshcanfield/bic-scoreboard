@@ -12,7 +12,7 @@ type ScoreboardWindow = Window & {
 
 const DEFAULT_WS_PORT = 8082;
 
-const resolveWebSocketUrl = (): string => {
+export const resolveWebSocketUrl = (): string => {
     if (typeof window === 'undefined') {
         return `ws://localhost:${DEFAULT_WS_PORT}/`;
     }

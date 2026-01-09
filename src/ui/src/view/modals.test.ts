@@ -77,5 +77,90 @@ describe('modals', () => {
 
       expect(modal.style.display).toBe('none');
     });
+
+    it('closes modal on backdrop click', () => {
+      const controller = createModalController();
+      controller.init();
+      controller.show(modal);
+
+      // Click directly on the modal backdrop (not on content)
+      modal.click();
+
+      expect(modal.style.display).toBe('none');
+    });
+
+    it('does not close modal when clicking on content', () => {
+      const controller = createModalController();
+      controller.init();
+      controller.show(modal);
+
+      const content = modal.querySelector<HTMLElement>('.modal-content')!;
+      content.click();
+
+      expect(modal.style.display).toBe('block');
+    });
+
+    it('closes modal on Escape key', () => {
+      const controller = createModalController();
+      controller.init();
+      controller.show(modal);
+
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      document.dispatchEvent(event);
+
+      expect(modal.style.display).toBe('none');
+    });
+
+    it('does not close modal on other keys', () => {
+      const controller = createModalController();
+      controller.init();
+      controller.show(modal);
+
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+      document.dispatchEvent(event);
+
+      expect(modal.style.display).toBe('block');
+    });
+
+    it('does nothing on Escape when no modal is open', () => {
+      const controller = createModalController();
+      controller.init();
+
+      // Modal starts hidden
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      document.dispatchEvent(event);
+
+      // Should not throw, modal stays hidden
+      expect(modal.style.display).toBe('none');
+    });
+
+    it('restores focus to trigger element after Escape', () => {
+      document.body.innerHTML = `
+        <div id="test-modal" class="modal">
+          <div class="modal-content"></div>
+        </div>
+        <button id="trigger" data-toggle="modal" href="#test-modal">Open</button>
+      `;
+      const testModal = document.getElementById('test-modal')!;
+      const trigger = document.getElementById('trigger')!;
+
+      const controller = createModalController();
+      controller.init();
+
+      // Click trigger to open modal (this stores __trigger)
+      trigger.click();
+      expect(testModal.style.display).toBe('block');
+
+      // Press Escape to close
+      const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      document.dispatchEvent(event);
+
+      expect(testModal.style.display).toBe('none');
+      // Trigger should be focused (focus restoration)
+      expect(document.activeElement).toBe(trigger);
+    });
   });
 });

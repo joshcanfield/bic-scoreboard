@@ -63,10 +63,10 @@ describe('team-colors', () => {
   });
 
   describe('applyColor', () => {
-    let updateChipsMock: ReturnType<typeof vi.fn>;
+    let updateChipsMock: ReturnType<typeof vi.fn<() => void>>;
 
     beforeEach(() => {
-      updateChipsMock = vi.fn();
+      updateChipsMock = vi.fn<() => void>();
       // Clear any style properties
       document.documentElement.style.removeProperty('--home-color');
       document.documentElement.style.removeProperty('--home-fg');
