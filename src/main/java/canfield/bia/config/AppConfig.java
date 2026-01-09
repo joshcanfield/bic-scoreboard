@@ -3,7 +3,6 @@ package canfield.bia.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -13,7 +12,6 @@ import java.util.Properties;
 /**
  * Simple properties-backed configuration stored next to the executable.
  */
-@Singleton
 public class AppConfig {
   private static final Logger log = LoggerFactory.getLogger(AppConfig.class);
 

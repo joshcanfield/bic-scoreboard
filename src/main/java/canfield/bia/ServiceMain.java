@@ -5,20 +5,15 @@ import canfield.bia.hockey.scoreboard.io.ScoreboardAdapterImpl;
 import canfield.bia.hockey.v2.engine.*;
 import canfield.bia.hockey.v2.spec.CreateGameCommand;
 import canfield.bia.hockey.v2.web.GameWebSocketV2;
-import canfield.bia.rest.GameApplication;
-import dagger.ObjectGraph;
-import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.net.URI;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.InputStream;
 import java.util.Collections;
-import java.util.function.BiConsumer;
 
 /**
  *
@@ -66,9 +61,7 @@ public class ServiceMain {
                 gameWebSocketV2.start();
                 // --- End New Architecture Components Initialization ---
 
-
-                final ObjectGraph objectGraph = GameApplication.getObjectGraph();
-                hockeyGameServer = objectGraph.get(HockeyGameServer.class);
+                hockeyGameServer = new HockeyGameServer();
                 addShutdownHook();
                 try {
                     hockeyGameServer.start();

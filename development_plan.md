@@ -1,8 +1,8 @@
 # BIC Scoreboard Development Plan
 
-> **Last Updated:** 2026-01-03
+> **Last Updated:** 2026-01-04
 > **Branch:** `scoreboard_v3`
-> **Overall Status:** ~85% Complete
+> **Overall Status:** ~95% Complete (Phase 3 core features verified, ready for Phase 4 cleanup)
 
 This document is the single source of truth for the scoreboard architecture migration project. It consolidates and supersedes the previous `REVISED_IMPLEMENTATION_PLAN.md`.
 
@@ -90,7 +90,7 @@ UI Client                    Backend                         Hardware
 | 2.3 Hardware Adapter | `LegacyScoreboardHardwareAdapter` bridges to serial | Done |
 | 2.4 Server Entrypoint | New endpoint live alongside legacy (deprecated) | Done |
 
-### Phase 3: UI Migration - IN PROGRESS (~85%)
+### Phase 3: UI Migration - NEARLY COMPLETE (~95%)
 
 | Task | Description | Status |
 |------|-------------|--------|
@@ -101,7 +101,7 @@ UI Client                    Backend                         Hardware
 | 3.5 Penalty Dialog | Refactored to emit penalty commands | Done |
 | 3.6 Game Dialog | Sends `CREATE_GAME` command (fixed resetGameState bug) | Done |
 | 3.7 Clock Dialog | Sends `SET_CLOCK` command | Done |
-| 3.8 Indicators | HTML exists, CSS needs fixing | In Progress |
+| 3.8 Indicators | Buzzer and intermission indicators working | Done |
 
 ### Phase 4: Cleanup - NOT STARTED
 
@@ -117,22 +117,16 @@ UI Client                    Backend                         Hardware
 
 ### Critical (Blocking Release)
 
-| ID | Area | Issue | Next Step |
-|----|------|-------|-----------|
-| **BZ-01** | Clock sync | UI clock doesn't decrement after START_CLOCK | Code review complete - logic appears correct. Debug logging added to GameEngine.tick() and broadcastStateChange(). Run with DEBUG level and verify patches are broadcast. |
-| **BZ-02** | Buzzer reset | Auto-reset fires but UI never receives patch | Fixed threading visibility (volatile fields). Added debug logging. Verify with DEBUG level logging. |
+None - all critical issues resolved.
 
 ### High Priority
 
-| ID | Area | Issue | Next Step |
-|----|------|-------|-----------|
-| **UI-03** | Connection | Disconnected dialog doesn't appear | Re-introduce connection watchdog + modal |
+None - all high priority issues resolved.
 
 ### Medium Priority
 
 | ID | Area | Issue | Next Step |
 |----|------|-------|-----------|
-| **UI-06** | Indicators | Buzzer/intermission colors muted | Move styles to bundled CSS, ensure bright yellow active state |
 | **QA-01** | Tests | E2E tests failing for indicators | Repair scenarios after UI fixes complete |
 
 ### Low Priority
@@ -144,6 +138,10 @@ UI Client                    Backend                         Hardware
 
 ### Recently Resolved
 
+- **BZ-01**: Clock sync verified working - UI clock decrements correctly after START_CLOCK (2026-01-04)
+- **BZ-02**: Buzzer auto-reset verified working - UI receives patches, indicator lights up for 3 seconds (2026-01-04)
+- **UI-03**: Disconnected dialog now appears when backend connection is lost (2026-01-04)
+- **UI-06**: Buzzer/intermission indicator colors verified working - bright yellow active state (2026-01-04)
 - **UI-01**: New Game dialog now sends `CREATE_GAME` command (fixed bug where `resetGameState()` was called immediately after, undoing the game creation)
 - **UI-02**: Clock dialog correctly sends `SET_CLOCK` command (was already wired, verified working)
 - Warmup uses configured minutes (period 0)
@@ -159,24 +157,16 @@ UI Client                    Backend                         Hardware
 
 ### To Complete Phase 3
 
-**Priority 1 - Verify Critical Fixes:**
+**All critical and high-priority issues verified fixed (2026-01-04):**
+- ✅ BZ-01: Clock sync working
+- ✅ BZ-02: Buzzer auto-reset working
+- ✅ UI-03: Disconnected dialog working
+- ✅ UI-06: Indicator colors working
 
-1. **Verify clock rendering (BZ-01)** - INVESTIGATION COMPLETE, NEEDS VERIFICATION
-   - Code review done: GameEngine.tick(), StateDiffer, broadcastStateChange(), applyPatch(), renderUpdate() - all logic appears correct
-   - Debug logging added to `GameEngine.tick()` and `GameWebSocketV2.broadcastStateChange()`
-   - Next: Run with DEBUG logging enabled and verify clock patches are broadcast and rendered
+**Remaining Polish (Low Priority):**
 
-2. **Verify buzzer auto-reset pipeline (BZ-02)** - FIXES APPLIED, NEEDS VERIFICATION
-   - Made `currentState` and `buzzerOnSince` volatile for thread visibility
-   - Added debug logging to `autoResetBuzzer()`
-   - Next: Run with DEBUG level and verify patches reach UI
-
-**Priority 2 - Polish:**
-
-3. Reconnect connection watchdog (UI-03)
-4. Fix indicator CSS (UI-06)
-5. Fix layout issues (UI-04, UI-05)
-6. Repair E2E tests (QA-01)
+1. Fix layout issues (UI-04, UI-05)
+2. Repair E2E tests (QA-01)
 
 ### To Complete Phase 4
 
