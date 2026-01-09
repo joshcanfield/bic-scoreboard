@@ -78,8 +78,12 @@ jobs:
         include:
           - arch: x86
             label: win32
+            gradle_opts: "-Xmx1g"
           - arch: x64
             label: win64
+            gradle_opts: "-Xmx2g"
+    env:
+      GRADLE_OPTS: ${{ matrix.gradle_opts }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
