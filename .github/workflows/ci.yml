@@ -17,7 +17,7 @@ jobs:
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: temurin
           java-version: '21'
 
       - name: Install Google Chrome
@@ -72,28 +72,15 @@ jobs:
   package-app-image:
     needs: build-and-test
     runs-on: windows-latest
-    strategy:
-      matrix:
-        arch: [x86, x64]
-        include:
-          - arch: x86
-            label: win32
-            gradle_opts: "-Xmx512m"
-          - arch: x64
-            label: win64
-            gradle_opts: "-Xmx2g"
-    env:
-      GRADLE_OPTS: ${{ matrix.gradle_opts }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 21 (${{ matrix.arch }})
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: liberica
+          distribution: temurin
           java-version: '21'
-          architecture: ${{ matrix.arch }}
 
       - name: Cache Gradle Node downloads
         uses: actions/cache@v4
@@ -117,10 +104,10 @@ jobs:
           $safe = $env:GITHUB_REF_NAME -replace '/', '-'
           echo "REF_SAFE=$safe" >> $env:GITHUB_ENV
 
-      - name: Upload app image artifact (${{ matrix.label }})
+      - name: Upload app image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: scoreboard-app-image-${{ matrix.label }}-${{ env.REF_SAFE }}-${{ github.sha }}
+          name: scoreboard-app-image-${{ env.REF_SAFE }}-${{ github.sha }}
           path: build/artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
