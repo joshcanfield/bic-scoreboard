@@ -653,4 +653,209 @@ class GameEngineTest {
             fail("Failed to close InputStream", e);
         }
     }
+
+    @Test
+    void testPauseClock() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        GameState playing = gameEngine.getCurrentState();
+        assertTrue(playing.clock().isRunning());
+
+        long pauseTime = initialTime + 5000L;
+        gameEngine.processCommand(new PauseClockCommand(), pauseTime);
+        GameState paused = gameEngine.getCurrentState();
+
+        assertFalse(paused.clock().isRunning());
+        assertEquals(GameStatus.PAUSED, paused.status());
+        verify(mockGameTimer, atLeastOnce()).stop();
+    }
+
+    @Test
+    void testPauseClockWhenNotRunning() {
+        createTestGame(initialTime);
+        GameState beforePause = gameEngine.getCurrentState();
+        assertFalse(beforePause.clock().isRunning());
+
+        gameEngine.processCommand(new PauseClockCommand(), initialTime);
+        GameState afterPause = gameEngine.getCurrentState();
+
+        // State should be unchanged when pausing an already stopped clock
+        assertEquals(beforePause.clock().timeRemainingMillis(), afterPause.clock().timeRemainingMillis());
+    }
+
+    @Test
+    void testAddPenaltyToHomeTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        AddPenaltyCommand cmd = new AddPenaltyCommand("home", 10, 10, 2);
+        gameEngine.processCommand(cmd, initialTime);
+
+        GameState state = gameEngine.getCurrentState();
+        assertEquals(1, state.home().penalties().size());
+        assertEquals(0, state.away().penalties().size());
+
+        Penalty penalty = state.home().penalties().get(0);
+        assertEquals(10, penalty.playerNumber());
+        assertEquals(120000L, penalty.durationMillis()); // 2 minutes
+    }
+
+    @Test
+    void testAddPenaltyToAwayTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        AddPenaltyCommand cmd = new AddPenaltyCommand("away", 15, 15, 5);
+        gameEngine.processCommand(cmd, initialTime);
+
+        GameState state = gameEngine.getCurrentState();
+        assertEquals(0, state.home().penalties().size());
+        assertEquals(1, state.away().penalties().size());
+
+        Penalty penalty = state.away().penalties().get(0);
+        assertEquals(15, penalty.playerNumber());
+        assertEquals(300000L, penalty.durationMillis()); // 5 minutes
+    }
+
+    @Test
+    void testAddShotToAwayTeam() {
+        createTestGame(initialTime);
+
+        gameEngine.processCommand(new AddShotCommand("away"), initialTime);
+        GameState state = gameEngine.getCurrentState();
+
+        assertEquals(0, state.home().shots());
+        assertEquals(1, state.away().shots());
+    }
+
+    @Test
+    void testUndoLastShotFromAwayTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new AddShotCommand("away"), initialTime);
+        assertEquals(1, gameEngine.getCurrentState().away().shots());
+
+        gameEngine.processCommand(new UndoLastShotCommand("away"), initialTime);
+        GameState state = gameEngine.getCurrentState();
+
+        assertEquals(0, state.away().shots());
+    }
+
+    @Test
+    void testUndoLastShotFromAwayDoesNotGoBelowZero() {
+        createTestGame(initialTime);
+        GameState before = gameEngine.getCurrentState();
+
+        gameEngine.processCommand(new UndoLastShotCommand("away"), initialTime);
+        GameState after = gameEngine.getCurrentState();
+
+        assertEquals(0, after.away().shots());
+        assertSame(before, after); // State unchanged
+    }
+
+    @Test
+    void testAddGoalToAwayTeam() {
+        createTestGame(initialTime);
+
+        AddGoalCommand cmd = new AddGoalCommand("away", 99, List.of(88), true);
+        gameEngine.processCommand(cmd, initialTime);
+
+        GameState state = gameEngine.getCurrentState();
+        assertEquals(0, state.home().goals().size());
+        assertEquals(1, state.away().goals().size());
+        assertEquals(1, state.away().getScore());
+
+        GoalEvent goal = state.away().goals().get(0);
+        assertEquals(99, goal.scorerNumber());
+        assertTrue(goal.isEmptyNet());
+    }
+
+    @Test
+    void testRemoveGoalFromAwayTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new AddGoalCommand("away", 99, List.of(), false), initialTime);
+
+        String goalId = gameEngine.getCurrentState().away().goals().get(0).goalId();
+        gameEngine.processCommand(new RemoveGoalCommand(goalId), initialTime);
+
+        GameState state = gameEngine.getCurrentState();
+        assertTrue(state.away().goals().isEmpty());
+        assertEquals(0, state.away().getScore());
+    }
+
+    @Test
+    void testPenaltyTimesUpdateDuringPlay() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Add a 2-minute penalty
+        gameEngine.processCommand(new AddPenaltyCommand("home", 10, 10, 2), initialTime);
+
+        GameState stateAfterPenalty = gameEngine.getCurrentState();
+        Penalty penaltyBefore = stateAfterPenalty.home().penalties().get(0);
+        long initialTimeRemaining = penaltyBefore.timeRemainingMillis();
+
+        // Simulate time passing
+        long tickTime = initialTime + 30000L; // 30 seconds later
+        gameEngine.processCommand(new TickCommand(), tickTime);
+
+        GameState state = gameEngine.getCurrentState();
+        Penalty penaltyAfter = state.home().penalties().get(0);
+
+        // Penalty time remaining should have decreased
+        assertTrue(penaltyAfter.timeRemainingMillis() < initialTimeRemaining,
+            "Penalty time remaining should decrease");
+    }
+
+    @Test
+    void testIntermissionTransition() {
+        // Create game with short period for testing
+        Map<String, Object> overrides = new HashMap<>();
+        overrides.put("periodLengthMinutes", 1);
+        overrides.put("intermissionLengthMinutes", 1);
+        overrides.put("periods", 3);
+        gameEngine.processCommand(new CreateGameCommand("USAH_ADULT_20", overrides), initialTime);
+
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Fast forward past period end
+        GameState playing = gameEngine.getCurrentState();
+        long periodEndTime = initialTime + playing.clock().timeRemainingMillis() + 1000L;
+        gameEngine.processCommand(new TickCommand(), periodEndTime);
+
+        GameState intermission = gameEngine.getCurrentState();
+        assertEquals(GameStatus.INTERMISSION, intermission.status());
+        assertTrue(intermission.buzzerOn(), "Buzzer should sound at end of period");
+    }
+
+    @Test
+    void testEndGameCommand() {
+        // Test that EndGameCommand properly ends the game from any state
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(2), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // End game while playing
+        gameEngine.processCommand(new EndGameCommand(), initialTime);
+
+        GameState finalState = gameEngine.getCurrentState();
+        assertEquals(GameStatus.GAME_OVER, finalState.status());
+        assertFalse(finalState.clock().isRunning());
+    }
+
+    @Test
+    void testResetGameWithNullConfig() {
+        // Test reset on a fresh engine with no game created
+        GameState initialState = gameEngine.getCurrentState();
+        gameEngine.processCommand(new ResetGameCommand(), initialTime);
+        GameState afterReset = gameEngine.getCurrentState();
+
+        assertEquals(GameStatus.PRE_GAME, afterReset.status());
+        assertEquals(0, afterReset.clock().timeRemainingMillis());
+    }
 }
