@@ -78,7 +78,7 @@ jobs:
         include:
           - arch: x86
             label: win32
-            gradle_opts: "-Xmx1g"
+            gradle_opts: "-Xmx512m"
           - arch: x64
             label: win64
             gradle_opts: "-Xmx2g"
