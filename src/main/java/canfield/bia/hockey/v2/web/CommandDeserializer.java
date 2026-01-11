@@ -28,6 +28,7 @@ public class CommandDeserializer extends JsonDeserializer<Command> {
             case "START_CLOCK" -> mapper.treeToValue(payloadNode, StartClockCommand.class);
             case "PAUSE_CLOCK" -> mapper.treeToValue(payloadNode, PauseClockCommand.class);
             case "ADD_PENALTY" -> mapper.treeToValue(payloadNode, AddPenaltyCommand.class);
+            case "RELEASE_PENALTY" -> mapper.treeToValue(payloadNode, ReleasePenaltyCommand.class);
             case "TICK" -> mapper.treeToValue(payloadNode, TickCommand.class);
             case "ADD_GOAL" -> mapper.treeToValue(payloadNode, AddGoalCommand.class);
             case "REMOVE_GOAL" -> mapper.treeToValue(payloadNode, RemoveGoalCommand.class);

@@ -9,6 +9,7 @@ public sealed interface Command permits
     StartClockCommand,
     PauseClockCommand,
     AddPenaltyCommand,
+    ReleasePenaltyCommand,
     TickCommand,
     AddGoalCommand,
     RemoveGoalCommand,

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Scoresheet</title>
+  <script type="module" src="/src/scoresheet.ts"></script>
+  <link href="lib/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+  <link href="css/scoresheet.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<div class="container-fluid scoresheet-container">
+  <!-- Header / Settings Bar (not printed) -->
+  <div class="scoresheet-toolbar no-print">
+    <div class="toolbar-left">
+      <div class="btn-group layout-toggle">
+        <button id="layout-summary-btn" class="btn btn-default btn-sm active">Summary</button>
+        <button id="layout-scoresheet-btn" class="btn btn-default btn-sm">Scoresheet</button>
+      </div>
+      <button id="print-btn" class="btn btn-primary btn-sm">Print</button>
+    </div>
+  </div>
+
+  <!-- Summary Layout (data entry, default view) -->
+  <div id="layout-summary" class="scoresheet-layout">
+    <header class="scoresheet-header">
+      <h1>Game Scoresheet</h1>
+      <div class="game-info">
+        <div class="info-row">
+          <label>Date:</label>
+          <input type="text" id="game-date" class="form-control input-sm" placeholder="MM/DD/YYYY"/>
+          <label>Arena:</label>
+          <input type="text" id="game-arena" class="form-control input-sm" placeholder="Bremerton Ice Arena"/>
+        </div>
+        <div class="info-row">
+          <label>Home Team:</label>
+          <input type="text" id="home-team-name" class="form-control input-sm" placeholder="Home"/>
+          <label>Away Team:</label>
+          <input type="text" id="away-team-name" class="form-control input-sm" placeholder="Away"/>
+        </div>
+      </div>
+    </header>
+
+    <section class="final-score">
+      <h2>Final Score</h2>
+      <div class="score-display">
+        <div class="team-score home">
+          <span class="team-label" data-team="home">Home</span>
+          <span id="home-final-score" class="score-value">0</span>
+        </div>
+        <div class="score-divider">-</div>
+        <div class="team-score away">
+          <span class="team-label" data-team="away">Away</span>
+          <span id="away-final-score" class="score-value">0</span>
+        </div>
+      </div>
+      <div class="shots-display">
+        <span>Shots: <span data-team="home">Home</span> <span id="home-shots">0</span> - <span id="away-shots">0</span> <span data-team="away">Away</span></span>
+      </div>
+    </section>
+
+    <section class="scoring-summary">
+      <h2>Scoring Summary</h2>
+      <table class="table table-bordered table-condensed">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Time</th>
+            <th>Team</th>
+            <th>Scorer</th>
+            <th>1st Assist</th>
+            <th>2nd Assist</th>
+          </tr>
+        </thead>
+        <tbody id="goals-table-body">
+          <tr class="placeholder"><td colspan="6">No goals recorded</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="penalty-summary">
+      <h2>Penalty Summary</h2>
+      <table class="table table-bordered table-condensed">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Team</th>
+            <th>Player</th>
+            <th>Infraction</th>
+            <th>Minutes</th>
+            <th>Off</th>
+            <th>On</th>
+          </tr>
+        </thead>
+        <tbody id="penalties-table-body">
+          <tr class="placeholder"><td colspan="7">No penalties recorded</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="officials-section">
+      <h2>Officials</h2>
+      <div class="officials-grid">
+        <div class="official-field">
+          <label>Referee:</label>
+          <input type="text" id="referee" class="form-control input-sm"/>
+        </div>
+        <div class="official-field">
+          <label>Linesman 1:</label>
+          <input type="text" id="linesman1" class="form-control input-sm"/>
+        </div>
+        <div class="official-field">
+          <label>Linesman 2:</label>
+          <input type="text" id="linesman2" class="form-control input-sm"/>
+        </div>
+        <div class="official-field">
+          <label>Scorekeeper:</label>
+          <input type="text" id="scorekeeper" class="form-control input-sm"/>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes-section">
+      <h2>Game Notes</h2>
+      <textarea id="game-notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+    </section>
+  </div>
+
+  <!-- Scoresheet Layout (USA Hockey Style, hidden by default) -->
+  <div id="layout-scoresheet" class="scoresheet-layout" style="display:none;">
+    <!-- Header -->
+    <div class="usah-header">
+      <div class="usah-game-info">
+        <div class="info-row">
+          <span class="field"><span class="lbl">DATE:</span><span class="val" data-field="game-date"></span></span>
+          <span class="field"><span class="lbl">TIME:</span><span class="val" data-field="game-time"></span></span>
+          <span class="field"><span class="lbl">ARENA:</span><span class="val" data-field="game-arena"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scoring by Periods -->
+    <div class="usah-period-scoring">
+      <table class="period-table">
+        <thead>
+          <tr>
+            <th class="team-col">SCORING BY PERIODS</th>
+            <th>1</th>
+            <th>2</th>
+            <th>3</th>
+            <th>OT</th>
+            <th>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="team-name-cell"><span class="lbl">VISITOR:</span> <span data-field="away-team-name">Away</span></td>
+            <td id="away-p1">-</td>
+            <td id="away-p2">-</td>
+            <td id="away-p3">-</td>
+            <td id="away-ot">-</td>
+            <td id="traditional-away-score" class="total-cell">0</td>
+          </tr>
+          <tr>
+            <td class="team-name-cell"><span class="lbl">HOME:</span> <span data-field="home-team-name">Home</span></td>
+            <td id="home-p1">-</td>
+            <td id="home-p2">-</td>
+            <td id="home-p3">-</td>
+            <td id="home-ot">-</td>
+            <td id="traditional-home-score" class="total-cell">0</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="shots-summary">
+        <span class="lbl">SHOTS ON GOAL:</span>
+        <span>VISITOR: <span id="traditional-away-shots">0</span></span>
+        <span>HOME: <span id="traditional-home-shots">0</span></span>
+      </div>
+    </div>
+
+    <!-- Two-column layout: Home and Visitor -->
+    <div class="usah-two-col">
+      <!-- Visitor Column -->
+      <div class="team-column visitor">
+        <div class="col-header">VISITOR</div>
+        <div class="team-name-box"><span data-field="away-team-name">Away Team</span></div>
+        <div class="section-label">PENALTIES</div>
+        <table class="penalty-table">
+          <thead>
+            <tr><th>PER</th><th>NO.</th><th>INFRACTION</th><th>MIN</th><th>OFF</th><th>ON</th></tr>
+          </thead>
+          <tbody id="away-penalties-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Center: Scoring -->
+      <div class="center-column">
+        <div class="section-label">SCORING</div>
+        <table class="scoring-table">
+          <thead>
+            <tr><th>PER</th><th>TIME</th><th>TEAM</th><th>GOAL</th><th>ASST</th><th>ASST</th><th>TYPE</th></tr>
+          </thead>
+          <tbody id="traditional-goals-body"></tbody>
+        </table>
+        <div class="goal-types">EV=Even Strength PP=Power Play SH=Shorthanded EN=Empty Net</div>
+      </div>
+
+      <!-- Home Column -->
+      <div class="team-column home">
+        <div class="col-header">HOME</div>
+        <div class="team-name-box"><span data-field="home-team-name">Home Team</span></div>
+        <div class="section-label">PENALTIES</div>
+        <table class="penalty-table">
+          <thead>
+            <tr><th>PER</th><th>NO.</th><th>INFRACTION</th><th>MIN</th><th>OFF</th><th>ON</th></tr>
+          </thead>
+          <tbody id="home-penalties-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Officials -->
+    <div class="usah-officials">
+      <div class="officials-row">
+        <span class="field"><span class="lbl">REFEREE:</span><span class="val" data-field="referee"></span></span>
+        <span class="field"><span class="lbl">LINESMAN:</span><span class="val" data-field="linesman1"></span></span>
+        <span class="field"><span class="lbl">LINESMAN:</span><span class="val" data-field="linesman2"></span></span>
+      </div>
+      <div class="officials-row">
+        <span class="field"><span class="lbl">SCOREKEEPER:</span><span class="val" data-field="scorekeeper"></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

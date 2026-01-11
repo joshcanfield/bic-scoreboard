@@ -36,8 +36,8 @@ class StateDifferTest {
             GameStatus.PRE_GAME,
             1,
             new ClockState(defaultConfig.periodLengthMillis(), false, 0L),
-            new TeamState(Collections.emptyList(), 0, Collections.emptyList()),
-            new TeamState(Collections.emptyList(), 0, Collections.emptyList()),
+            new TeamState(Collections.emptyList(), 0, Collections.emptyList(), Collections.emptyList()),
+            new TeamState(Collections.emptyList(), 0, Collections.emptyList(), Collections.emptyList()),
             false,
             Collections.emptyList()
         );
@@ -119,7 +119,7 @@ class StateDifferTest {
     @Test
     void testHomeShotsChange() {
         GameState oldState = createInitialState();
-        TeamState newHome = new TeamState(oldState.home().goals(), 1, oldState.home().penalties()); // Changed
+        TeamState newHome = new TeamState(oldState.home().goals(), 1, oldState.home().penalties(), oldState.home().penaltyHistory()); // Changed
         GameState newState = new GameState(
             oldState.gameId(),
             oldState.config(),
@@ -142,7 +142,7 @@ class StateDifferTest {
     void testHomeGoalsChange() {
         GameState oldState = createInitialState();
         GoalEvent newGoal = new GoalEvent("goal-1", "home", 1, 1190000L, 10, Collections.emptyList(), false);
-        TeamState newHome = new TeamState(List.of(newGoal), oldState.home().shots(), oldState.home().penalties()); // Changed
+        TeamState newHome = new TeamState(List.of(newGoal), oldState.home().shots(), oldState.home().penalties(), oldState.home().penaltyHistory()); // Changed
         GameState newState = new GameState(
             oldState.gameId(),
             oldState.config(),
@@ -165,8 +165,8 @@ class StateDifferTest {
     @Test
     void testAwayPenaltiesChange() {
         GameState oldState = createInitialState();
-        Penalty newPenalty = new Penalty("pen-1", "away", 20, 20, 120000L, 120000L, 0L, 1);
-        TeamState newAway = new TeamState(oldState.away().goals(), oldState.away().shots(), List.of(newPenalty)); // Changed
+        Penalty newPenalty = new Penalty("pen-1", "away", 20, 20, 120000L, 120000L, 0L, 1, null, 1200000L, null, PenaltyStatus.ACTIVE);
+        TeamState newAway = new TeamState(oldState.away().goals(), oldState.away().shots(), List.of(newPenalty), oldState.away().penaltyHistory()); // Changed
         GameState newState = new GameState(
             oldState.gameId(),
             oldState.config(),

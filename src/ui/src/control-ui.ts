@@ -676,6 +676,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const goalDialog = initGoalDialog(sendCommand, () => ({
     currentPeriod: currentGameState?.period || 0,
     currentTime: currentGameState?.clock.timeRemainingMillis || 0,
+    homePenalties: currentGameState?.home.penalties || [],
+    awayPenalties: currentGameState?.away.penalties || [],
   }));
   initClockSettingsDialog(() => currentGameState?.clock.timeRemainingMillis || 0);
   initPenaltyDialog(sendCommand, () => ({

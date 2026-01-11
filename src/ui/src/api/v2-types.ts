@@ -13,6 +13,26 @@ export type GameStatus =
 
 export type ClockType = 'STOP_TIME' | 'RUNNING_TIME';
 
+export type InfractionType =
+  | 'TRIPPING'
+  | 'HOOKING'
+  | 'HOLDING'
+  | 'SLASHING'
+  | 'INTERFERENCE'
+  | 'ROUGHING'
+  | 'HIGH_STICKING'
+  | 'CROSS_CHECKING'
+  | 'BOARDING'
+  | 'DELAY_OF_GAME'
+  | 'OTHER';
+
+export type PenaltyStatus = 'ACTIVE' | 'EXPIRED' | 'RELEASED';
+
+export interface InfractionInfo {
+  type: InfractionType;
+  customDescription?: string;
+}
+
 export interface ClockState {
   timeRemainingMillis: number;
   isRunning: boolean;
@@ -38,12 +58,18 @@ export interface Penalty {
   timeRemainingMillis: number;
   startTimeWallClock: number;
   period: number; // Period when penalty was issued
+  // New fields for scoresheet support:
+  infraction?: InfractionInfo;
+  offTimeGameClockMillis?: number;
+  onTimeGameClockMillis?: number | null;
+  status?: PenaltyStatus;
 }
 
 export interface TeamState {
   goals: GoalEvent[];
   shots: number;
   penalties: Penalty[];
+  penaltyHistory?: Penalty[]; // All penalties including expired/released (for scoresheet)
 }
 
 export interface GameConfig {

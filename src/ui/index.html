@@ -247,7 +247,7 @@
             </div>
           </div>
           <div class="penalty-time form-group">
-            <label for="add-penalty-time" class="col-lg-6 control-label">Time</label>
+            <label for="add-penalty-time" class="col-lg-6 control-label">Penalty Minutes</label>
             <div class="col-lg-3">
               <input id="add-penalty-time" class="form-control input-sm" value="2:00" type="text" size="1"/>
             </div>
@@ -260,9 +260,34 @@
             </div>
           </div>
           <div class="penalty-clock form-group">
-            <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off Ice</label>
-            <div class="col-lg-3">
-              <input id="add-penalty-off_ice" class="form-control input-sm"/>
+            <label for="add-penalty-off_ice" class="col-lg-6 control-label">Off</label>
+            <div class="col-lg-6">
+              <input id="add-penalty-off_ice" class="form-control input-sm" style="display:inline-block; width:auto;"/>
+              <a href="#" class="btn btn-default btn-xs" id="add-penalty-use-clock" style="margin-left:8px;">Use Clock Time</a>
+            </div>
+          </div>
+          <div class="penalty-infraction form-group">
+            <label for="add-penalty-infraction" class="col-lg-6 control-label">Infraction</label>
+            <div class="col-lg-6">
+              <select id="add-penalty-infraction" class="form-control input-sm">
+                <option value="TRIPPING">Tripping</option>
+                <option value="HOOKING">Hooking</option>
+                <option value="HOLDING">Holding</option>
+                <option value="SLASHING">Slashing</option>
+                <option value="INTERFERENCE">Interference</option>
+                <option value="ROUGHING">Roughing</option>
+                <option value="HIGH_STICKING">High-sticking</option>
+                <option value="CROSS_CHECKING">Cross-checking</option>
+                <option value="BOARDING">Boarding</option>
+                <option value="DELAY_OF_GAME">Delay of Game</option>
+                <option value="OTHER">Other...</option>
+              </select>
+            </div>
+          </div>
+          <div class="penalty-other form-group" id="add-penalty-other-group" style="display:none;">
+            <label for="add-penalty-other" class="col-lg-6 control-label">Description</label>
+            <div class="col-lg-6">
+              <input id="add-penalty-other" class="form-control input-sm" type="text" placeholder="Infraction description"/>
             </div>
           </div>
         </form>
@@ -304,15 +329,30 @@
             </div>
           </div>
           <div class="form-group">
-            <label for="add-goal-player" class="col-lg-5 control-label">Scorer #</label>
+            <label for="add-goal-player" class="col-lg-5 control-label">Scorer # <small class="text-muted">(optional)</small></label>
             <div class="col-lg-4">
-              <input id="add-goal-player" class="form-control input-sm" type="text" maxlength="3" autocomplete="off"/>
+              <input id="add-goal-player" class="form-control input-sm" type="text" maxlength="3" autocomplete="off" placeholder="#"/>
             </div>
           </div>
           <div class="form-group">
-            <label for="add-goal-assist" class="col-lg-5 control-label">Assist # (optional)</label>
+            <label for="add-goal-assist1" class="col-lg-5 control-label">1st Assist # <small class="text-muted">(optional)</small></label>
             <div class="col-lg-4">
-              <input id="add-goal-assist" class="form-control input-sm" type="text" maxlength="3" autocomplete="off"/>
+              <input id="add-goal-assist1" class="form-control input-sm" type="text" maxlength="3" autocomplete="off" placeholder="#"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="add-goal-assist2" class="col-lg-5 control-label">2nd Assist # <small class="text-muted">(optional)</small></label>
+            <div class="col-lg-4">
+              <input id="add-goal-assist2" class="form-control input-sm" type="text" maxlength="3" autocomplete="off" placeholder="#"/>
+            </div>
+          </div>
+          <div class="form-group" id="add-goal-penalty-release-group" style="display:none;">
+            <label for="add-goal-release-penalty" class="col-lg-5 control-label">Release Penalty</label>
+            <div class="col-lg-7">
+              <select id="add-goal-release-penalty" class="form-control input-sm">
+                <option value="">-- None --</option>
+              </select>
+              <small class="help-block">Select a 2-minute minor to release (power play goal)</small>
             </div>
           </div>
         </form>
