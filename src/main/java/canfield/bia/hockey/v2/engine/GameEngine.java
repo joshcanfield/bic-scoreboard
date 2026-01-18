@@ -49,9 +49,30 @@ public class GameEngine {
         this.currentState = new GameState(); // Initialize with a default empty state
     }
 
-    // Public method to get the current state
-    public GameState getCurrentState() {
+    // Public method to get the current state (synchronized for consistent reads)
+    public synchronized GameState getCurrentState() {
         return currentState;
+    }
+
+    // Public method to get available serial ports
+    public List<String> getPossiblePorts() {
+        return hardwareOutputAdapter.getPossiblePorts();
+    }
+
+    // Public method to get current port name
+    public String getCurrentPortName() {
+        return hardwareOutputAdapter.getPortName();
+    }
+
+    /**
+     * Shuts down the GameEngine, releasing all resources.
+     * Should be called during application shutdown.
+     */
+    public void shutdown() {
+        log.info("Shutting down GameEngine");
+        gameTimer.stop();
+        buzzerScheduler.shutdownNow();
+        hardwareOutputAdapter.stop();
     }
 
     // Internal method to handle tick commands from the GameTimer
@@ -59,7 +80,11 @@ public class GameEngine {
         processCommand(new TickCommand(), System.currentTimeMillis());
     }
 
-    public GameState processCommand(Command command, long currentTimeMillis) {
+    public synchronized GameState processCommand(Command command, long currentTimeMillis) {
+        if (command == null) {
+            log.warn("Received null command, ignoring");
+            return this.currentState;
+        }
         GameState oldState = this.currentState; // Capture old state for potential diffing later
 
         if (command instanceof CreateGameCommand createGameCommand) {
@@ -94,6 +119,33 @@ public class GameEngine {
             this.currentState = toggleBuzzerAt(this.currentState, currentTimeMillis);
         } else if (command instanceof ReleasePenaltyCommand releasePenaltyCommand) {
             this.currentState = releasePenalty(this.currentState, releasePenaltyCommand, currentTimeMillis);
+        } else if (command instanceof CancelPenaltyCommand cancelPenaltyCommand) {
+            this.currentState = cancelPenalty(this.currentState, cancelPenaltyCommand);
+        } else if (command instanceof StartAdapterCommand startAdapterCommand) {
+            String requestedPort = startAdapterCommand.portName();
+            if (requestedPort != null) {
+                // Validate port name against available ports
+                List<String> validPorts = hardwareOutputAdapter.getPossiblePorts();
+                if (!validPorts.contains(requestedPort)) {
+                    log.warn("Rejected invalid port name: {} (valid ports: {})", requestedPort, validPorts);
+                    return this.currentState;
+                }
+                hardwareOutputAdapter.setPortName(requestedPort);
+                log.info("Starting hardware adapter on port: {}", requestedPort);
+            } else {
+                log.info("Starting hardware adapter on current port: {}", hardwareOutputAdapter.getPortName());
+            }
+            try {
+                hardwareOutputAdapter.start();
+            } catch (Exception e) {
+                // Port may have become unavailable between validation and start (TOCTOU)
+                log.warn("Failed to start hardware adapter: {}", e.getMessage());
+            }
+            // No state change
+        } else if (command instanceof StopAdapterCommand) {
+            log.info("Stopping hardware adapter");
+            hardwareOutputAdapter.stop();
+            // No state change
         }
         // Only update hardware if the state actually changed
         if (!oldState.equals(this.currentState)) {
@@ -441,6 +493,57 @@ public class GameEngine {
             state.buzzerOn(),
             state.eventHistory()
         );
+    }
+
+    private GameState cancelPenalty(GameState state, CancelPenaltyCommand command) {
+        String penaltyId = command.penaltyId();
+
+        // Check home team - remove from both active penalties and history
+        List<Penalty> homePenalties = state.home().penalties();
+        List<Penalty> newHomePenalties = homePenalties.stream()
+            .filter(p -> !p.penaltyId().equals(penaltyId))
+            .collect(java.util.stream.Collectors.toList());
+        List<Penalty> homeHistory = state.home().penaltyHistory().stream()
+            .filter(p -> !p.penaltyId().equals(penaltyId))
+            .collect(java.util.stream.Collectors.toList());
+
+        if (newHomePenalties.size() < homePenalties.size() || homeHistory.size() < state.home().penaltyHistory().size()) {
+            // Penalty found and removed from home team
+            TeamState newHomeState = new TeamState(
+                state.home().goals(),
+                state.home().shots(),
+                Collections.unmodifiableList(newHomePenalties),
+                Collections.unmodifiableList(homeHistory)
+            );
+            return new GameState(state.gameId(), state.config(), state.status(),
+                state.period(), state.clock(), newHomeState, state.away(),
+                state.buzzerOn(), state.eventHistory());
+        }
+
+        // Check away team - remove from both active penalties and history
+        List<Penalty> awayPenalties = state.away().penalties();
+        List<Penalty> newAwayPenalties = awayPenalties.stream()
+            .filter(p -> !p.penaltyId().equals(penaltyId))
+            .collect(java.util.stream.Collectors.toList());
+        List<Penalty> awayHistory = state.away().penaltyHistory().stream()
+            .filter(p -> !p.penaltyId().equals(penaltyId))
+            .collect(java.util.stream.Collectors.toList());
+
+        if (newAwayPenalties.size() < awayPenalties.size() || awayHistory.size() < state.away().penaltyHistory().size()) {
+            // Penalty found and removed from away team
+            TeamState newAwayState = new TeamState(
+                state.away().goals(),
+                state.away().shots(),
+                Collections.unmodifiableList(newAwayPenalties),
+                Collections.unmodifiableList(awayHistory)
+            );
+            return new GameState(state.gameId(), state.config(), state.status(),
+                state.period(), state.clock(), state.home(), newAwayState,
+                state.buzzerOn(), state.eventHistory());
+        }
+
+        // Penalty not found, return unchanged
+        return state;
     }
 
     private GameState addPenalty(GameState state, AddPenaltyCommand command) {
@@ -900,7 +1003,8 @@ public class GameEngine {
                 baseConfig.intermissionLengthMinutes(),
                 baseConfig.periods(),
                 baseConfig.clockType(),
-                baseConfig.shiftLengthSeconds()
+                baseConfig.shiftLengthSeconds(),
+                baseConfig.showShotsInPenaltySlot()
             );
         }
 
@@ -912,6 +1016,10 @@ public class GameEngine {
         Integer shiftLengthSeconds = overrides.containsKey("shiftLengthSeconds")
             ? coerceToNullableInt(overrides.get("shiftLengthSeconds"))
             : baseConfig.shiftLengthSeconds();
+        boolean showShotsInPenaltySlot = coerceToBoolean(
+            overrides.get("showShotsInPenaltySlot"),
+            baseConfig.showShotsInPenaltySlot()
+        );
 
         return new GameConfig(
             templateId,
@@ -920,7 +1028,8 @@ public class GameEngine {
             intermissionMinutes,
             periods,
             clockType,
-            shiftLengthSeconds
+            shiftLengthSeconds,
+            showShotsInPenaltySlot
         );
     }
 
@@ -964,6 +1073,16 @@ public class GameEngine {
         } catch (IllegalArgumentException ex) {
             return fallback;
         }
+    }
+
+    private boolean coerceToBoolean(Object candidate, boolean fallback) {
+        if (candidate == null) {
+            return fallback;
+        }
+        if (candidate instanceof Boolean bool) {
+            return bool;
+        }
+        return Boolean.parseBoolean(candidate.toString());
     }
 
     private long resolvePeriodDuration(GameConfig config, int period) {

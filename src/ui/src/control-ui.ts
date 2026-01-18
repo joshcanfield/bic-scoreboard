@@ -443,6 +443,135 @@ const setConnectMessage = (msg: string) => {
   setPortMessage($('#connect-message'), msg || '');
 };
 
+// Port stepper state
+let portStepper = { ports: [] as string[], index: 0, active: false };
+let notOnCountdownTimer: ReturnType<typeof setInterval> | null = null;
+
+// Render port pills (visual indicators)
+const renderPortPills = (activeIndex = 0) => {
+  const wrap = $('#connect-portNames');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  (portStepper.ports || []).forEach((name, i) => {
+    const pill = document.createElement('span');
+    pill.className = 'port-pill' + (i === activeIndex ? ' active' : '') + (i < activeIndex ? ' tried' : '');
+    pill.textContent = name;
+    wrap.appendChild(pill);
+  });
+};
+
+// Start countdown on "Not On" button
+const startNotOnCountdown = (btn: HTMLButtonElement | null, seconds = 5, nextName = '') => {
+  if (!btn) return { cancel: () => {} };
+  if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+  let remaining = seconds;
+  btn.disabled = true;
+  btn.textContent = `Waiting (${remaining})`;
+  notOnCountdownTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(notOnCountdownTimer!);
+      notOnCountdownTimer = null;
+      btn.disabled = false;
+      btn.textContent = nextName ? `Try ${nextName}` : 'Not On';
+    } else {
+      btn.textContent = `Waiting (${remaining})`;
+    }
+  }, 1000);
+  return {
+    cancel: () => {
+      if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+      btn.disabled = false;
+      btn.textContent = 'Not On';
+    }
+  };
+};
+
+// Try port at specific index
+const tryPortAtIndex = async (i: number) => {
+  const notOnBtn = $('#not-on') as HTMLButtonElement | null;
+  const confirmBtn = $('#confirm-on');
+  const retryBtn = $('#retry-ports');
+  const giveUpBtn = $('#give-up');
+  const titleEl = $('#connect-title');
+  const name = portStepper.ports[i];
+
+  if (!name) {
+    // Exhausted all ports
+    setConnectMessage('No more ports to try. Check USB/power and cables.');
+    portStepper.active = false;
+    websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} });
+    setPowerUI('off');
+    renderPortPills(portStepper.ports.length); // mark all as tried
+    if (notOnBtn) { notOnBtn.style.display = 'none'; notOnBtn.disabled = false; notOnBtn.textContent = 'Not On'; }
+    if (retryBtn) retryBtn.style.display = '';
+    if (giveUpBtn) giveUpBtn.style.display = '';
+    return;
+  }
+
+  renderPortPills(i);
+  if (titleEl) titleEl.textContent = 'Look up, is the Scoreboard on?';
+  setConnectMessage(`Trying ${name}… Did the scoreboard turn on?`);
+
+  // Send START_ADAPTER with this port
+  websocketClient.sendCommand({ type: 'START_ADAPTER', payload: { portName: name } });
+
+  // Show confirmation buttons
+  if (notOnBtn) {
+    notOnBtn.style.display = '';
+    if (retryBtn) retryBtn.style.display = 'none';
+    if (giveUpBtn) giveUpBtn.style.display = 'none';
+    if (confirmBtn) {
+      (confirmBtn as HTMLElement).style.display = '';
+      confirmBtn.textContent = "It's On!";
+      confirmBtn.className = 'btn btn-success';
+    }
+    const nextName = portStepper.ports[i + 1] || '';
+    notOnCountdownHandle = startNotOnCountdown(notOnBtn, 5, nextName);
+  }
+};
+
+// Begin stepping through ports
+const beginPortStepper = async (ports: string[], currentPort: string) => {
+  portStepper.active = true;
+  // Order: try currentPort first if present
+  const ordered = [...ports];
+  if (currentPort) {
+    const idx = ordered.indexOf(currentPort);
+    if (idx > 0) { ordered.splice(idx, 1); ordered.unshift(currentPort); }
+  }
+  portStepper.ports = ordered;
+  portStepper.index = 0;
+  resetConnectModalUI();
+  Modals.showById('#scoreboard-connect');
+  await tryPortAtIndex(portStepper.index);
+};
+
+// Reset modal UI state
+const resetConnectModalUI = () => {
+  const notOnBtn = $('#not-on') as HTMLButtonElement | null;
+  const confirmBtn = $('#confirm-on');
+  const retryBtn = $('#retry-ports');
+  const giveUpBtn = $('#give-up');
+  const titleEl = $('#connect-title');
+
+  if (notOnCountdownTimer) { clearInterval(notOnCountdownTimer); notOnCountdownTimer = null; }
+  setConnectMessage('');
+  if (retryBtn) retryBtn.style.display = 'none';
+  if (giveUpBtn) giveUpBtn.style.display = 'none';
+  if (confirmBtn) { (confirmBtn as HTMLElement).style.display = ''; confirmBtn.textContent = "It's On!"; confirmBtn.className = 'btn btn-success'; }
+  if (notOnBtn) { notOnBtn.style.display = 'none'; notOnBtn.disabled = false; notOnBtn.textContent = 'Not On'; }
+  if (titleEl) titleEl.textContent = 'Look up, is the Scoreboard on?';
+  renderPortPills(0);
+};
+
+// Reset modal to closed state
+const resetConnectModal = () => {
+  resetConnectModalUI();
+  portStepper.active = false;
+  portStepper.index = 0;
+};
+
 // Expose for legacy compatibility
 (window as any).updatePowerFromServer = (on: boolean) => {
   // If server reports a boolean, reflect it unless we're mid-assumed confirmation
@@ -542,7 +671,7 @@ const initEvents = (goalDialog: GoalDialogController) => {
       // Turn off
       setPowerUI('connecting', 'Turning off…');
       try {
-        websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+        websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} });
       } catch (e) {
         console.error("Error sending STOP_ADAPTER command:", e);
       }
@@ -550,29 +679,48 @@ const initEvents = (goalDialog: GoalDialogController) => {
       setTimeout(() => setPowerUI('off'), 500);
       return;
     }
-    // Turn on flow
-    setPowerUI('connecting', 'Opening port…');
-    // In the new architecture, the server manages port selection.
-    // We just send a command to start the adapter.
-    if (currentGameState?.config.templateId) {
-      setPowerUI('assumed');
-      websocketClient.sendCommand({ type: 'START_ADAPTER', payload: {} }); // New command
-    } else {
+
+    // Turn on flow - first check if game is initialized
+    if (!currentGameState?.config?.templateId) {
       setPowerUI('error', 'Game not initialized. Create a game first.');
+      resetConnectModalUI();
       Modals.showById('#scoreboard-connect');
       setConnectMessage('Game not initialized. Create a game first.');
+      return;
+    }
+
+    // Request available ports and begin stepper workflow
+    setPowerUI('connecting', 'Fetching ports…');
+    try {
+      const portsData = await websocketClient.requestPorts();
+
+      if (portsData.ports.length > 0) {
+        setPowerUI('assumed');
+        await beginPortStepper(portsData.ports, portsData.currentPort);
+      } else {
+        setPowerUI('error', 'No serial ports found');
+        resetConnectModalUI();
+        Modals.showById('#scoreboard-connect');
+        setConnectMessage('No serial ports detected. Check USB/power and try again.');
+      }
+    } catch (e) {
+      console.error("Error fetching ports:", e);
+      setPowerUI('error', 'Failed to fetch ports');
     }
   });
 
   // Confirmation from modal
   on(document, 'click', '#confirm-on', () => {
     setPowerUI('on');
+    // Reset modal to port selection state for next time
+    resetConnectModal();
+    Modals.hideById('#scoreboard-connect');
   });
 
   on(document, 'click', '#not-on', async () => {
     // User indicates the board didn't turn on
     try {
-      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} });
     } catch (e) {
       console.error("Error sending STOP_ADAPTER command:", e);
     }
@@ -580,48 +728,51 @@ const initEvents = (goalDialog: GoalDialogController) => {
       notOnCountdownHandle.cancel();
       notOnCountdownHandle = null;
     }
-    const modal = $('#scoreboard-connect');
-    if (modal) Modals.hide(modal);
-    setPowerUI('off');
+
+    if (portStepper.active) {
+      const isLast = portStepper.index >= (portStepper.ports.length - 1);
+      if (!isLast) {
+        // Try next port
+        portStepper.index += 1;
+        await tryPortAtIndex(portStepper.index);
+      } else {
+        // Last port exhausted - show Retry + Give Up
+        await tryPortAtIndex(portStepper.index + 1); // Will handle "exhausted" case
+      }
+    } else {
+      resetConnectModal();
+      Modals.hideById('#scoreboard-connect');
+      setPowerUI('off');
+    }
   });
 
   // Retry through ports again
   on(document, 'click', '#retry-ports', async () => {
-    const notOnBtn = $('#not-on') as HTMLButtonElement | null;
-    const confirmBtn = $('#confirm-on');
-    const retryBtn = $('#retry-ports');
-    const giveUpBtn = $('#giveUpButton');
-    if (retryBtn) retryBtn.style.display = 'none';
-    if (giveUpBtn) giveUpBtn.style.display = 'none';
-    if (notOnBtn) {
-      notOnBtn.style.display = '';
-      notOnBtn.disabled = true;
-    }
-    if (confirmBtn) {
-      confirmBtn.style.display = '';
-      confirmBtn.textContent = "It's On!";
-      confirmBtn.className = 'btn btn-success';
-    }
-    // In the new architecture, the server manages port selection.
-    // We just send a command to start the adapter.
+    // Refresh ports and restart stepper
     setPowerUI('assumed');
     try {
-      websocketClient.sendCommand({ type: 'START_ADAPTER', payload: {} }); // New command
+      const portsData = await websocketClient.requestPorts();
+      if (portsData.ports.length > 0) {
+        await beginPortStepper(portsData.ports, portsData.currentPort);
+      } else {
+        setConnectMessage('No serial ports detected. Check USB/power and try again.');
+      }
     } catch (e) {
-      console.error("Error sending START_ADAPTER command:", e);
+      console.error("Error fetching ports:", e);
+      setConnectMessage('Failed to fetch ports.');
     }
   });
 
   // Give up: close port and dialog, reflect Off
   on(document, 'click', '#give-up', () => {
-    const modal = $('#scoreboard-connect');
     try {
-      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} }); // New command
+      websocketClient.sendCommand({ type: 'STOP_ADAPTER', payload: {} });
     } catch (e) {
       console.error("Error sending STOP_ADAPTER command:", e);
     }
     setPowerUI('off');
-    if (modal) Modals.hide(modal);
+    resetConnectModal();
+    Modals.hideById('#scoreboard-connect');
   });
 
   // Initialize power UI

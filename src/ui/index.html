@@ -409,7 +409,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-        <h4 class="modal-title">Look up, is the Scoreboard on?</h4>
+        <h4 class="modal-title" id="connect-title">Look up, is the Scoreboard on?</h4>
       </div>
       <div class="modal-body">
         <div id="connect-portNames"></div>
@@ -422,7 +422,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="not-on" class="btn btn-default">Not On</button>
+        <button type="button" id="not-on" class="btn btn-default" style="display:none">Not On</button>
         <button type="button" id="retry-ports" class="btn btn-primary" style="display:none">Retry</button>
         <button type="button" id="give-up" class="btn btn-danger" style="display:none">Give Up</button>
         <button type="button" id="confirm-on" class="btn btn-success" data-dismiss="modal">It's On!</button>
@@ -542,6 +542,13 @@
                     <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="10">10</a>
                     <span> | </span>
                     <a href="#" data-action="set-value" data-target="#intermission-minutes" data-value="15">15</a>
+                  </div>
+                </div>
+                <div class="period-form form-group">
+                  <label for="show-shots-penalty" class="col-md-6 col-lg-6 control-label">Show shots in penalty slot</label>
+                  <div class="col-md-6 col-lg-6">
+                    <input id="show-shots-penalty" type="checkbox" />
+                    <span class="help-block" style="display:inline;margin-left:8px">Experimental: display shots when &lt;2 penalties</span>
                   </div>
                 </div>
               </form>

@@ -3,6 +3,8 @@ package canfield.bia.hockey.v2.engine;
 import canfield.bia.hockey.v2.domain.GameConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +17,8 @@ import java.util.Optional;
  * An implementation of TemplateRepository that loads game configurations from a JSON file.
  */
 public class JsonTemplateRepository implements TemplateRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(JsonTemplateRepository.class);
 
     private final Map<String, GameConfig> templates;
 
@@ -30,9 +34,8 @@ public class JsonTemplateRepository implements TemplateRepository {
                 throw new IOException("Resource not found: " + resourcePath);
             }
             loadedTemplates = mapper.readValue(is, new TypeReference<Map<String, GameConfig>>() {});
-        } catch (Exception e) { // Catch generic Exception to see all errors
-            System.err.println("Error loading templates from " + resourcePath + ": " + e.getMessage());
-            e.printStackTrace(); // Print full stack trace for debugging
+        } catch (Exception e) {
+            log.error("Error loading templates from {}: {}", resourcePath, e.getMessage(), e);
         }
         Map<String, GameConfig> normalized = new HashMap<>();
         for (Map.Entry<String, GameConfig> entry : loadedTemplates.entrySet()) {
@@ -44,7 +47,8 @@ public class JsonTemplateRepository implements TemplateRepository {
                 cfg.intermissionLengthMinutes(),
                 cfg.periods(),
                 cfg.clockType(),
-                cfg.shiftLengthSeconds()
+                cfg.shiftLengthSeconds(),
+                cfg.showShotsInPenaltySlot()
             );
             normalized.put(entry.getKey(), enriched);
         }

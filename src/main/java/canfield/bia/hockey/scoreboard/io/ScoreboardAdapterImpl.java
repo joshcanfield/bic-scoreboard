@@ -10,15 +10,17 @@ import com.fazecast.jSerialComm.SerialPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   private static final byte ZERO_VALUE_EMPTY = (byte) 0xFF;
   private static final Logger log = LoggerFactory.getLogger(ScoreboardAdapterImpl.class);
+  private static final int PORT_OPEN_TIMEOUT_SECONDS = 5;
   private final PenaltyClockCmd penaltyClockCmd = new PenaltyClockCmd();
   private final ScoreboardAdapterImpl.ClockAndScoreCmd clockAndScoreCmd = new ClockAndScoreCmd();
 
@@ -137,6 +139,9 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     if (serialPort != null) {
       return;
     }
+    if (portName == null || portName.isEmpty()) {
+      return; // No port configured yet - will be set via StartAdapterCommand
+    }
     long now = System.currentTimeMillis();
     if (now - lastOpenAttempt < 2 * 1000) {
       return;
@@ -145,18 +150,31 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     log.trace("Attempt to open port {}", portName);
 
     try {
-      serialPort = SerialPort.getCommPort(portName);
-      serialPort.openPort();
+      SerialPort port = SerialPort.getCommPort(portName);
+
+      // Open port with timeout to prevent indefinite blocking
+      boolean opened = CompletableFuture.supplyAsync(() -> port.openPort())
+          .get(PORT_OPEN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+      if (opened) {
+        serialPort = port;
+        log.debug("Port {} opened", portName);
+      } else {
+        log.warn("Failed to open port: {} (openPort returned false)", portName);
+        port.closePort();
+      }
+    } catch (TimeoutException e) {
+      log.warn("Timeout opening port {} after {} seconds", portName, PORT_OPEN_TIMEOUT_SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn("Interrupted while opening port: {}", portName);
     } catch (Exception e) {
       log.warn("Failed to open port: {}", portName, e);
       if (serialPort != null) {
         serialPort.closePort();
         serialPort = null;
       }
-      return;
     }
-
-    log.debug("Port {} opened", portName);
   }
 
   private void send(byte[] msg) {

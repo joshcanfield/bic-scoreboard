@@ -365,6 +365,19 @@ task runJvmArch(type: JavaExec) {
     errorOutput = System.err
 }
 
+task runSerialClient(type: JavaExec) {
+    group = "application"
+    description = "Runs the scoreboard serial client to monitor adapter output. Usage: ./gradlew runSerialClient -PcomPort=COM11"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "canfield.bia.diagnostic.ScoreboardSerialClient"
+    standardInput = System.in
+    standardOutput = System.out
+    errorOutput = System.err
+    if (project.hasProperty('comPort')) {
+        args = [project.property('comPort')]
+    }
+}
+
 // Stop any running packaged scoreboard app-image processes
 tasks.register('stopPackaged') {
     group = 'application'

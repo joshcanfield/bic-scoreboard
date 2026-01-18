@@ -20,12 +20,13 @@ class StateDifferTest {
         stateDiffer = new StateDiffer();
         defaultConfig = new GameConfig(
             "TEST_TEMPLATE",
-            5,
-            20,
-            1,
-            3,
+            5,    // warmupLengthMinutes
+            20,   // periodLengthMinutes
+            1,    // intermissionLengthMinutes
+            3,    // periods
             ClockType.STOP_TIME,
-            null
+            null, // shiftLengthSeconds
+            null  // showShotsInPenaltySlot
         );
     }
 

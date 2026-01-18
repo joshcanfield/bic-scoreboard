@@ -317,4 +317,144 @@ class CommandDeserializerTest {
 
         assertThrows(Exception.class, () -> objectMapper.readValue(json, Command.class));
     }
+
+    // ===== Tests for new commands =====
+
+    @Test
+    void testDeserializeCancelPenaltyCommand() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "CANCEL_PENALTY",
+                "payload": {
+                    "penaltyId": "penalty-123"
+                }
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(CancelPenaltyCommand.class, command);
+        CancelPenaltyCommand cancelPenalty = (CancelPenaltyCommand) command;
+        assertEquals("penalty-123", cancelPenalty.penaltyId());
+    }
+
+    @Test
+    void testDeserializeStartAdapterCommandWithPort() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "START_ADAPTER",
+                "payload": {
+                    "portName": "COM3"
+                }
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(StartAdapterCommand.class, command);
+        StartAdapterCommand startAdapter = (StartAdapterCommand) command;
+        assertEquals("COM3", startAdapter.portName());
+    }
+
+    @Test
+    void testDeserializeStartAdapterCommandWithoutPort() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "START_ADAPTER",
+                "payload": {}
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(StartAdapterCommand.class, command);
+        StartAdapterCommand startAdapter = (StartAdapterCommand) command;
+        assertNull(startAdapter.portName());
+    }
+
+    @Test
+    void testDeserializeStartAdapterCommandWithNullPayload() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "START_ADAPTER"
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(StartAdapterCommand.class, command);
+        StartAdapterCommand startAdapter = (StartAdapterCommand) command;
+        assertNull(startAdapter.portName());
+    }
+
+    @Test
+    void testDeserializeStopAdapterCommand() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "STOP_ADAPTER",
+                "payload": {}
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(StopAdapterCommand.class, command);
+    }
+
+    @Test
+    void testDeserializeGetPortsCommand() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "GET_PORTS",
+                "payload": {}
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(GetPortsCommand.class, command);
+    }
+
+    @Test
+    void testDeserializeReleasePenaltyCommand() throws Exception {
+        String json = """
+            {
+                "type": "COMMAND",
+                "command": "RELEASE_PENALTY",
+                "payload": {
+                    "penaltyId": "penalty-456",
+                    "releasedByGoalId": "goal-789"
+                }
+            }
+            """;
+
+        Command command = objectMapper.readValue(json, Command.class);
+
+        assertInstanceOf(ReleasePenaltyCommand.class, command);
+        ReleasePenaltyCommand release = (ReleasePenaltyCommand) command;
+        assertEquals("penalty-456", release.penaltyId());
+        assertEquals("goal-789", release.releasedByGoalId());
+    }
+
+    // ===== Test for missing command field =====
+
+    @Test
+    void testMissingCommandFieldThrowsException() {
+        String json = """
+            {
+                "type": "COMMAND",
+                "payload": {}
+            }
+            """;
+
+        Exception exception = assertThrows(Exception.class, () -> objectMapper.readValue(json, Command.class));
+        assertTrue(exception.getMessage().contains("Missing 'command' field") ||
+                   exception.getCause() != null && exception.getCause().getMessage().contains("Missing 'command' field"));
+    }
 }

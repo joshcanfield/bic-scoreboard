@@ -54,6 +54,13 @@ type StateUpdateCallback = (newState: GameState) => void;
 type ConnectionState = 'connecting' | 'open' | 'closed';
 type ConnectionUpdateCallback = (state: ConnectionState) => void;
 
+// Ports response data
+export interface PortsData {
+    ports: string[];
+    currentPort: string;
+}
+type PortsCallback = (data: PortsData) => void;
+
 class WebSocketClient {
     private ws: WebSocket | null = null;
     private state: AppState = { gameState: null };
@@ -61,6 +68,7 @@ class WebSocketClient {
     private reconnectInterval: ReturnType<typeof setInterval> | null = null;
     private connectionState: ConnectionState = 'connecting';
     private connectionSubscribers: ConnectionUpdateCallback[] = [];
+    private portsCallbacks: PortsCallback[] = [];
 
     constructor(private url: string) {
         this.connect();
@@ -101,6 +109,12 @@ class WebSocketClient {
                         this.notifySubscribers();
                     }
                     // Silently ignore patches without initial state - will resync on reconnect
+                } else if (message.type === "PORTS") {
+                    const portsData = message.data as PortsData;
+                    // Call all pending callbacks and clear them
+                    const callbacks = [...this.portsCallbacks];
+                    this.portsCallbacks = [];
+                    callbacks.forEach(cb => cb(portsData));
                 }
             } catch (e) {
                 console.error("Error parsing WebSocket message:", e);
@@ -169,6 +183,37 @@ class WebSocketClient {
 
     public getGameState(): GameState | null {
         return this.state.gameState;
+    }
+
+    public requestPorts(): Promise<PortsData> {
+        return new Promise((resolve, reject) => {
+            if (this.ws?.readyState !== WebSocket.OPEN) {
+                reject(new Error('WebSocket not connected'));
+                return;
+            }
+
+            // Set up callback to resolve the promise
+            const callback: PortsCallback = (data) => resolve(data);
+            this.portsCallbacks.push(callback);
+
+            // Send the GET_PORTS command
+            try {
+                this.ws.send(JSON.stringify({ type: "COMMAND", command: "GET_PORTS", payload: {} }));
+            } catch (e) {
+                // Remove callback on error
+                this.portsCallbacks = this.portsCallbacks.filter(cb => cb !== callback);
+                reject(e);
+            }
+
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                const index = this.portsCallbacks.indexOf(callback);
+                if (index >= 0) {
+                    this.portsCallbacks.splice(index, 1);
+                    reject(new Error('Ports request timed out'));
+                }
+            }, 5000);
+        });
     }
 }
 

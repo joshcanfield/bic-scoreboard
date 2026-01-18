@@ -19,7 +19,8 @@ public record GameConfig(
     long intermissionLengthMillis, // Derived from intermissionLengthMinutes
     int periods,
     ClockType clockType,
-    Integer shiftLengthSeconds // Optional
+    Integer shiftLengthSeconds, // Optional
+    boolean showShotsInPenaltySlot // Experimental: show shots in penalty slot 2 on hardware scoreboard
 ) {
 
     @JsonCreator
@@ -30,7 +31,8 @@ public record GameConfig(
         @JsonProperty("intermissionLengthMinutes") int intermissionLengthMinutes,
         @JsonProperty("periods") int periods,
         @JsonProperty("clockType") ClockType clockType,
-        @JsonProperty("shiftLengthSeconds") Integer shiftLengthSeconds
+        @JsonProperty("shiftLengthSeconds") Integer shiftLengthSeconds,
+        @JsonProperty("showShotsInPenaltySlot") Boolean showShotsInPenaltySlot
     ) {
         this(
             templateId,
@@ -42,7 +44,8 @@ public record GameConfig(
             (long) intermissionLengthMinutes * 60 * 1000, // Derived intermissionLengthMillis
             periods,
             clockType,
-            shiftLengthSeconds
+            shiftLengthSeconds,
+            showShotsInPenaltySlot != null ? showShotsInPenaltySlot : false // Default to false
         );
     }
 }
