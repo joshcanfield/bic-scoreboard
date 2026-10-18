@@ -293,6 +293,8 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
       templateKey = '';
     }
     if (templateKey && applyStandardTemplate(templateKey, { persist: false })) {
+      // Also restore showShotsInPenaltySlot checkbox even when using template
+      loadShowShotsCheckbox();
       return;
     }
     selectStandardTemplate('', { persist: false });
@@ -318,6 +320,20 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
         // Ignore storage errors
       }
     });
+    loadShowShotsCheckbox();
+  };
+
+  const loadShowShotsCheckbox = () => {
+    const showShotsCheckbox = document.getElementById('show-shots-penalty') as HTMLInputElement | null;
+    if (!showShotsCheckbox) return;
+    try {
+      const saved = localStorage.getItem('scoreboard.standard.showShotsInPenaltySlot');
+      if (saved != null) {
+        showShotsCheckbox.checked = JSON.parse(saved) === true;
+      }
+    } catch (_) {
+      // Ignore storage errors
+    }
   };
 
   const markStandardCustomFromManualEdit = () => {
@@ -368,11 +384,15 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
         } else intermission = n;
       }
       if (error) return;
-      // Persist last used standard settings (period lengths + intermission)
+      // Read experimental "show shots in penalty slot" checkbox
+      const showShotsCheckbox = document.getElementById('show-shots-penalty') as HTMLInputElement | null;
+      const showShotsInPenaltySlot = showShotsCheckbox?.checked ?? false;
+      // Persist last used standard settings (period lengths + intermission + showShots)
       try {
         localStorage.setItem('scoreboard.standard.periods', JSON.stringify(periods));
         if (intermission != null)
           localStorage.setItem('scoreboard.standard.intermission', String(intermission));
+        localStorage.setItem('scoreboard.standard.showShotsInPenaltySlot', JSON.stringify(showShotsInPenaltySlot));
         if (standardTemplateSelect) {
           const currentTpl = standardTemplateSelect.value || '';
           if (currentTpl) {
@@ -393,6 +413,7 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
           periodLengthMinutes: periods[1], // Assuming period 1 length for simplicity
           intermissionLengthMinutes: intermission || 0,
           periods: periods.length - 1, // Assuming periods[0] is warmup
+          showShotsInPenaltySlot,
           // clockType: 'STOP_TIME', // Default for standard
           // shiftLengthSeconds: null,
         }

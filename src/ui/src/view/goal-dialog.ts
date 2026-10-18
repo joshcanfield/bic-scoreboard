@@ -1,4 +1,4 @@
-import type { Command } from '../api/v2-types';
+import type { Command, Penalty } from '../api/v2-types';
 import { millisToMinSec, pad } from '../utils/time';
 
 import Modals from './modals';
@@ -6,6 +6,8 @@ import Modals from './modals';
 export interface GoalDialogState {
   currentPeriod: number;
   currentTime: number;
+  homePenalties?: Penalty[];
+  awayPenalties?: Penalty[];
 }
 
 type TeamCode = 'home' | 'away';
@@ -57,13 +59,18 @@ export const initGoalDialog = (
   }
 
   const playerInput = modal.querySelector<HTMLInputElement>('#add-goal-player');
-  const assistInput = modal.querySelector<HTMLInputElement>('#add-goal-assist');
+  const assist1Input = modal.querySelector<HTMLInputElement>('#add-goal-assist1');
+  const assist2Input = modal.querySelector<HTMLInputElement>('#add-goal-assist2');
+  // Legacy fallback for old single assist field
+  const legacyAssistInput = modal.querySelector<HTMLInputElement>('#add-goal-assist');
   const periodLabel = modal.querySelector<HTMLElement>('#add-goal-period');
   const clockLabel = modal.querySelector<HTMLElement>('#add-goal-clock');
   const teamLabel = modal.querySelector<HTMLElement>('#add-goal-team');
   const errorBox = modal.querySelector<HTMLElement>('.error');
   const addButton = modal.querySelector<HTMLButtonElement>('#add-goal-add');
   const goalHeader = modal.querySelector<HTMLElement>('.modal-header');
+  const penaltyReleaseGroup = modal.querySelector<HTMLElement>('#add-goal-penalty-release-group');
+  const penaltyReleaseSelect = modal.querySelector<HTMLSelectElement>('#add-goal-release-penalty');
   goalHeader?.classList.add('goal-modal-header');
 
   const clearErrors = () => {
@@ -88,9 +95,35 @@ export const initGoalDialog = (
     setTeam(team);
     clearErrors();
     if (playerInput) playerInput.value = '';
-    if (assistInput) assistInput.value = '';
+    if (assist1Input) assist1Input.value = '';
+    if (assist2Input) assist2Input.value = '';
+    if (legacyAssistInput) legacyAssistInput.value = '';
     if (periodLabel) periodLabel.textContent = String(state.currentPeriod ?? 0);
     if (clockLabel) clockLabel.textContent = formatClock(state.currentTime ?? 0);
+
+    // Populate penalty release dropdown with opposing team's 2-minute minors
+    const opposingTeam = team === 'home' ? 'away' : 'home';
+    const opposingPenalties = opposingTeam === 'home' ? state.homePenalties : state.awayPenalties;
+    const releasablePenalties = (opposingPenalties || []).filter(
+      (p) => p.durationMillis === 2 * 60 * 1000 && p.timeRemainingMillis > 0
+    );
+
+    if (penaltyReleaseSelect && penaltyReleaseGroup) {
+      penaltyReleaseSelect.innerHTML = '<option value="">-- None --</option>';
+      if (releasablePenalties.length > 0) {
+        releasablePenalties.forEach((p) => {
+          const option = document.createElement('option');
+          option.value = p.penaltyId;
+          const timeRemaining = formatClock(p.timeRemainingMillis);
+          option.textContent = `#${p.playerNumber} - ${timeRemaining} remaining`;
+          penaltyReleaseSelect.appendChild(option);
+        });
+        penaltyReleaseGroup.style.display = '';
+      } else {
+        penaltyReleaseGroup.style.display = 'none';
+      }
+    }
+
     Modals.show(modal);
     window.setTimeout(() => playerInput?.focus(), 50);
   };
@@ -99,21 +132,33 @@ export const initGoalDialog = (
     clearErrors();
     const team = (modal.dataset.team as TeamCode) || 'home';
     const playerValue = (playerInput?.value || '').trim();
-    if (!playerValue) {
-      playerInput?.closest('.form-group')?.classList.add('has-error');
-      if (errorBox) errorBox.textContent = 'Enter the scorer number.';
-      playerInput?.focus();
-      return;
+    // Scorer is optional - 0 means unspecified (scoreboard only tracks count)
+    let scorerNumber = 0;
+    if (playerValue) {
+      const parsed = Number(playerValue);
+      if (!Number.isFinite(parsed)) {
+        playerInput?.closest('.form-group')?.classList.add('has-error');
+        if (errorBox) errorBox.textContent = 'Scorer must be a number.';
+        playerInput?.focus();
+        return;
+      }
+      scorerNumber = parsed;
     }
-    const scorerNumber = Number(playerValue);
-    if (!Number.isFinite(scorerNumber)) {
-      playerInput?.closest('.form-group')?.classList.add('has-error');
-      if (errorBox) errorBox.textContent = 'Scorer must be a number.';
-      playerInput?.focus();
-      return;
+    // Parse assists - support new dual fields or legacy single field
+    const assistNumbers: number[] = [];
+    const assist1Value = (assist1Input?.value || legacyAssistInput?.value || '').trim();
+    const assist2Value = (assist2Input?.value || '').trim();
+    if (assist1Value) {
+      const parsed = Number(assist1Value);
+      if (Number.isFinite(parsed)) assistNumbers.push(parsed);
     }
-    const assistValue = (assistInput?.value || '').trim();
-    const assistNumbers = assistValue ? [Number(assistValue)].filter(Number.isFinite) : [];
+    if (assist2Value) {
+      const parsed = Number(assist2Value);
+      if (Number.isFinite(parsed)) assistNumbers.push(parsed);
+    }
+
+    // Get selected penalty to release (if any)
+    const releasePenaltyId = penaltyReleaseSelect?.value || null;
 
     sendCommand({
       type: 'ADD_GOAL',
@@ -122,6 +167,7 @@ export const initGoalDialog = (
         scorerNumber,
         assistNumbers,
         isEmptyNet: false,
+        releasePenaltyId,
       },
     });
     Modals.hide(modal);

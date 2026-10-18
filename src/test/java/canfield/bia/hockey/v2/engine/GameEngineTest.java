@@ -972,4 +972,167 @@ class GameEngineTest {
         // Buzzer should NOT turn on just from time passing (only from period end)
         assertFalse(state.buzzerOn(), "Buzzer should not sound without shift timer configured");
     }
+
+    // ===== Tests for CancelPenaltyCommand =====
+
+    @Test
+    void testCancelPenaltyFromHomeTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Add a penalty
+        gameEngine.processCommand(new AddPenaltyCommand("home", 10, 10, 2), initialTime);
+        GameState stateWithPenalty = gameEngine.getCurrentState();
+        assertEquals(1, stateWithPenalty.home().penalties().size());
+        String penaltyId = stateWithPenalty.home().penalties().get(0).penaltyId();
+
+        // Cancel the penalty
+        gameEngine.processCommand(new CancelPenaltyCommand(penaltyId), initialTime);
+        GameState stateAfterCancel = gameEngine.getCurrentState();
+
+        assertEquals(0, stateAfterCancel.home().penalties().size());
+        // Also check history is cleared
+        assertEquals(0, stateAfterCancel.home().penaltyHistory().size());
+    }
+
+    @Test
+    void testCancelPenaltyFromAwayTeam() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Add a penalty to away team
+        gameEngine.processCommand(new AddPenaltyCommand("away", 15, 15, 5), initialTime);
+        GameState stateWithPenalty = gameEngine.getCurrentState();
+        assertEquals(1, stateWithPenalty.away().penalties().size());
+        String penaltyId = stateWithPenalty.away().penalties().get(0).penaltyId();
+
+        // Cancel the penalty
+        gameEngine.processCommand(new CancelPenaltyCommand(penaltyId), initialTime);
+        GameState stateAfterCancel = gameEngine.getCurrentState();
+
+        assertEquals(0, stateAfterCancel.away().penalties().size());
+        assertEquals(0, stateAfterCancel.away().penaltyHistory().size());
+    }
+
+    @Test
+    void testCancelNonExistentPenalty() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+
+        GameState stateBefore = gameEngine.getCurrentState();
+
+        // Try to cancel a penalty that doesn't exist
+        gameEngine.processCommand(new CancelPenaltyCommand("non-existent-id"), initialTime);
+        GameState stateAfter = gameEngine.getCurrentState();
+
+        // State should be unchanged
+        assertSame(stateBefore, stateAfter);
+    }
+
+    @Test
+    void testCancelPenaltyDoesNotAffectOtherPenalties() {
+        createTestGame(initialTime);
+        gameEngine.processCommand(new SetPeriodCommand(1), initialTime);
+        gameEngine.processCommand(new StartClockCommand(), initialTime);
+
+        // Add two penalties
+        gameEngine.processCommand(new AddPenaltyCommand("home", 10, 10, 2), initialTime);
+        gameEngine.processCommand(new AddPenaltyCommand("home", 20, 20, 5), initialTime);
+        GameState stateWithPenalties = gameEngine.getCurrentState();
+        assertEquals(2, stateWithPenalties.home().penalties().size());
+
+        String firstPenaltyId = stateWithPenalties.home().penalties().get(0).penaltyId();
+
+        // Cancel only the first penalty
+        gameEngine.processCommand(new CancelPenaltyCommand(firstPenaltyId), initialTime);
+        GameState stateAfterCancel = gameEngine.getCurrentState();
+
+        assertEquals(1, stateAfterCancel.home().penalties().size());
+        assertEquals(20, stateAfterCancel.home().penalties().get(0).playerNumber());
+    }
+
+    // ===== Tests for StartAdapterCommand and StopAdapterCommand =====
+
+    @Test
+    void testStartAdapterCommandWithPortName() {
+        createTestGame(initialTime);
+
+        // Mock the adapter to return valid ports
+        when(mockHardwareOutputAdapter.getPossiblePorts()).thenReturn(List.of("COM1", "COM3"));
+
+        gameEngine.processCommand(new StartAdapterCommand("COM3"), initialTime);
+
+        verify(mockHardwareOutputAdapter).setPortName("COM3");
+        verify(mockHardwareOutputAdapter).start();
+    }
+
+    @Test
+    void testStartAdapterCommandWithoutPortName() {
+        createTestGame(initialTime);
+
+        when(mockHardwareOutputAdapter.getPortName()).thenReturn("COM1");
+
+        gameEngine.processCommand(new StartAdapterCommand(null), initialTime);
+
+        verify(mockHardwareOutputAdapter, never()).setPortName(anyString());
+        verify(mockHardwareOutputAdapter).start();
+    }
+
+    @Test
+    void testStartAdapterCommandWithInvalidPort() {
+        createTestGame(initialTime);
+
+        when(mockHardwareOutputAdapter.getPossiblePorts()).thenReturn(List.of("COM1", "COM3"));
+        GameState stateBefore = gameEngine.getCurrentState();
+
+        gameEngine.processCommand(new StartAdapterCommand("COM99"), initialTime);
+
+        // Should not call setPortName or start with invalid port
+        verify(mockHardwareOutputAdapter, never()).setPortName("COM99");
+        verify(mockHardwareOutputAdapter, never()).start();
+
+        // State should be unchanged
+        assertSame(stateBefore, gameEngine.getCurrentState());
+    }
+
+    @Test
+    void testStopAdapterCommand() {
+        createTestGame(initialTime);
+
+        gameEngine.processCommand(new StopAdapterCommand(), initialTime);
+
+        verify(mockHardwareOutputAdapter).stop();
+    }
+
+    @Test
+    void testAdapterCommandsDoNotChangeGameState() {
+        createTestGame(initialTime);
+        GameState stateBefore = gameEngine.getCurrentState();
+
+        when(mockHardwareOutputAdapter.getPossiblePorts()).thenReturn(List.of("COM1"));
+
+        gameEngine.processCommand(new StartAdapterCommand("COM1"), initialTime);
+        GameState afterStart = gameEngine.getCurrentState();
+
+        gameEngine.processCommand(new StopAdapterCommand(), initialTime);
+        GameState afterStop = gameEngine.getCurrentState();
+
+        // Adapter commands should not change game state
+        assertEquals(stateBefore, afterStart);
+        assertEquals(stateBefore, afterStop);
+    }
+
+    // ===== Test for null command handling =====
+
+    @Test
+    void testNullCommandReturnsCurrentState() {
+        createTestGame(initialTime);
+        GameState stateBefore = gameEngine.getCurrentState();
+
+        GameState stateAfter = gameEngine.processCommand(null, initialTime);
+
+        assertSame(stateBefore, stateAfter);
+    }
 }

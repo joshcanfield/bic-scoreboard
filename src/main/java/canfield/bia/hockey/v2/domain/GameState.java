@@ -26,8 +26,8 @@ public record GameState(
             GameStatus.PRE_GAME,
             0,
             new ClockState(0, false, 0L),
-            new TeamState(List.of(), 0, List.of()),
-            new TeamState(List.of(), 0, List.of()),
+            new TeamState(List.of(), 0, List.of(), List.of()),
+            new TeamState(List.of(), 0, List.of(), List.of()),
             false,
             List.of()
         );

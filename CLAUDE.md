@@ -6,6 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BIC Scoreboard is a local service and web UI for operating a hockey scoreboard at Bremerton Ice Arena. It provides REST and WebSocket APIs for control, with a Java backend and a TypeScript UI currently in migration.
 
+## Physical Scoreboard Fields
+
+The physical scoreboard (see `docs/Scoreboard.jpg`) displays only these fields, which are **required** when collecting data:
+
+- **Home score** - Team score (left side)
+- **Guest score** - Team score (right side)
+- **Game clock** - Time remaining in period
+- **Period** - Current period number
+- **Home penalty player** - Player number serving penalty
+- **Home penalty time** - Time remaining on home penalty
+- **Guest penalty player** - Player number serving penalty
+- **Guest penalty time** - Time remaining on guest penalty
+
+All other data fields in the software (e.g., player names, goal details, shot counts) are **optional** since they don't display on the physical board.
+
 ## Build and Test Commands
 
 ### Java Backend

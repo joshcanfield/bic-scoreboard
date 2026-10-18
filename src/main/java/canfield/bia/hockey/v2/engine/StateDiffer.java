@@ -78,5 +78,9 @@ public class StateDiffer {
             // For lists, send the entire new list for simplicity and robustness
             patch.put(prefix + ".penalties", newTeam.penalties());
         }
+        if (!Objects.equals(oldTeam.penaltyHistory(), newTeam.penaltyHistory())) {
+            // For lists, send the entire new list for simplicity and robustness
+            patch.put(prefix + ".penaltyHistory", newTeam.penaltyHistory());
+        }
     }
 }

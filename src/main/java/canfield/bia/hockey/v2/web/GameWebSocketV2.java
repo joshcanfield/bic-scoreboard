@@ -4,6 +4,8 @@ import canfield.bia.hockey.v2.domain.GameState;
 import canfield.bia.hockey.v2.engine.GameEngine;
 import canfield.bia.hockey.v2.engine.StateDiffer;
 import canfield.bia.hockey.v2.spec.Command;
+import canfield.bia.hockey.v2.spec.GetPortsCommand;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.java_websocket.WebSocket;
@@ -15,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,14 +51,23 @@ public class GameWebSocketV2 extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
+        InetSocketAddress remoteAddr = conn.getRemoteSocketAddress();
+        if (!isLocalhost(remoteAddr)) {
+            log.warn("Rejected non-localhost connection from {}", remoteAddr);
+            conn.close(1008, "Only localhost connections allowed");
+            return;
+        }
         connections.add(conn);
-        log.info("WebSocket connection established: {}", conn.getRemoteSocketAddress());
+        log.info("WebSocket connection established: {}", remoteAddr);
+        if (gameEngine == null) {
+            log.warn("GameEngine not initialized, cannot send initial state to {}", conn.getRemoteSocketAddress());
+            return;
+        }
         try {
             String initialStateJson = objectMapper.writeValueAsString(Map.of("type", "INITIAL_STATE", "data", gameEngine.getCurrentState()));
             conn.send(initialStateJson);
         } catch (Exception e) {
-            System.err.println("Error sending initial state: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error sending initial state: {}", e.getMessage(), e);
         }
     }
 
@@ -67,13 +79,32 @@ public class GameWebSocketV2 extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        log.info("Received message from {}: {}", conn.getRemoteSocketAddress(), message);
+        log.debug("Received message from {}: {}", conn.getRemoteSocketAddress(), message);
+        if (gameEngine == null) {
+            log.warn("GameEngine not initialized, ignoring message from {}", conn.getRemoteSocketAddress());
+            return;
+        }
         try {
             Command command = objectMapper.readValue(message, Command.class);
+
+            // Handle GET_PORTS specially - it's a query, not a state-changing command
+            if (command instanceof GetPortsCommand) {
+                List<String> ports = gameEngine.getPossiblePorts();
+                String currentPort = gameEngine.getCurrentPortName();
+                String portsJson = objectMapper.writeValueAsString(Map.of(
+                    "type", "PORTS",
+                    "data", Map.of(
+                        "ports", ports,
+                        "currentPort", currentPort != null ? currentPort : ""
+                    )
+                ));
+                conn.send(portsJson);
+                return;
+            }
+
             processAndBroadcast(command);
         } catch (Exception e) {
-            System.err.println("Error processing message: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error processing message: {}", e.getMessage(), e);
         }
     }
 
@@ -84,7 +115,7 @@ public class GameWebSocketV2 extends WebSocketServer {
 
     @Override
     public void onStart() {
-        System.out.println("GameWebSocketV2 started on port " + getPort());
+        log.info("GameWebSocketV2 started on port {}", getPort());
     }
 
     @Override
@@ -106,8 +137,7 @@ public class GameWebSocketV2 extends WebSocketServer {
                     client.send(patchJson);
                 }
             } catch (Exception e) {
-                System.err.println("Error broadcasting patch: " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error broadcasting patch: {}", e.getMessage(), e);
             }
         }
     }
@@ -122,9 +152,16 @@ public class GameWebSocketV2 extends WebSocketServer {
                     client.send(patchJson);
                 }
             } catch (Exception e) {
-                System.err.println("Error broadcasting patch: " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error broadcasting patch: {}", e.getMessage(), e);
             }
         }
+    }
+
+    private boolean isLocalhost(InetSocketAddress addr) {
+        if (addr == null) {
+            return false;
+        }
+        var hostAddr = addr.getAddress();
+        return hostAddr != null && hostAddr.isLoopbackAddress();
     }
 }

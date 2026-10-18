@@ -2,7 +2,7 @@
  * Penalty dialog management for adding penalties and handling 2+10 combinations.
  */
 
-import type { Command } from '../api/v2-types';
+import type { Command, InfractionType } from '../api/v2-types';
 import { parseClockMillis, millisToMinSec, formatClock, formatTime } from '../utils/time';
 
 import Modals from './modals';
@@ -62,12 +62,31 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
     if (servingInput) servingInput.value = '';
     const playerInput = $('#add-penalty-player') as HTMLInputElement | null;
     if (playerInput) playerInput.value = '';
+    // Reset infraction dropdown to first option
+    const infractionSelect = $('#add-penalty-infraction') as HTMLSelectElement | null;
+    if (infractionSelect) infractionSelect.selectedIndex = 0;
+    // Hide "Other" description field
+    const otherGroup = $('#add-penalty-other-group');
+    if (otherGroup) otherGroup.style.display = 'none';
+    const otherInput = $('#add-penalty-other') as HTMLInputElement | null;
+    if (otherInput) otherInput.value = '';
     const groups = $$(`.modal-body .form-group`, dlg);
     groups.forEach((g) => g.classList.remove('has-error'));
     window.setTimeout(() => {
       playerInput?.focus();
     }, 50);
   });
+
+  // Show/hide "Other" description field when infraction dropdown changes
+  const infractionSelect = $('#add-penalty-infraction') as HTMLSelectElement | null;
+  if (infractionSelect) {
+    infractionSelect.addEventListener('change', () => {
+      const otherGroup = $('#add-penalty-other-group');
+      if (otherGroup) {
+        otherGroup.style.display = infractionSelect.value === 'OTHER' ? '' : 'none';
+      }
+    });
+  }
 
   // Add penalty submit
   const addButton = $('#add-penalty-add');
@@ -107,6 +126,18 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
       if (!Number.isFinite(servingNumber)) {
         servingNumber = playerNumber;
       }
+
+      // Read infraction type and custom description
+      const infractionSelectEl = $('#add-penalty-infraction') as HTMLSelectElement | null;
+      const infractionType = (infractionSelectEl?.value || 'TRIPPING') as InfractionType;
+      const otherInputEl = $('#add-penalty-other') as HTMLInputElement | null;
+      const customInfractionDescription = infractionType === 'OTHER' ? (otherInputEl?.value || '').trim() : null;
+
+      // Read "Off" time and parse to milliseconds
+      const offIceInputEl = $('#add-penalty-off_ice') as HTMLInputElement | null;
+      const offTimeValue = (offIceInputEl?.value || '').trim();
+      const offTimeGameClockMillis = parseClockMillis(offTimeValue);
+
       sendCommand({
         type: 'ADD_PENALTY',
         payload: {
@@ -114,6 +145,9 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
           playerNumber,
           servingPlayerNumber: servingNumber,
           durationMinutes,
+          infractionType,
+          customInfractionDescription,
+          offTimeGameClockMillis,
         },
       });
       Modals.hide(dlg);
@@ -146,7 +180,19 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
 
     const servingNumber = Number(servingValue);
     const teamPlayer = Number.isFinite(servingNumber) ? servingNumber : playerNumber;
-    const sendPenalty = (durationMinutes: number, serving: number) => {
+
+    // Read infraction type and custom description for the 2+10
+    const infractionSelectEl = $('#add-penalty-infraction') as HTMLSelectElement | null;
+    const infractionType = (infractionSelectEl?.value || 'ROUGHING') as InfractionType;
+    const otherInputEl = $('#add-penalty-other') as HTMLInputElement | null;
+    const customInfractionDescription = infractionType === 'OTHER' ? (otherInputEl?.value || '').trim() : null;
+
+    // Read "Off" time
+    const offIceInputEl = $('#add-penalty-off_ice') as HTMLInputElement | null;
+    const offTimeValue = (offIceInputEl?.value || '').trim();
+    const offTimeGameClockMillis = parseClockMillis(offTimeValue);
+
+    const sendPenalty = (durationMinutes: number, serving: number, infraction: InfractionType, customDesc: string | null) => {
       sendCommand({
         type: 'ADD_PENALTY',
         payload: {
@@ -154,11 +200,15 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
           playerNumber,
           servingPlayerNumber: serving,
           durationMinutes,
+          infractionType: infraction,
+          customInfractionDescription: customDesc,
+          offTimeGameClockMillis,
         },
       });
     };
-    sendPenalty(2, teamPlayer);
-    sendPenalty(10, playerNumber);
+    // Minor penalty uses the selected infraction, misconduct is always "OTHER" with description "Misconduct"
+    sendPenalty(2, teamPlayer, infractionType, customInfractionDescription);
+    sendPenalty(10, playerNumber, 'OTHER', 'Misconduct');
     Modals.hide(dlg);
   };
 
@@ -167,6 +217,18 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
     btn2plus10.addEventListener('click', (e) => {
       e.preventDefault();
       add2plus10();
+    });
+  }
+
+  // "Use Clock Time" button sets penalty start time to current clock
+  const btnUseClock = document.getElementById('add-penalty-use-clock');
+  if (btnUseClock) {
+    btnUseClock.addEventListener('click', (e) => {
+      e.preventDefault();
+      const state = getState();
+      const { minutes, seconds } = millisToMinSec(state.currentTime);
+      const offIceInput = $('#add-penalty-off_ice') as HTMLInputElement | null;
+      if (offIceInput) offIceInput.value = formatClock(minutes, seconds);
     });
   }
 };

@@ -104,7 +104,6 @@ gradle.afterProject {
 }
 
 test {
-    useTestNG()
     useJUnitPlatform()
 
     jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
@@ -112,6 +111,16 @@ test {
     enableAssertions = true
     finalizedBy jacocoTestReport
 }
+
+tasks.register('testNg', Test) {
+    useTestNG()
+
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+
+    enableAssertions = true
+}
+
+test.dependsOn testNg
 
 jacocoTestReport {
     dependsOn test
@@ -363,6 +372,19 @@ task runJvmArch(type: JavaExec) {
     mainClass = "canfield.bia.JvmArch"
     standardOutput = System.out
     errorOutput = System.err
+}
+
+task runSerialClient(type: JavaExec) {
+    group = "application"
+    description = "Runs the scoreboard serial client to monitor adapter output. Usage: ./gradlew runSerialClient -PcomPort=COM11"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "canfield.bia.diagnostic.ScoreboardSerialClient"
+    standardInput = System.in
+    standardOutput = System.out
+    errorOutput = System.err
+    if (project.hasProperty('comPort')) {
+        args = [project.property('comPort')]
+    }
 }
 
 // Stop any running packaged scoreboard app-image processes

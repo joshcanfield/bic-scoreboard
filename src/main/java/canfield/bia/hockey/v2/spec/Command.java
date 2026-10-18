@@ -9,6 +9,8 @@ public sealed interface Command permits
     StartClockCommand,
     PauseClockCommand,
     AddPenaltyCommand,
+    ReleasePenaltyCommand,
+    CancelPenaltyCommand,
     TickCommand,
     AddGoalCommand,
     RemoveGoalCommand,
@@ -18,5 +20,8 @@ public sealed interface Command permits
     ResetGameCommand,
     SetPeriodCommand,
     TriggerBuzzerCommand,
-    SetClockCommand
+    SetClockCommand,
+    StartAdapterCommand,
+    StopAdapterCommand,
+    GetPortsCommand
 {}

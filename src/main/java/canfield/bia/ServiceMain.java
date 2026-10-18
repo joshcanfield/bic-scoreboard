@@ -21,6 +21,7 @@ import java.util.Collections;
 public class ServiceMain {
     private static HockeyGameServer hockeyGameServer;
     private static GameWebSocketV2 gameWebSocketV2; // New WebSocket server
+    private static GameEngine gameEngine; // Game engine for shutdown cleanup
     private static final Logger log = LoggerFactory.getLogger(ServiceMain.class);
     private static volatile JFrame startupFrame;
 
@@ -36,12 +37,11 @@ public class ServiceMain {
                 // --- New Architecture Components Initialization ---
                 JsonTemplateRepository templateRepository = new JsonTemplateRepository();
                 
-                // Legacy ScoreBoard and Adapter
+                // Legacy ScoreBoard and Adapter - port is selected via UI (StartAdapterCommand)
                 ScoreBoardImpl legacyScoreBoard = new ScoreBoardImpl();
-                ScoreboardAdapterImpl legacyScoreboardAdapter = new ScoreboardAdapterImpl(legacyScoreBoard, "COM1"); // Default port, can be configured
-                legacyScoreboardAdapter.start(); // Start the legacy adapter
+                ScoreboardAdapterImpl legacyScoreboardAdapter = new ScoreboardAdapterImpl(legacyScoreBoard, null);
 
-                LegacyScoreboardHardwareAdapter hardwareOutputAdapter = new LegacyScoreboardHardwareAdapter(legacyScoreBoard);
+                LegacyScoreboardHardwareAdapter hardwareOutputAdapter = new LegacyScoreboardHardwareAdapter(legacyScoreBoard, legacyScoreboardAdapter);
                 ScheduledGameTimer gameTimer = new ScheduledGameTimer();
                 StateDiffer stateDiffer = new StateDiffer();
 
@@ -49,7 +49,7 @@ public class ServiceMain {
                 gameWebSocketV2 = new GameWebSocketV2(8082, stateDiffer); // Port 8082 for new WebSocket
                 
                 // GameEngine now takes a consumer for state changes
-                GameEngine gameEngine = new GameEngine(templateRepository, hardwareOutputAdapter, gameTimer, (oldState, newState) -> gameWebSocketV2.broadcastStateChange(oldState, newState));
+                gameEngine = new GameEngine(templateRepository, hardwareOutputAdapter, gameTimer, (oldState, newState) -> gameWebSocketV2.broadcastStateChange(oldState, newState));
                 gameWebSocketV2.setGameEngine(gameEngine); // Set GameEngine in GameWebSocketV2 after it's fully constructed
 
                 try {
@@ -85,7 +85,12 @@ public class ServiceMain {
                 log.info("Stopping server...");
                 hockeyGameServer.stop();
                 if (gameWebSocketV2 != null) { // Stop new WebSocket server
-                    try { gameWebSocketV2.stop(); } catch (InterruptedException e) { log.error("Error stopping new WebSocket server", e); }
+                    try {
+                        gameWebSocketV2.stop();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.error("Error stopping new WebSocket server", e);
+                    }
                 }
                 if (startupFrame != null) {
                     try { startupFrame.dispose(); } catch (Exception ignored) {}
@@ -208,37 +213,79 @@ public class ServiceMain {
         try {
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
-                    if (hockeyGameServer != null) hockeyGameServer.stop();
-                } catch (Exception ignored) {}
+                    if (gameEngine != null) gameEngine.shutdown();
+                } catch (Exception e) {
+                    log.debug("Error shutting down game engine", e);
+                }
                 try {
-                    if (gameWebSocketV2 != null) gameWebSocketV2.stop(); // Stop new WebSocket server in shutdown hook
-                } catch (Exception ignored) {}
+                    if (hockeyGameServer != null) hockeyGameServer.stop();
+                } catch (Exception e) {
+                    log.debug("Error stopping HTTP server", e);
+                }
+                try {
+                    if (gameWebSocketV2 != null) gameWebSocketV2.stop();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.debug("Interrupted stopping WebSocket server", e);
+                } catch (Exception e) {
+                    log.debug("Error stopping WebSocket server", e);
+                }
                 try {
                     if (startupFrame != null) startupFrame.dispose();
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    log.debug("Error disposing startup frame", e);
+                }
                 // Do not touch Swing from shutdown hook; avoid invokeAndWait deadlocks
                 try {
                     ch.qos.logback.classic.LoggerContext ctx =
                             (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
                     ctx.stop();
-                } catch (Throwable ignored) {}
+                } catch (Throwable e) {
+                    // Logback shutdown errors can't be logged
+                }
             }, "scoreboard-shutdown"));
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            log.debug("Failed to register shutdown hook", e);
         }
     }
 
     private static void requestExit() {
         // Perform shutdown and exit off the EDT to avoid blocking UI
         Thread exitThread = new Thread(() -> {
-            try { if (hockeyGameServer != null) hockeyGameServer.stop(); } catch (Exception ignored) {}
-            try { if (gameWebSocketV2 != null) gameWebSocketV2.stop(); } catch (Exception ignored) {} // Stop new WebSocket server
-            try { if (startupFrame != null) startupFrame.dispose(); } catch (Exception ignored) {}
-            try { disposeAllWindows(); } catch (Exception ignored) {}
+            try {
+                if (gameEngine != null) gameEngine.shutdown();
+            } catch (Exception e) {
+                log.debug("Error shutting down game engine on exit", e);
+            }
+            try {
+                if (hockeyGameServer != null) hockeyGameServer.stop();
+            } catch (Exception e) {
+                log.debug("Error stopping HTTP server on exit", e);
+            }
+            try {
+                if (gameWebSocketV2 != null) gameWebSocketV2.stop();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                log.debug("Error stopping WebSocket server on exit", e);
+            }
+            try {
+                if (startupFrame != null) startupFrame.dispose();
+            } catch (Exception e) {
+                log.debug("Error disposing startup frame on exit", e);
+            }
+            try {
+                disposeAllWindows();
+            } catch (Exception e) {
+                log.debug("Error disposing windows on exit", e);
+            }
             try {
                 ch.qos.logback.classic.LoggerContext ctx =
                         (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
                 ctx.stop();
-            } catch (Throwable ignored) {}
+            } catch (Throwable e) {
+                // Logback shutdown errors can't be logged
+            }
             System.exit(0);
         }, "exit-invoker");
         exitThread.setDaemon(false);
@@ -246,8 +293,13 @@ public class ServiceMain {
 
         // Watchdog to forcefully terminate the process if it doesn't exit promptly
         Thread watchdog = new Thread(() -> {
-            try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
-            try { Runtime.getRuntime().halt(0); } catch (Throwable ignored) {}
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            Runtime.getRuntime().halt(0);
         }, "exit-watchdog");
         watchdog.setDaemon(true);
         watchdog.start();

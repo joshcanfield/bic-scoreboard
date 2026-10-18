@@ -5,7 +5,8 @@
     "intermissionLengthMinutes": 1,
     "periods": 3,
     "clockType": "STOP_TIME",
-    "shiftLengthSeconds": null
+    "shiftLengthSeconds": null,
+    "showShotsInPenaltySlot": true
   },
   "REC_LEAGUE_14": {
     "description": "Recreational League (14 min run-time)",
@@ -13,7 +14,8 @@
     "intermissionLengthMinutes": 1,
     "periods": 3,
     "clockType": "RUN_TIME",
-    "shiftLengthSeconds": 90
+    "shiftLengthSeconds": 90,
+    "showShotsInPenaltySlot": false
   },
   "jr": {
     "description": "Junior Hockey (20 min stop-time)",
@@ -21,7 +23,8 @@
     "intermissionLengthMinutes": 15,
     "periods": 3,
     "clockType": "STOP_TIME",
-    "shiftLengthSeconds": null
+    "shiftLengthSeconds": null,
+    "showShotsInPenaltySlot": false
   },
   "youth60": {
     "description": "Youth 60 (15 min stop-time)",
@@ -29,7 +32,8 @@
     "intermissionLengthMinutes": 1,
     "periods": 3,
     "clockType": "STOP_TIME",
-    "shiftLengthSeconds": null
+    "shiftLengthSeconds": null,
+    "showShotsInPenaltySlot": false
   },
   "youth75": {
     "description": "Youth 75 (13 min stop-time)",
@@ -37,7 +41,8 @@
     "intermissionLengthMinutes": 1,
     "periods": 3,
     "clockType": "STOP_TIME",
-    "shiftLengthSeconds": null
+    "shiftLengthSeconds": null,
+    "showShotsInPenaltySlot": false
   },
   "pphl": {
     "description": "PPHL (17 min stop-time)",
@@ -45,7 +50,8 @@
     "intermissionLengthMinutes": 1,
     "periods": 3,
     "clockType": "STOP_TIME",
-    "shiftLengthSeconds": null
+    "shiftLengthSeconds": null,
+    "showShotsInPenaltySlot": false
   },
   "REC_LEAGUE": {
     "description": "Recreational League (customizable run-time)",
@@ -53,6 +59,7 @@
     "intermissionLengthMinutes": 0,
     "periods": 3,
     "clockType": "RUN_TIME",
-    "shiftLengthSeconds": 90
+    "shiftLengthSeconds": 90,
+    "showShotsInPenaltySlot": false
   }
 }

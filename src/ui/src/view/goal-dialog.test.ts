@@ -300,41 +300,27 @@ describe('goal-dialog', () => {
     });
 
     describe('validation', () => {
-      it('shows error when player number is empty', () => {
+      it('allows empty player number (scorer is optional)', () => {
         const controller = initGoalDialog(sendCommand, getState);
         controller.open('home');
 
         const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
         addButton.click();
 
-        const errorBox = document.querySelector('.error');
-        expect(errorBox?.textContent).toBe('Enter the scorer number.');
+        // Should submit with scorerNumber: 0
+        expect(sendCommand).toHaveBeenCalledWith({
+          type: 'ADD_GOAL',
+          payload: {
+            teamId: 'home',
+            scorerNumber: 0,
+            assistNumbers: [],
+            isEmptyNet: false,
+            releasePenaltyId: null,
+          },
+        });
       });
 
-      it('adds has-error class when player number is empty', () => {
-        const controller = initGoalDialog(sendCommand, getState);
-        controller.open('home');
-
-        const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
-        addButton.click();
-
-        const formGroup = document.getElementById('add-goal-player')?.closest('.form-group');
-        expect(formGroup?.classList.contains('has-error')).toBe(true);
-      });
-
-      it('focuses player input when validation fails', () => {
-        const controller = initGoalDialog(sendCommand, getState);
-        controller.open('home');
-        const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
-        const focusSpy = vi.spyOn(playerInput, 'focus');
-
-        const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
-        addButton.click();
-
-        expect(focusSpy).toHaveBeenCalled();
-      });
-
-      it('shows error when player number is whitespace only', () => {
+      it('allows whitespace-only player number (treated as empty)', () => {
         const controller = initGoalDialog(sendCommand, getState);
         controller.open('home');
 
@@ -344,8 +330,16 @@ describe('goal-dialog', () => {
         const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
         addButton.click();
 
-        const errorBox = document.querySelector('.error');
-        expect(errorBox?.textContent).toBe('Enter the scorer number.');
+        expect(sendCommand).toHaveBeenCalledWith({
+          type: 'ADD_GOAL',
+          payload: {
+            teamId: 'home',
+            scorerNumber: 0,
+            assistNumbers: [],
+            isEmptyNet: false,
+            releasePenaltyId: null,
+          },
+        });
       });
 
       it('shows error when player number is not a valid number', () => {
@@ -362,9 +356,12 @@ describe('goal-dialog', () => {
         expect(errorBox?.textContent).toBe('Scorer must be a number.');
       });
 
-      it('does not send command when validation fails', () => {
+      it('does not send command when player number is invalid', () => {
         const controller = initGoalDialog(sendCommand, getState);
         controller.open('home');
+
+        const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+        playerInput.value = 'abc';
 
         const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
         addButton.click();
@@ -372,14 +369,44 @@ describe('goal-dialog', () => {
         expect(sendCommand).not.toHaveBeenCalled();
       });
 
-      it('does not hide modal when validation fails', () => {
+      it('does not hide modal when player number is invalid', () => {
         const controller = initGoalDialog(sendCommand, getState);
         controller.open('home');
+
+        const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+        playerInput.value = 'abc';
 
         const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
         addButton.click();
 
         expect(Modals.hide).not.toHaveBeenCalled();
+      });
+
+      it('focuses player input when validation fails', () => {
+        const controller = initGoalDialog(sendCommand, getState);
+        controller.open('home');
+        const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+        playerInput.value = 'abc';
+        const focusSpy = vi.spyOn(playerInput, 'focus');
+
+        const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
+        addButton.click();
+
+        expect(focusSpy).toHaveBeenCalled();
+      });
+
+      it('adds has-error class when player number is invalid', () => {
+        const controller = initGoalDialog(sendCommand, getState);
+        controller.open('home');
+
+        const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+        playerInput.value = 'abc';
+
+        const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
+        addButton.click();
+
+        const formGroup = document.getElementById('add-goal-player')?.closest('.form-group');
+        expect(formGroup?.classList.contains('has-error')).toBe(true);
       });
     });
 
@@ -401,6 +428,7 @@ describe('goal-dialog', () => {
             scorerNumber: 17,
             assistNumbers: [],
             isEmptyNet: false,
+            releasePenaltyId: null,
           },
         });
       });
@@ -422,6 +450,7 @@ describe('goal-dialog', () => {
             scorerNumber: 99,
             assistNumbers: [],
             isEmptyNet: false,
+            releasePenaltyId: null,
           },
         });
       });
@@ -445,6 +474,7 @@ describe('goal-dialog', () => {
             scorerNumber: 17,
             assistNumbers: [23],
             isEmptyNet: false,
+            releasePenaltyId: null,
           },
         });
       });
@@ -468,6 +498,7 @@ describe('goal-dialog', () => {
             scorerNumber: 17,
             assistNumbers: [],
             isEmptyNet: false,
+            releasePenaltyId: null,
           },
         });
       });
@@ -716,7 +747,9 @@ describe('goal-dialog', () => {
       const controller = initGoalDialog(sendCommand, getState);
       controller.open('home');
 
-      // Trigger validation error
+      // Trigger validation error with invalid input
+      const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+      playerInput.value = 'abc';
       const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
       addButton.click();
 
@@ -725,7 +758,6 @@ describe('goal-dialog', () => {
       expect(formGroup?.classList.contains('has-error')).toBe(true);
 
       // Start typing
-      const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
       playerInput.value = '1';
       playerInput.dispatchEvent(new Event('input'));
 
@@ -737,15 +769,16 @@ describe('goal-dialog', () => {
       const controller = initGoalDialog(sendCommand, getState);
       controller.open('home');
 
-      // Trigger validation error
+      // Trigger validation error with invalid input
+      const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+      playerInput.value = 'abc';
       const addButton = document.getElementById('add-goal-add') as HTMLButtonElement;
       addButton.click();
 
       const errorBox = document.querySelector('.error');
-      expect(errorBox?.textContent).toBe('Enter the scorer number.');
+      expect(errorBox?.textContent).toBe('Scorer must be a number.');
 
-      // Start typing
-      const playerInput = document.getElementById('add-goal-player') as HTMLInputElement;
+      // Start typing to correct the value
       playerInput.value = '1';
       playerInput.dispatchEvent(new Event('input'));
 

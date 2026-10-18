@@ -1,0 +1,431 @@
+/* Alternate UI Modes: Standard, Big Buttons (Scorekeeper), and Compact */
+
+/* Ensure Bootstrap 3 clearfix pseudo-elements do not become active flex items */
+.navbar .container-fluid::before,
+.navbar .container-fluid::after,
+.navbar .navbar-collapse::before,
+.navbar .navbar-collapse::after {
+  display: none !important;
+}
+
+.power-control-item {
+  display: flex !important;
+  align-items: center !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.power-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+  padding: 4px 9px !important;
+  height: 32px !important;
+  border-radius: 6px !important;
+  margin-left: 0 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.power-btn .glyphicon {
+  font-size: 13px !important;
+  top: 0 !important;
+}
+
+.power-btn .power-btn-text {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.power-btn-off {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%) !important;
+  border: 1px solid #ef4444 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.power-btn-off:hover {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%) !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+}
+
+.power-btn-on {
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
+  border: 1px solid #4ade80 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.45) !important;
+}
+
+.power-btn-on:hover {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%) !important;
+  border-color: #86efac !important;
+  color: #ffffff !important;
+}
+
+.header-ui-modes-container {
+  display: flex !important;
+  align-items: center !important;
+}
+
+#header-ui-modes {
+  margin: 0 0 0 8px !important;
+  display: inline-flex !important;
+}
+
+#header-ui-modes .btn,
+#header-scoresheet-link {
+  background: rgba(29, 37, 64, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  padding: 4px 8px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  line-height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+#header-ui-modes .btn:hover,
+#header-scoresheet-link:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: rgba(96, 165, 250, 0.5) !important;
+  color: #ffffff !important;
+}
+
+#header-ui-modes .btn.active,
+#header-ui-modes .btn[aria-pressed="true"] {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.45) !important;
+}
+
+#header-scoresheet-link:hover {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  color: #fef3c7 !important;
+  text-decoration: none !important;
+}
+
+/* Keyboard hint badges */
+.key-hint {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #f1f5f9;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  padding: 1px 5px;
+  margin-left: 5px;
+  line-height: 1.2;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* ==========================================================================
+   MODE 2: BIG BUTTONS (Scorekeeper rapid-action view)
+   ========================================================================== */
+
+body[data-ui-mode="big-buttons"] #clock-actions {
+  margin-top: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+body[data-ui-mode="big-buttons"] #clock-toggle {
+  min-height: 64px !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  width: 100% !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+/* Clock Stopped / Ready to Start */
+body[data-ui-mode="big-buttons"] #clock-toggle:not(:has(.glyphicon-pause)) {
+  background: linear-gradient(180deg, #22c55e 0%, #15803d 100%) !important;
+  border: 2px solid #4ade80 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.4) !important;
+}
+
+body[data-ui-mode="big-buttons"] #clock-toggle:not(:has(.glyphicon-pause)):hover {
+  background: linear-gradient(180deg, #16a34a 0%, #166534 100%) !important;
+  border-color: #86efac !important;
+}
+
+/* Clock Running / Stop CTA with pulsing glow */
+body[data-ui-mode="big-buttons"] #clock-toggle:has(.glyphicon-pause) {
+  background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
+  border: 2px solid #f87171 !important;
+  color: #ffffff !important;
+  animation: clock-big-pulse 1.8s infinite ease-in-out !important;
+}
+
+body[data-ui-mode="big-buttons"] #clock-toggle:has(.glyphicon-pause):hover {
+  background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%) !important;
+  border-color: #fca5a5 !important;
+}
+
+@keyframes clock-big-pulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.85);
+  }
+}
+
+/* Big Buttons: Score & Goals */
+body[data-ui-mode="big-buttons"] .score .btn-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+body[data-ui-mode="big-buttons"] .score-up {
+  flex-grow: 1 !important;
+  height: 56px !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+body[data-ui-mode="big-buttons"] .score-down {
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  line-height: 32px !important;
+  text-align: center !important;
+  opacity: 0.75 !important;
+  flex-shrink: 0 !important;
+}
+
+body[data-ui-mode="big-buttons"] .score-down:hover {
+  opacity: 1 !important;
+}
+
+/* Big Buttons: Shots */
+body[data-ui-mode="big-buttons"] .shots .btn-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+body[data-ui-mode="big-buttons"] .shots-up {
+  flex-grow: 1 !important;
+  height: 46px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 3px 10px rgba(14, 165, 233, 0.3) !important;
+}
+
+body[data-ui-mode="big-buttons"] .shots-down {
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 16px !important;
+  font-weight: bold !important;
+  line-height: 28px !important;
+  text-align: center !important;
+  opacity: 0.75 !important;
+  flex-shrink: 0 !important;
+}
+
+body[data-ui-mode="big-buttons"] .shots-down:hover {
+  opacity: 1 !important;
+}
+
+/* Big Buttons: Compact table heights to guarantee 580px viewport fit */
+body[data-ui-mode="big-buttons"] .goals {
+  max-height: 75px !important;
+  overflow-y: auto !important;
+  margin-top: 4px !important;
+}
+
+body[data-ui-mode="big-buttons"] .penalties {
+  max-height: 120px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  margin-top: 4px !important;
+}
+
+body[data-ui-mode="big-buttons"] .penalty.btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  margin-bottom: 6px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body[data-ui-mode="big-buttons"] #home .penalty.btn {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 2px solid #60a5fa !important;
+}
+
+body[data-ui-mode="big-buttons"] #away .penalty.btn {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%) !important;
+  border: 2px solid #f87171 !important;
+}
+
+/* ==========================================================================
+   MODE 3: COMPACT (Live score/clock/shots focus view - PENALTIES ALWAYS VISIBLE)
+   ========================================================================== */
+
+/* Only hide historical goal log; the scorekeeper always has to be able to add penalties! */
+body[data-ui-mode="compact"] .goals {
+  display: none !important;
+}
+
+body[data-ui-mode="compact"] .penalties {
+  display: block !important;
+  margin-top: 6px !important;
+  max-height: 130px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+body[data-ui-mode="compact"] .penalty.btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  margin-bottom: 6px !important;
+}
+
+body[data-ui-mode="compact"] #home .penalty.btn {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 2px solid #60a5fa !important;
+}
+
+body[data-ui-mode="compact"] #away .penalty.btn {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%) !important;
+  border: 2px solid #f87171 !important;
+}
+
+body[data-ui-mode="compact"] .metrics {
+  padding: 16px 8px !important;
+  gap: 16px !important;
+}
+
+body[data-ui-mode="compact"] .digits .score-text {
+  font-size: 72px !important;
+}
+
+body[data-ui-mode="compact"] .shots-counter {
+  font-size: 38px !important;
+}
+
+body[data-ui-mode="compact"] #clock-actions #clock-toggle {
+  min-height: 58px !important;
+  font-size: 20px !important;
+}
+
+/* Small screen / 1024x768 / short viewport adjustments */
+@media screen and (max-width: 1024px), screen and (max-height: 768px) {
+  #header-ui-modes .btn {
+    padding: 4px 7px !important;
+    font-size: 11px !important;
+  }
+
+  #header-scoresheet-link {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  body[data-ui-mode="big-buttons"] #clock-toggle {
+    min-height: 44px !important;
+    font-size: 17px !important;
+  }
+
+  body[data-ui-mode="big-buttons"] .score-up {
+    height: 38px !important;
+    font-size: 13px !important;
+  }
+
+  body[data-ui-mode="big-buttons"] .shots-up {
+    height: 34px !important;
+    font-size: 13px !important;
+  }
+
+  body[data-ui-mode="big-buttons"] .penalty.btn {
+    min-height: 30px !important;
+    font-size: 12px !important;
+    margin-bottom: 2px !important;
+    padding: 3px 6px !important;
+  }
+
+  body[data-ui-mode="big-buttons"] .goals {
+    max-height: 48px !important;
+    overflow-y: auto !important;
+  }
+
+  body[data-ui-mode="big-buttons"] .penalties {
+    max-height: 75px !important;
+    overflow-y: auto !important;
+  }
+
+  body[data-ui-mode="compact"] .digits .score-text {
+    font-size: 46px !important;
+    line-height: 48px !important;
+  }
+
+  body[data-ui-mode="compact"] .shots-counter {
+    font-size: 26px !important;
+    height: 44px !important;
+    line-height: 40px !important;
+  }
+
+  body[data-ui-mode="compact"] #clock-actions #clock-toggle {
+    min-height: 44px !important;
+    font-size: 17px !important;
+  }
+
+  body[data-ui-mode="compact"] .penalty.btn {
+    min-height: 30px !important;
+    font-size: 12px !important;
+    margin-bottom: 2px !important;
+    padding: 3px 6px !important;
+  }
+
+  body[data-ui-mode="compact"] .penalties {
+    max-height: 80px !important;
+    overflow-y: auto !important;
+  }
+}
+

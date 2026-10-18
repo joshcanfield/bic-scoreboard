@@ -7,6 +7,7 @@ export interface ModalController {
   show: (modal: HTMLElement) => void;
   hide: (modal: HTMLElement) => void;
   showById: (id: string) => void;
+  hideById: (id: string) => void;
   init: () => void;
 }
 
@@ -29,6 +30,12 @@ export const createModalController = (): ModalController => {
     const selector = id.startsWith('#') ? id : `#${id}`;
     const modal = document.querySelector<HTMLElement>(selector);
     if (modal) show(modal);
+  };
+
+  const hideById = (id: string) => {
+    const selector = id.startsWith('#') ? id : `#${id}`;
+    const modal = document.querySelector<HTMLElement>(selector);
+    if (modal) hide(modal);
   };
 
   const on = (
@@ -88,7 +95,7 @@ export const createModalController = (): ModalController => {
     });
   };
 
-  return { init, show, hide, showById };
+  return { init, show, hide, showById, hideById };
 };
 
 export default createModalController();
