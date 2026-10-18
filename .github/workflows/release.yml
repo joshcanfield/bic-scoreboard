@@ -74,6 +74,7 @@ jobs:
         with:
           draft: false
           prerelease: false
+          generate_release_notes: true
           files: |
             ${{ steps.artifacts.outputs.jar_all }}
             ${{ steps.artifacts.outputs.app_zip }}

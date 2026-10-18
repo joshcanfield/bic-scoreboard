@@ -23,7 +23,7 @@ java {
 
 description = "Bremerton Ice Arena ScoreBoard"
 group = "canfield.josh"
-version = "2.0"
+version = "3.0"
 
 application {
     mainClass = 'canfield.bia.ServiceMain'
@@ -106,7 +106,7 @@ gradle.afterProject {
 test {
     useJUnitPlatform()
 
-    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED', '-Dscoreboard.openBrowser=false', '-Dscoreboard.showDialog=false'
 
     enableAssertions = true
     finalizedBy jacocoTestReport
@@ -115,7 +115,7 @@ test {
 tasks.register('testNg', Test) {
     useTestNG()
 
-    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED', '-Dscoreboard.openBrowser=false', '-Dscoreboard.showDialog=false'
 
     enableAssertions = true
 }
@@ -240,6 +240,7 @@ tasks.register('jpackageFullJre', Exec) {
                 '--main-class', application.mainClass.get(),
                 '--runtime-image', javaHome,
                 '--java-options', '-Dscoreboard.showDialog=true',
+                '--java-options', '-Dscoreboard.openBrowser=true',
                 '--icon', iconPath,
                 '--dest', destDir.absolutePath
         )
@@ -296,7 +297,7 @@ tasks.register('uiTestPackaged', Test) {
         pb.directory(appDir)
         pb.redirectErrorStream(true)
         // Inherit environment; ensure headless behavior by default
-        pb.environment().put('JAVA_TOOL_OPTIONS', (pb.environment().get('JAVA_TOOL_OPTIONS') ?: '') + ' -Djava.awt.headless=true')
+        pb.environment().put('JAVA_TOOL_OPTIONS', (pb.environment().get('JAVA_TOOL_OPTIONS') ?: '') + ' -Djava.awt.headless=true -Dscoreboard.openBrowser=false -Dscoreboard.showDialog=false')
         def p = pb.start()
         procRef[0] = p
 

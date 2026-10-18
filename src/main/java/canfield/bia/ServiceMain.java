@@ -65,6 +65,7 @@ public class ServiceMain {
                 addShutdownHook();
                 try {
                     hockeyGameServer.start();
+                    maybeOpenBrowser();
                 } catch (Throwable t) {
                     log.error("Failed to start service", t);
                     SwingUtilities.invokeLater(() -> {
@@ -135,7 +136,7 @@ public class ServiceMain {
     }
 
     private static void maybeShowStartupWindow() {
-        String show = System.getProperty("scoreboard.showDialog", "false");
+        String show = System.getProperty("scoreboard.showDialog", "true");
         if (!Boolean.parseBoolean(show)) return;
         if (GraphicsEnvironment.isHeadless()) return;
         try {
@@ -161,7 +162,7 @@ public class ServiceMain {
                     title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
 
                     String html = "<html>" +
-                            "<div style='margin-top:6px'>Server running on <b>http://localhost:8080/</b></div>" +
+                            "<div style='margin-top:6px'>Server running on <b>http://localhost:8080/index.html</b></div>" +
                             "<div style='margin-top:6px;color:#555'>This window is informational and can be closed.</div>" +
                             "</html>";
                     JLabel info = new JLabel(html);
@@ -172,8 +173,8 @@ public class ServiceMain {
                     JButton open = new JButton("Open Scoreboard");
                     open.addActionListener(e -> {
                         try {
-                            if (Desktop.isDesktopSupported()) {
-                                Desktop.getDesktop().browse(URI.create("http://localhost:8080/"));
+                            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                                Desktop.getDesktop().browse(URI.create("http://localhost:8080/index.html"));
                             }
                         } catch (Exception ex) {
                             log.warn("Failed to open browser", ex);
@@ -206,6 +207,19 @@ public class ServiceMain {
             });
         } catch (Throwable t) {
             log.debug("Startup dialog unsupported", t);
+        }
+    }
+
+    private static void maybeOpenBrowser() {
+        String autoOpen = System.getProperty("scoreboard.openBrowser", "true");
+        if (!Boolean.parseBoolean(autoOpen)) return;
+        if (GraphicsEnvironment.isHeadless()) return;
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(URI.create("http://localhost:8080/index.html"));
+            }
+        } catch (Throwable t) {
+            log.debug("Auto open browser unsupported", t);
         }
     }
 

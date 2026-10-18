@@ -67,6 +67,8 @@ public class UiHooks {
     }
 
     private static AtomicReference<Throwable> setupAndStartServer() throws IOException {
+        System.setProperty("scoreboard.openBrowser", "false");
+        System.setProperty("scoreboard.showDialog", "false");
         originalUserDir = System.getProperty("user.dir");
         originalResourceBase = System.getProperty("RESOURCE_BASE");
         Path dist = Paths.get("src/main/dist").toAbsolutePath();
