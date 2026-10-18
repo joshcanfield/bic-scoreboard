@@ -194,6 +194,13 @@ const renderPenaltyTable = (teamElem: HTMLElement | null, teamKey: 'home' | 'awa
     detailsLink.dataset.period = String(detail.period);
     detailsLink.dataset.duration = String(detail.durationMillis);
     detailsLink.dataset.remaining = String(detail.timeRemainingMillis);
+    const formatMs = (ms: number | null | undefined): string => {
+      if (ms == null) return '—';
+      const { minutes: m, seconds: s } = millisToMinSec(ms);
+      return `${pad(m, 2)}:${pad(s, 2)}`;
+    };
+    detailsLink.dataset.off = formatMs(detail.offTimeGameClockMillis);
+    detailsLink.dataset.start = formatMs(detail.onTimeGameClockMillis);
     detailsLink.title = 'Details';
     detailsLink.textContent = 'Details';
     actionsCell.appendChild(detailsLink);
@@ -688,14 +695,6 @@ const initEvents = (goalDialog: GoalDialogController) => {
         websocketClient.sendCommand({ type: 'START_CLOCK', payload: {} });
       }
     });
-  });
-  on(document, 'click', '#clock-start', (e) => {
-    e.preventDefault();
-    websocketClient.sendCommand({ type: 'START_CLOCK', payload: {} });
-  });
-  on(document, 'click', '#clock-pause', (e) => {
-    e.preventDefault();
-    websocketClient.sendCommand({ type: 'PAUSE_CLOCK', payload: {} });
   });
 
   // Power button

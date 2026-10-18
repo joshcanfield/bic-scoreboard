@@ -32,13 +32,12 @@ public class GameWebSocketV2 extends WebSocketServer {
     private GameEngine gameEngine; // Changed to non-final
     private final StateDiffer stateDiffer;
     private final ObjectMapper objectMapper;
-    private final Set<WebSocket> connections;
 
     public GameWebSocketV2(int port, StateDiffer stateDiffer) { // Removed GameEngine parameter
         super(new InetSocketAddress(port));
+        setReuseAddr(true);
         this.stateDiffer = stateDiffer;
         this.objectMapper = new ObjectMapper();
-        this.connections = Collections.synchronizedSet(new HashSet<>());
 
         SimpleModule module = new SimpleModule();
         module.addDeserializer(Command.class, new CommandDeserializer());
@@ -51,14 +50,7 @@ public class GameWebSocketV2 extends WebSocketServer {
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        InetSocketAddress remoteAddr = conn.getRemoteSocketAddress();
-        if (!isLocalhost(remoteAddr)) {
-            log.warn("Rejected non-localhost connection from {}", remoteAddr);
-            conn.close(1008, "Only localhost connections allowed");
-            return;
-        }
-        connections.add(conn);
-        log.info("WebSocket connection established: {}", remoteAddr);
+        log.info("WebSocket connection established: {}", conn.getRemoteSocketAddress());
         if (gameEngine == null) {
             log.warn("GameEngine not initialized, cannot send initial state to {}", conn.getRemoteSocketAddress());
             return;
@@ -73,7 +65,6 @@ public class GameWebSocketV2 extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        connections.remove(conn);
         log.info("WebSocket closed: {} code={} reason={} remote={}", conn.getRemoteSocketAddress(), code, reason, remote);
     }
 
@@ -124,22 +115,9 @@ public class GameWebSocketV2 extends WebSocketServer {
     }
 
     private void processAndBroadcast(Command command) {
-        GameState oldState = gameEngine.getCurrentState();
+        // GameEngine.processCommand already notifies the stateChangeConsumer,
+        // which calls broadcastStateChange(). Do not duplicate the broadcast here.
         gameEngine.processCommand(command, System.currentTimeMillis());
-        GameState newState = gameEngine.getCurrentState();
-
-        // Broadcast state changes
-        Map<String, Object> patch = stateDiffer.diff(oldState, newState);
-        if (!patch.isEmpty()) {
-            try {
-                String patchJson = objectMapper.writeValueAsString(Map.of("type", "STATE_PATCH", "data", patch));
-                for (WebSocket client : connections) {
-                    client.send(patchJson);
-                }
-            } catch (Exception e) {
-                log.error("Error broadcasting patch: {}", e.getMessage(), e);
-            }
-        }
     }
 
     public void broadcastStateChange(GameState oldState, GameState newState) {
@@ -147,21 +125,19 @@ public class GameWebSocketV2 extends WebSocketServer {
         if (!patch.isEmpty()) {
             try {
                 String patchJson = objectMapper.writeValueAsString(Map.of("type", "STATE_PATCH", "data", patch));
-                log.debug("Broadcasting patch to {} clients: {}", connections.size(), patch.keySet());
-                for (WebSocket client : connections) {
-                    client.send(patchJson);
+                log.debug("Broadcasting patch to clients: {}", patch.keySet());
+                for (WebSocket client : getConnections()) {
+                    if (client != null && client.isOpen()) {
+                        try {
+                            client.send(patchJson);
+                        } catch (Exception ex) {
+                            log.warn("Failed to send patch to client {}: {}", client.getRemoteSocketAddress(), ex.getMessage());
+                        }
+                    }
                 }
             } catch (Exception e) {
                 log.error("Error broadcasting patch: {}", e.getMessage(), e);
             }
         }
-    }
-
-    private boolean isLocalhost(InetSocketAddress addr) {
-        if (addr == null) {
-            return false;
-        }
-        var hostAddr = addr.getAddress();
-        return hostAddr != null && hostAddr.isLoopbackAddress();
     }
 }

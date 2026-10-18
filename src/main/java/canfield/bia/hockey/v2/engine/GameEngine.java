@@ -94,7 +94,7 @@ public class GameEngine {
         } else if (command instanceof PauseClockCommand) {
             this.currentState = pauseClock(this.currentState, currentTimeMillis);
         } else if (command instanceof AddPenaltyCommand addPenaltyCommand) {
-            this.currentState = addPenalty(this.currentState, addPenaltyCommand);
+            this.currentState = addPenalty(this.currentState, addPenaltyCommand, currentTimeMillis);
         } else if (command instanceof TickCommand) {
             this.currentState = tick(this.currentState, currentTimeMillis);
             // Check for simulated-time buzzer auto-reset
@@ -209,12 +209,14 @@ public class GameEngine {
         gameTimer.stop();
         // Reset shift timer
         shiftStartGameTimeMillis = -1;
-        long resetClockMillis = state.config() != null ? resolvePeriodDuration(state.config(), 0) : 0L;
+        int resetPeriod = (state.config() != null && state.config().warmupLengthMillis() == 0) ? 1 : 0;
+        GameStatus resetStatus = resetPeriod == 0 ? GameStatus.PRE_GAME : GameStatus.READY_FOR_PERIOD;
+        long resetClockMillis = state.config() != null ? resolvePeriodDuration(state.config(), resetPeriod) : 0L;
         return new GameState(
             state.gameId(), // Keep the same game ID
             state.config(), // Retain the game configuration
-            GameStatus.PRE_GAME,
-            0, // Reset period
+            resetStatus,
+            resetPeriod, // Reset period
             new ClockState(resetClockMillis, false, 0L), // Reset clock
             new TeamState(List.of(), 0, List.of(), List.of()), // Reset home team stats
             new TeamState(List.of(), 0, List.of(), List.of()), // Reset away team stats
@@ -546,12 +548,13 @@ public class GameEngine {
         return state;
     }
 
-    private GameState addPenalty(GameState state, AddPenaltyCommand command) {
+    private GameState addPenalty(GameState state, AddPenaltyCommand command, long currentTimeMillis) {
         String teamId = command.teamId();
         int playerNumber = command.playerNumber();
         int servingPlayerNumber = command.servingPlayerNumber();
-        int durationMinutes = command.durationMinutes();
-        long durationMillis = durationMinutes * 60 * 1000L;
+        long durationMillis = command.durationMillis() != null && command.durationMillis() > 0
+            ? command.durationMillis()
+            : (long) command.durationMinutes() * 60 * 1000L;
 
         // If clock is running during actual play (not intermission), sync penalty
         // to game clock's startTimeWallClock so they tick in unison
@@ -566,7 +569,7 @@ public class GameEngine {
             // Use current game clock time
             offTimeGameClockMillis = state.clock().timeRemainingMillis();
             if (state.clock().isRunning()) {
-                long elapsed = System.currentTimeMillis() - state.clock().startTimeWallClock();
+                long elapsed = currentTimeMillis - state.clock().startTimeWallClock();
                 offTimeGameClockMillis = state.clock().timeRemainingMillis() - elapsed;
             }
         }
@@ -663,10 +666,44 @@ public class GameEngine {
                     state.eventHistory()
                 );
             }
-            // Period ended - go to intermission
+            // Period ended
             // Reset shift timer for next period
             shiftStartGameTimeMillis = -1;
             scheduleBuzzerAutoReset();
+
+            // Check if final period ended -> GAME_OVER
+            if (state.period() >= state.config().periods()) {
+                gameTimer.stop();
+                return new GameState(
+                    state.gameId(),
+                    state.config(),
+                    GameStatus.GAME_OVER,
+                    state.period(),
+                    new ClockState(0L, false, 0L),
+                    state.home(),
+                    state.away(),
+                    true,
+                    state.eventHistory()
+                );
+            }
+
+            // If intermission is 0 minutes, auto-advance directly to next period in READY_FOR_PERIOD
+            if (state.config().intermissionLengthMillis() == 0) {
+                int nextPeriod = state.period() + 1;
+                return new GameState(
+                    state.gameId(),
+                    state.config(),
+                    GameStatus.READY_FOR_PERIOD,
+                    nextPeriod,
+                    new ClockState(resolvePeriodDuration(state.config(), nextPeriod), false, 0L),
+                    state.home(),
+                    state.away(),
+                    true,
+                    state.eventHistory()
+                );
+            }
+
+            // Otherwise go to intermission
             return new GameState(
                 state.gameId(),
                 state.config(),

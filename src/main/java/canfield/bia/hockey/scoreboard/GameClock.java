@@ -65,6 +65,12 @@ public class GameClock implements Clock {
     clockStartMillis = System.currentTimeMillis();
   }
 
+  @Override
+  public void setTimeMillis(int millis) {
+    timeRemainingMillis = millis;
+    clockStartMillis = System.currentTimeMillis();
+  }
+
 
   @Override
   public void start() {

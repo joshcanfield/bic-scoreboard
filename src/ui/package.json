@@ -1,6 +1,6 @@
 {
   "name": "@canfield/bia-ui",
-  "version": "0.1.0",
+  "version": "3.0.1",
   "private": true,
   "description": "TypeScript workspace for the Bremerton Ice Arena control UI",
   "type": "module",

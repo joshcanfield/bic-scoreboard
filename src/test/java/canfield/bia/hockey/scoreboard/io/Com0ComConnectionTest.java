@@ -2,15 +2,28 @@ package canfield.bia.hockey.scoreboard.io;
 
 import com.fazecast.jSerialComm.SerialPort;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Quick test to verify com0com virtual ports are connected.
  * Run with: ./gradlew test --tests "*Com0ComConnectionTest"
  */
+@EnabledOnOs(OS.WINDOWS)
 class Com0ComConnectionTest {
 
     @Test
     void testCom0ComPortsConnected() throws Exception {
+        boolean port10Exists = false;
+        boolean port11Exists = false;
+        for (SerialPort p : SerialPort.getCommPorts()) {
+            if ("COM10".equalsIgnoreCase(p.getSystemPortName())) port10Exists = true;
+            if ("COM11".equalsIgnoreCase(p.getSystemPortName())) port11Exists = true;
+        }
+        assumeTrue(port10Exists && port11Exists, "COM10/COM11 virtual ports are not installed/available.");
+
         SerialPort port10 = SerialPort.getCommPort("COM10");
         SerialPort port11 = SerialPort.getCommPort("COM11");
 

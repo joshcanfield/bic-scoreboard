@@ -547,8 +547,9 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
 
       const shift = getShiftTotal();
       const minutesForGame = shift > 0 ? normalizeRecMinutes(minutes, shift) || minutes : minutes;
-      const periods = [0, ...computeRecPeriods(minutesForGame, shift)];
-      if (periods.length === 1) periods.push(minutesForGame);
+      const recPeriods = computeRecPeriods(minutesForGame, shift);
+      const numPeriods = Math.max(1, recPeriods.length);
+      const periodLengthMinutes = Math.floor(minutesForGame / numPeriods);
 
       try {
         localStorage.setItem('scoreboard.rec.minutes', String(minutes));
@@ -560,12 +561,12 @@ export const initGameDialog = (sendCommand: (command: Command) => void) => {
       }
 
       sendCommand({ type: 'CREATE_GAME', payload: {
-        templateId: 'REC_LEAGUE', // Or a specific REC_LEAGUE template
+        templateId: 'REC_LEAGUE',
         overrides: {
-          warmupMinutes: periods[0] ?? 0,
-          periodLengthMinutes: minutesForGame,
-          intermissionLengthMinutes: 0, // Assuming no intermission for rec league
-          periods: periods.length - 1,
+          warmupMinutes: 0,
+          periodLengthMinutes,
+          intermissionLengthMinutes: 0,
+          periods: numPeriods,
           clockType: 'RUN_TIME',
           shiftLengthSeconds: shift > 0 ? shift : null,
         }

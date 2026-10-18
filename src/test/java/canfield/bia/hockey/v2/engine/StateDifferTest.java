@@ -185,4 +185,29 @@ class StateDifferTest {
         assertEquals(1, patch.size());
         assertEquals(List.of(newPenalty), patch.get("away.penalties"));
     }
+
+    @Test
+    void testConfigChange() {
+        GameState oldState = createInitialState();
+        GameConfig newConfig = new GameConfig(
+            "TEST_TEMPLATE_4",
+            5, 20, 1, 4, ClockType.STOP_TIME, null, null
+        );
+        GameState newState = new GameState(
+            oldState.gameId(),
+            newConfig,
+            oldState.status(),
+            oldState.period(),
+            oldState.clock(),
+            oldState.home(),
+            oldState.away(),
+            oldState.buzzerOn(),
+            oldState.eventHistory()
+        );
+
+        Map<String, Object> patch = stateDiffer.diff(oldState, newState);
+
+        assertEquals(1, patch.size());
+        assertEquals(newConfig, patch.get("config"));
+    }
 }

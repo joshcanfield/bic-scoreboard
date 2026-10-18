@@ -26,10 +26,9 @@ public class StateDiffer {
         if (!Objects.equals(oldState.gameId(), newState.gameId())) {
             patch.put("gameId", newState.gameId());
         }
-        // GameConfig is immutable and set at creation, so it shouldn't change after initial state
-        // if (!Objects.equals(oldState.config(), newState.config())) {
-        //     patch.put("config", newState.config());
-        // }
+        if (!Objects.equals(oldState.config(), newState.config())) {
+            patch.put("config", newState.config());
+        }
         if (!Objects.equals(oldState.status(), newState.status())) {
             patch.put("status", newState.status());
         }

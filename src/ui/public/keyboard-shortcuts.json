@@ -1,0 +1,16 @@
+{
+  "buzzer": ["b"],
+  "clockToggle": ["Space"],
+  "clockStart": ["ArrowUp", "w"],
+  "clockStop": ["ArrowDown", "s"],
+  "homeShotUp": ["q"],
+  "homeShotDown": ["Shift+q"],
+  "awayShotUp": ["e"],
+  "awayShotDown": ["Shift+e"],
+  "homeGoal": ["ArrowLeft", "a"],
+  "awayGoal": ["ArrowRight", "d"],
+  "homePenalty": ["p"],
+  "awayPenalty": ["Shift+p"],
+  "periodUp": ["Control+ArrowUp"],
+  "periodDown": ["Control+ArrowDown"]
+}

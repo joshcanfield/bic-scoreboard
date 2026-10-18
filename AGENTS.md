@@ -43,15 +43,15 @@
 - Hardware I/O uses serial (jSerialComm); mock or isolate when writing tests.
 
 ## Web UI Overview
-- Control UI is served from `src/main/dist/web/index.html` (type="module" JS; no jQuery/Bootstrap JS).
-- Display page is `src/main/dist/web/scoreboard.html`.
-- Static assets live under `src/main/dist/web/{css,js,img,lib}`.
-- Main stylesheet for the control UI: `css/index.css` (consolidates modern styles and tokens).
-- Main script: `js/main.js` (native WebSocket client, REST helpers, UI wiring, persistence).
+- Control UI is developed in `src/ui/` (TypeScript + Vite) and built into `src/main/dist/web-generated/`.
+- Display page is `scoreboard.html`.
+- Static assets and CSS live under `src/ui/public/` and are packaged into `web-generated/` on build.
+- Main UI script: `src/ui/src/control-ui.ts` using typed WebSocket client communicating with `GameWebSocketV2`.
+- Run UI tests & linting via `./gradlew uiCheck` or `npm run check` inside `src/ui/`.
 
 ### Styling
 - Buttons use CSS variables and gradients; hover/focus are intentionally high‑contrast.
-- Update button colors/hover in `css/index.css`. Primary shades derive from `--accent` tokens.
+- Primary shades derive from `--accent` tokens.
 - Score minus buttons use `btn-default` (de‑emphasized); shots minus matches it for consistency.
 
 ### Persistence (localStorage)
@@ -60,17 +60,18 @@
 - Do not persist last game mode or specific ends‑at times. Ends‑at always derives from "now + minutes" when dialog opens.
 
 ### Transport
-- REST API mounted at `/api/*` on port `8080`.
-- Native WebSocket endpoint at `ws://<host>:<ws.port>/ws` (default port `8082`). The client speaks a simple JSON envelope `{event, data}`.
+- Static UI served by Jetty HTTP server on port `8080`.
+- Real-time communication via `GameWebSocketV2` on port `8082`.
+- Commands sent from client: `{type: "<COMMAND_NAME>", payload: { ... }}`.
+- State updates pushed to clients: `INITIAL_STATE` and `STATE_PATCH` envelopes (`{type: "STATE_PATCH", data: patch}`).
 
 ## UI Test Harness
-- `UiHooks` starts the Jetty server and the native WebSocket server for tests. It sets `RESOURCE_BASE` to the `src/main/dist/web-generated` folder (symlink or copy) so assets are served.
+- `UiHooks` starts the Jetty server and `GameWebSocketV2` for tests. It sets `RESOURCE_BASE` to `src/main/dist/web-generated` so assets are served.
 - Chrome runs headless by default. Adjust options in `UiHooks.initChromeDriver()` if you need visibility locally.
 - Keep selectors stable (`id`s and key class names) to reduce flakiness.
 
 ## Developer Tips
-- Keep front‑end JS framework‑free (native modules, DOM APIs). Avoid introducing heavyweight deps.
+- Front‑end TypeScript uses Vite with strict typechecking and modular components.
 - Use the provided color tokens in `:root` to theme UI consistently.
-- When adding UI behavior, prefer progressive enhancement and minimal DOM structure churn.
-- For new REST endpoints or socket events, add at least one functional integration test.
+- For new commands or socket events, add unit and integration test coverage.
 

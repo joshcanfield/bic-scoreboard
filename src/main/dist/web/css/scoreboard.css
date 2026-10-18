@@ -185,18 +185,3 @@ div {
     width: 220px;
     float: left;
 }
-
-#xscoreboard::after {
-    content: "";
-    background-image: url('../img/scoreboard.jpg');
-    background-size: 100%;
-    background-repeat: no-repeat;
-    opacity: 0.5;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    position: absolute;
-    height: 720px;
-    width: 1280px;
-}

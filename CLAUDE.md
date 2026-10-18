@@ -51,7 +51,6 @@ For faster iteration during development, you can run npm commands directly. Firs
 - **Lint**: `npm run lint`
 - **Type check**: `npm run typecheck`
 - **Full validation**: `npm run check` (runs lint, test, and typecheck)
-- **Generate API types**: `npm run generate:types` (consumes `openapi/game.yaml` to produce `src/api/game.types.ts`)
 
 ### Packaging
 
@@ -80,36 +79,31 @@ Note: Do not set `JAVA_HOME` to a Windows path in WSL; prefer putting the desire
 ### Backend (Java)
 
 - **Entry point**: `canfield.bia.ServiceMain` - Handles startup, working directory normalization, optional GUI dialog
-- **Server**: `canfield.bia.HockeyGameServer` - Manages Jetty (port 8080) and native WebSocket server (port 8082)
-- **REST API**: `canfield.bia.rest.GameResource` - RESTEasy 6 endpoints under `/api/game/*`
-- **DI**: Dagger 1.x via `GameApplication.getObjectGraph()`
-- **Game logic**: `SimpleGameManager` coordinates game state, clock, scoreboard adapter
-- **Scoreboard I/O**: `ScoreboardAdapter` handles serial port communication with physical scoreboard hardware
-- **WebSocket**: `NativeWebSocketServer` broadcasts game updates and accepts control commands
+- **Server**: `canfield.bia.HockeyGameServer` - Manages Jetty (serves static UI on port 8080)
+- **WebSocket Server**: `canfield.bia.hockey.v2.web.GameWebSocketV2` - Port 8082, receives JSON commands (`{type, payload}`) and broadcasts state patches (`STATE_PATCH`, `INITIAL_STATE`)
+- **Game Engine**: `canfield.bia.hockey.v2.engine.GameEngine` - Stateful engine managing official clock, periods, scores, penalties, and intermissions
+- **Hardware Adapter**: `LegacyScoreboardHardwareAdapter` + `ScoreboardAdapterImpl` (jSerialComm) - Bridges game state over serial port to the physical Daktronics/All-American scoreboard
 
 ### Frontend
 
-The UI has been **fully migrated to TypeScript**:
+The UI is built with **TypeScript + Vite**:
 
-- **TypeScript UI Source**: `src/ui/` - Vite-based workspace with full TypeScript migration
-- **Static Assets**: `src/main/dist/web/` - CSS, fonts, images, Bootstrap libraries (Vite `publicDir`)
-- **Build Output**: `src/main/dist/web-generated/` - Compiled TypeScript bundles + copied static assets (served by Jetty)
-- **Migration status**: ✅ Complete - All control UI logic migrated to TypeScript with 65 passing tests
-- **Build integration**: Vite proxies `/api` to `http://localhost:8080` and `/ws` to `ws://localhost:8082` during dev
-- **Server configuration**: HockeyGameServer serves from `web-generated/` (TypeScript build output)
+- **TypeScript UI Source**: `src/ui/` - Vite-based workspace with modular TypeScript components
+- **Static Assets**: `src/ui/public/` - CSS, fonts, images, and shortcut configs (copied to `web-generated/` during build)
+- **Build Output**: `src/main/dist/web-generated/` - Compiled TypeScript bundles and assets served by Jetty on port 8080
+- **WebSocket Client**: `src/ui/src/websocket.ts` - Typed client communicating directly with `GameWebSocketV2` on port 8082
 
 ### API Communication
 
-- **REST**: `GET/POST/PUT /api/game` for game state, goals, shots, penalties, buzzer, power control
-- **WebSocket**: `ws://localhost:8082/ws` - JSON envelope `{"event": string, "data": any}`
-  - Outbound: `update` (game state snapshot), `power` (scoreboard power state)
-  - Inbound: `goal`, `shot`, `undo_goal`, `undo_shot`, `clock_start`, `clock_pause`, `set_period`, `buzzer`, `power`, `createGame`
-- **API types**: Generated from `openapi/game.yaml` via `npm run generate:types` in `src/ui`
+- **WebSocket**: `ws://localhost:8082` - JSON messages communicating with `GameWebSocketV2`:
+  - Client to Server: `{type: "<COMMAND_NAME>", payload: { ... }}` (e.g. `CREATE_GAME`, `START_CLOCK`, `PAUSE_CLOCK`, `ADD_PENALTY`, `ADD_GOAL`, `ADD_SHOT`, `SET_PERIOD`, `RESET_GAME`, `GET_PORTS`, `START_ADAPTER`)
+  - Server to Client: `{type: "INITIAL_STATE", data: GameState}` and `{type: "STATE_PATCH", data: patch}`
+- **Protocol types**: Maintained in `src/ui/src/api/v2-types.ts` mirroring Java domain and command models.
 
 ### Testing
 
-- **Java tests**: TestNG, Mockito (unit), Selenium + Cucumber (UI integration)
-- **TypeScript tests**: Vitest for unit tests of migrated modules
+- **Java tests**: TestNG + JUnit 5, Mockito (unit), Selenium + Cucumber (UI integration)
+- **TypeScript tests**: Vitest for unit tests in `src/ui`
 - **UI integration**: `canfield.bia.UiIntegrationTest` runs Cucumber scenarios with headless Chrome
 - **Packaged app tests**: `uiTestPackaged` task starts the packaged executable and runs UI tests against it
 
@@ -118,14 +112,12 @@ The UI has been **fully migrated to TypeScript**:
 - **jlink**: Creates trimmed runtime image with `jpackage` for Windows EXE installer
 - **jpackageFullJre**: Fallback using shadow JAR and full JRE when jlink JPMS conflicts occur
 - **Working dir normalization**: `ServiceMain.normalizeAppWorkingDir()` sets `RESOURCE_BASE` and `user.dir` when running from packaged app-image
-- **Static assets**: `src/main/dist/` (web, conf, bin) copied into packaged app image
+- **Static assets**: `src/main/dist/` (web-generated, conf, bin) copied into packaged app image
 
 ## Key Configuration Files
 
-- **OpenAPI spec**: `openapi/game.yaml` - REST API contract, consumed by TypeScript type generator
 - **Vite config**: `src/ui/vite.config.ts` - Dev server proxies, build output to `web-generated`
-- **Gradle**: `build.gradle` - Java 21, Jetty 11, RESTEasy 6, Dagger, jpackage tasks
-- **Migration tracker**: `typescript_migration_plan.md` - Phased migration roadmap and progress
+- **Gradle**: `build.gradle` - Java 21, Jetty 11, Logback 1.5, jpackage tasks
 
 ## Common Workflows
 
@@ -133,7 +125,7 @@ The UI has been **fully migrated to TypeScript**:
 
 1. Start Java service: `./gradlew run` (port 8080, WebSocket 8082)
 2. In separate terminal: `cd src/ui && npm run dev` (UI dev server on port 5173)
-3. Access UI at http://localhost:5173 (proxies API calls to Java service)
+3. Access UI at http://localhost:5173 (proxies to WebSocket on 8082)
 
 ### Adding TypeScript UI Code
 
@@ -141,14 +133,6 @@ The UI has been **fully migrated to TypeScript**:
 2. Add Vitest tests alongside implementation
 3. Update `src/ui/index.html` if adding new entry points
 4. Run `npm run check` to validate lint, tests, types
-5. Legacy UI can import TypeScript modules during transition via `legacy-*` shims
-
-### Updating REST API
-
-1. Modify `canfield.bia.rest.GameResource` for new endpoints
-2. Update `openapi/game.yaml` to reflect changes
-3. Run `npm run generate:types` in `src/ui/` to regenerate TypeScript types
-4. Update UI code to use new types
 
 ### Intermission Configuration
 

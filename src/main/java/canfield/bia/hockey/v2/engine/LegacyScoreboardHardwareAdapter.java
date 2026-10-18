@@ -18,6 +18,7 @@ public class LegacyScoreboardHardwareAdapter implements HardwareOutputAdapter {
 
     private final ScoreBoard legacyScoreBoard;
     private final ScoreboardAdapter scoreboardAdapter;
+    private boolean lastBuzzerOn = false;
 
     public LegacyScoreboardHardwareAdapter(ScoreBoard legacyScoreBoard, ScoreboardAdapter scoreboardAdapter) {
         this.legacyScoreBoard = legacyScoreBoard;
@@ -78,9 +79,7 @@ public class LegacyScoreboardHardwareAdapter implements HardwareOutputAdapter {
         // Update game clock
         Clock gameClock = legacyScoreBoard.getGameClock();
         long timeRemainingMillis = state.clock().timeRemainingMillis();
-        int minutes = Clock.getMinutes((int) timeRemainingMillis);
-        int seconds = Clock.getSeconds((int) timeRemainingMillis);
-        gameClock.setTime(minutes, seconds);
+        gameClock.setTimeMillis((int) timeRemainingMillis);
 
         if (state.clock().isRunning()) {
             gameClock.start();
@@ -93,10 +92,11 @@ public class LegacyScoreboardHardwareAdapter implements HardwareOutputAdapter {
         updatePenalties(state.home().penalties(), true, state.home().shots(), showShots);
         updatePenalties(state.away().penalties(), false, state.away().shots(), showShots);
 
-        // Handle buzzer
-        if (state.buzzerOn()) {
+        // Handle buzzer (only trigger on rising edge)
+        if (state.buzzerOn() && !lastBuzzerOn) {
             legacyScoreBoard.ringBuzzer(3000); // Ring for 3 seconds
         }
+        lastBuzzerOn = state.buzzerOn();
 
         // Handle game status
         if (state.status() == GameStatus.GAME_OVER) {

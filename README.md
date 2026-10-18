@@ -47,49 +47,40 @@ npm install
 ```
 
 #### Development Commands
-- **Development server**: `npm run dev` - Starts Vite dev server with hot reload and proxies to Java backend
+- **Development server**: `npm run dev` - Starts Vite dev server with hot reload
 - **Build**: `npm run build` - Builds production bundle to `src/main/dist/web-generated`
-- **Tests**: `npm run test` - Runs all Vitest unit tests (65 tests across 14 files)
+- **Tests**: `npm run test` - Runs Vitest unit tests
 - **Lint**: `npm run lint` - Runs ESLint on TypeScript files
 - **Type check**: `npm run typecheck` - Validates TypeScript types
 - **Full validation**: `npm run check` - Runs lint + test + typecheck (matches CI validation)
-- **Generate API types**: `npm run generate:types` - Generates TypeScript types from `openapi/game.yaml`
 
 #### Architecture
 
-The UI is organized into focused TypeScript modules:
+The UI is organized into focused TypeScript modules under `src/ui/src/`:
 
 **Entry Point:**
-- `control-ui.ts` - Main entry point that initializes all UI components
+- `control-ui.ts` - Main entry point that initializes UI components, connects to WebSocket, and handles user interactions
 
 **Core Utilities:**
 - `utils/time.ts` - Time parsing, formatting, and clock utilities
 - `utils/rec-time.ts` - Recreational game time calculations and normalization
+- `utils/state-patch.ts` - Deep path updates for state patches
 
-**API Layer:**
-- `api/http.ts` - REST client with type-safe fetch wrapper
-- `api/game.types.ts` - Generated TypeScript types from OpenAPI spec
-
-**Transport:**
-- `transport/native-ws.ts` - WebSocket transport with reconnection logic
-- `transport/server.ts` - Server command wrappers and event typing
-
-**State Management:**
-- `state/control-state.ts` - Control state derivation and view model builders
+**API & Transport:**
+- `api/v2-types.ts` - TypeScript interfaces matching backend models and commands
+- `websocket.ts` - Typed WebSocket client connecting to `GameWebSocketV2` on port 8082
 
 **View Components:**
-- `view/modals.ts` - Bootstrap-like modal management
+- `view/modals.ts` - Modal management
 - `view/team-colors.ts` - Team color picker with persistence
 - `view/clock-settings.ts` - Clock setting dialog
 - `view/penalty-dialog.ts` - Penalty creation and details dialogs
 - `view/game-dialog.ts` - New game creation (standard and drop-in modes)
-- `view/penalties.ts` - Penalty table rendering
+- `view/goal-dialog.ts` - Goal entry dialog
 - `view/ports.ts` - Serial port connection UI
 
 **Rec Game Helpers:**
 - `rec/game-time.ts` - Drop-in game time management, ends-at sync, shift hints
-
-All modules include comprehensive Vitest tests with 100% core logic coverage.
 
 ## Test Environment (Windows/WSL and Linux)
 

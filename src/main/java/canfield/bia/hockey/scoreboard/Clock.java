@@ -29,6 +29,10 @@ public interface Clock {
 
   void setTime(int minutes, int seconds);
 
+  default void setTimeMillis(int millis) {
+    setTime(Clock.getMinutes(millis), Clock.getSeconds(millis));
+  }
+
   class ClockTime {
     int minutes;
     int seconds;

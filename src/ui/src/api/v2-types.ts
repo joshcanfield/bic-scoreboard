@@ -11,7 +11,7 @@ export type GameStatus =
   | 'INTERMISSION'
   | 'GAME_OVER';
 
-export type ClockType = 'STOP_TIME' | 'RUNNING_TIME';
+export type ClockType = 'STOP_TIME' | 'RUN_TIME' | 'RUNNING_TIME';
 
 export type InfractionType =
   | 'TRIPPING'
@@ -83,6 +83,7 @@ export interface GameConfig {
   periods: number;
   clockType: ClockType;
   shiftLengthSeconds: number | null;
+  showShotsInPenaltySlot?: boolean;
 }
 
 export interface GameState {
@@ -106,12 +107,20 @@ export interface Command {
 // WebSocket message envelope types
 export interface InitialStateMessage {
   type: 'INITIAL_STATE';
-  state: GameState;
+  data: GameState;
 }
 
 export interface StatePatchMessage {
   type: 'STATE_PATCH';
-  patch: Record<string, unknown>;
+  data: Record<string, unknown>;
+}
+
+export interface PortsMessage {
+  type: 'PORTS';
+  data: {
+    ports: string[];
+    currentPort: string;
+  };
 }
 
 export interface CommandMessage {
@@ -120,7 +129,7 @@ export interface CommandMessage {
   payload?: Record<string, unknown>;
 }
 
-export type WebSocketMessage = InitialStateMessage | StatePatchMessage;
+export type WebSocketMessage = InitialStateMessage | StatePatchMessage | PortsMessage;
 
 // Helper to get team score from goals
 export function getTeamScore(team: TeamState): number {

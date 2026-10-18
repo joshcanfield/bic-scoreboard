@@ -7,8 +7,6 @@ import canfield.bia.hockey.scoreboard.ScoreBoardImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fazecast.jSerialComm.SerialPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,12 +22,12 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
   private final PenaltyClockCmd penaltyClockCmd = new PenaltyClockCmd();
   private final ScoreboardAdapterImpl.ClockAndScoreCmd clockAndScoreCmd = new ClockAndScoreCmd();
 
-  private String portName;
-  private SerialPort serialPort;
+  private volatile String portName;
+  private volatile SerialPort serialPort;
 
-  private long buzzer_stops = 0;
-  private boolean running = false;
-  private long lastOpenAttempt = 0;
+  private volatile long buzzer_stops = 0;
+  private volatile boolean running = false;
+  private volatile long lastOpenAttempt = 0;
 
   private long lastSend = 0;
 
@@ -39,15 +37,6 @@ public class ScoreboardAdapterImpl implements ScoreboardAdapter {
     this.scoreBoard = scoreBoard;
     this.portName = portName;
 
-    // WORKAROUND: jSerialComm extracts a native library to java.io.tmpdir.
-    // If the default tmpdir has execution restrictions, the library will fail to load,
-    // causing the port connection to fail silently. By redirecting the tmpdir to
-    // a local directory, we ensure the library can be loaded.
-    java.io.File projectTempDir = new java.io.File("build/tmp/jSerialComm");
-    if (!projectTempDir.exists()) {
-        projectTempDir.mkdirs();
-    }
-    System.setProperty("java.io.tmpdir", projectTempDir.getAbsolutePath());
     System.setProperty("fazecast.jSerialComm.appid", "Scoreboard");
 
     initListener(scoreBoard);

@@ -20,12 +20,25 @@ public record AddPenaltyCommand(
     int durationMinutes,
     InfractionType infractionType,
     String customInfractionDescription,
-    Long offTimeGameClockMillis
+    Long offTimeGameClockMillis,
+    Long durationMillis
 ) implements Command {
     /**
      * Backward-compatible constructor for existing code.
      */
     public AddPenaltyCommand(String teamId, int playerNumber, int servingPlayerNumber, int durationMinutes) {
-        this(teamId, playerNumber, servingPlayerNumber, durationMinutes, null, null, null);
+        this(teamId, playerNumber, servingPlayerNumber, durationMinutes, null, null, null, null);
+    }
+
+    public AddPenaltyCommand(
+        String teamId,
+        int playerNumber,
+        int servingPlayerNumber,
+        int durationMinutes,
+        InfractionType infractionType,
+        String customInfractionDescription,
+        Long offTimeGameClockMillis
+    ) {
+        this(teamId, playerNumber, servingPlayerNumber, durationMinutes, infractionType, customInfractionDescription, offTimeGameClockMillis, null);
     }
 }

@@ -4,9 +4,9 @@ This project is a hockey scoreboard application for the Bremerton Ice Arena. It 
 
 The application consists of a server that manages the game state and communicates with both hardware and browser clients.
 
-- **Jetty + RESTEasy:** Expose a REST API on port `8080` for querying and updating the game clock, scores, penalties, and buzzer.
-- **Native WebSocket server:** Pushes real-time score and clock updates to connected web clients on port `8082`.
-- **jSerialComm:** Connects to the physical scoreboard over a serial port so on-ice displays mirror the server state.
-- **Dagger:** Wires these components together and produces singletons for the scoreboard state and services.
+- **Jetty:** Serves the frontend web UI and static assets on port `8080`.
+- **GameWebSocketV2 server:** Receives JSON commands and pushes real-time game state updates and patches to connected web clients on port `8082`.
+- **GameEngine:** Manages official game clock, periods, scores, penalties, and intermissions.
+- **jSerialComm + LegacyScoreboardHardwareAdapter:** Bridges state to the physical scoreboard over a serial port so on-ice displays mirror the server state.
 
 For more detailed information on project structure, build commands, coding style, and other guidelines, please refer to [AGENTS.md](AGENTS.md).

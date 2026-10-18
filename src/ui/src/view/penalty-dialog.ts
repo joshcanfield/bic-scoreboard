@@ -121,9 +121,9 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
         error = true;
       }
       if (error || durationMillis == null) return;
-      const durationMinutes = Math.max(1, Math.ceil(durationMillis / 60_000));
+      const durationMinutes = Math.max(1, Math.round(durationMillis / 60_000));
       let servingNumber = Number((servingField?.value || '').trim());
-      if (!Number.isFinite(servingNumber)) {
+      if (!Number.isFinite(servingNumber) || servingNumber <= 0) {
         servingNumber = playerNumber;
       }
 
@@ -145,6 +145,7 @@ export const initPenaltyDialog = (sendCommand: CommandSender, getState: () => Pe
           playerNumber,
           servingPlayerNumber: servingNumber,
           durationMinutes,
+          durationMillis,
           infractionType,
           customInfractionDescription,
           offTimeGameClockMillis,
