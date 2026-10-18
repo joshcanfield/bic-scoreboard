@@ -194,8 +194,11 @@ const setupDOM = () => {
       </table>
     </div>
 
-    <button id="power-btn">Power</button>
-    <span id="power-status" class="label label-danger">Scoreboard Off</span>
+    <button id="power-btn" class="btn btn-danger navbar-btn power-btn power-btn-off">
+      <span class="glyphicon glyphicon-off"></span>
+      <span class="power-btn-text">OFF</span>
+    </button>
+    <span id="power-status" class="sr-only">Scoreboard Off</span>
     <span id="connect-message"></span>
 
     <div id="scoreboard-connect" class="modal" style="display: none;">

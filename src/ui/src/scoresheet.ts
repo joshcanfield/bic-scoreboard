@@ -4,8 +4,8 @@
  */
 
 import type { GameState, GoalEvent, Penalty, InfractionType } from './api/v2-types';
-import { websocketClient } from './websocket';
 import { millisToMinSec, pad } from './utils/time';
+import { websocketClient } from './websocket';
 
 // Format time as MM:SS
 const formatTime = (millis: number): string => {

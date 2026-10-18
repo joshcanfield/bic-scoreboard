@@ -104,7 +104,6 @@ gradle.afterProject {
 }
 
 test {
-    useTestNG()
     useJUnitPlatform()
 
     jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
@@ -112,6 +111,16 @@ test {
     enableAssertions = true
     finalizedBy jacocoTestReport
 }
+
+tasks.register('testNg', Test) {
+    useTestNG()
+
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED', '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED', '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+
+    enableAssertions = true
+}
+
+test.dependsOn testNg
 
 jacocoTestReport {
     dependsOn test

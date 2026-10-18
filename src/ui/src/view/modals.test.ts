@@ -56,6 +56,24 @@ describe('modals', () => {
     });
   });
 
+  describe('hideById', () => {
+    it('hides modal by id with # prefix', () => {
+      const controller = createModalController();
+      controller.show(modal);
+      controller.hideById('#test-modal');
+      expect(modal.style.display).toBe('none');
+      expect(modal.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('hides modal by id without # prefix', () => {
+      const controller = createModalController();
+      controller.show(modal);
+      controller.hideById('test-modal');
+      expect(modal.style.display).toBe('none');
+      expect(modal.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
   describe('init', () => {
     it('sets up event delegation for data-toggle', () => {
       const controller = createModalController();

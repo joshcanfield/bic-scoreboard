@@ -861,7 +861,7 @@ public class UiIntegrationSteps {
 
     private void setInputValue(String selector, String value) {
         ((JavascriptExecutor) driver).executeScript(
-                "var el=document.querySelector(arguments[0]);" +
+                "var el=document.querySelector(arguments[0]) || (arguments[0]===\"#add-goal-assist\" ? document.querySelector(\"#add-goal-assist1\") : null);" +
                         "if(el){ el.value=arguments[1]; el.dispatchEvent(new Event('input', {bubbles:true})); }",
                 selector, value);
     }

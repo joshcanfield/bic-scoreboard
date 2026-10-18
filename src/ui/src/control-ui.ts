@@ -16,6 +16,7 @@ import { initPenaltyDialog, initPenaltyDetailsPopup } from './view/penalty-dialo
 import { setPortMessage, type CountdownHandle } from './view/ports';
 import { initTeamColorPickers } from './view/team-colors';
 import { TeamLayout } from './view/team-layout';
+import { initUiModes } from './view/ui-modes';
 import { websocketClient } from './websocket';
 
 // DOM helpers
@@ -400,39 +401,71 @@ const setPowerUI = (state: typeof powerState, text?: string) => {
   powerState = state;
   const powerBtn = $('#power-btn') as HTMLButtonElement | null;
   const powerStatus = $('#power-status');
+  const powerText = powerBtn?.querySelector<HTMLElement>('.power-btn-text');
+
   switch (state) {
     case 'off':
-      if (powerBtn) powerBtn.disabled = false;
+      if (powerBtn) {
+        powerBtn.disabled = false;
+        powerBtn.className = 'btn btn-danger navbar-btn power-btn power-btn-off';
+        powerBtn.title = 'Scoreboard Off — Click to turn on';
+        powerBtn.setAttribute('aria-label', 'Scoreboard Off — Click to turn on');
+      }
+      if (powerText) powerText.textContent = 'OFF';
       if (powerStatus) {
-        powerStatus.className = 'label label-danger';
+        powerStatus.className = 'sr-only';
         powerStatus.textContent = 'Scoreboard Off';
       }
       break;
     case 'connecting':
-      if (powerBtn) powerBtn.disabled = true;
+      if (powerBtn) {
+        powerBtn.disabled = true;
+        powerBtn.className = 'btn btn-info navbar-btn power-btn power-btn-connecting';
+        powerBtn.title = text || 'Opening port…';
+        powerBtn.setAttribute('aria-label', text || 'Opening port…');
+      }
+      if (powerText) powerText.textContent = '...';
       if (powerStatus) {
-        powerStatus.className = 'label label-info';
+        powerStatus.className = 'sr-only';
         powerStatus.textContent = text || 'Opening port…';
       }
       break;
     case 'assumed':
-      if (powerBtn) powerBtn.disabled = true;
+      if (powerBtn) {
+        powerBtn.disabled = true;
+        powerBtn.className = 'btn btn-warning navbar-btn power-btn power-btn-assumed';
+        powerBtn.title = 'Assumed On — confirm';
+        powerBtn.setAttribute('aria-label', 'Assumed On — confirm');
+      }
+      if (powerText) powerText.textContent = 'CONFIRM';
       if (powerStatus) {
-        powerStatus.className = 'label label-warning';
+        powerStatus.className = 'sr-only';
         powerStatus.textContent = 'Assumed On — confirm';
       }
       break;
     case 'on':
-      if (powerBtn) powerBtn.disabled = false;
+      if (powerBtn) {
+        powerBtn.disabled = false;
+        powerBtn.className = 'btn btn-success navbar-btn power-btn power-btn-on';
+        powerBtn.title = 'Scoreboard On — Click to turn off';
+        powerBtn.setAttribute('aria-label', 'Scoreboard On — Click to turn off');
+      }
+      if (powerText) powerText.textContent = 'ON';
       if (powerStatus) {
-        powerStatus.className = 'label label-success';
+        powerStatus.className = 'sr-only';
         powerStatus.textContent = 'Scoreboard On';
       }
       break;
     case 'error':
-      if (powerBtn) powerBtn.disabled = false;
+      if (powerBtn) {
+        powerBtn.disabled = false;
+        powerBtn.className = 'btn btn-danger navbar-btn power-btn power-btn-error';
+        powerBtn.title = text || 'Error';
+        powerBtn.setAttribute('aria-label', text || 'Error');
+      }
+      if (powerText) powerText.textContent = 'ERR';
       if (powerStatus) {
-        powerStatus.className = 'label label-danger';
+        powerStatus.className = 'sr-only';
         powerStatus.textContent = text || 'Error';
       }
       break;
@@ -444,7 +477,7 @@ const setConnectMessage = (msg: string) => {
 };
 
 // Port stepper state
-let portStepper = { ports: [] as string[], index: 0, active: false };
+const portStepper = { ports: [] as string[], index: 0, active: false };
 let notOnCountdownTimer: ReturnType<typeof setInterval> | null = null;
 
 // Render port pills (visual indicators)
@@ -822,6 +855,7 @@ export const resetGameState = () => {
 // Boot
 document.addEventListener('DOMContentLoaded', () => {
   Modals.init();
+  initUiModes();
   initTeamColorPickers();
   TeamLayout.init();
   const goalDialog = initGoalDialog(sendCommand, () => ({

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import type { GameState } from '../api/v2-types';
 
 import { buildControlView, deriveControlState } from './control-state';
