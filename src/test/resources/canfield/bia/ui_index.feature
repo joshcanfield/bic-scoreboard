@@ -8,6 +8,11 @@ Feature: Index and Basics
     When I open the scoreboard page
     Then I should see an element with id "home"
 
+  Scenario: Scoresheet link navigates to scoresheet page
+    When I open the index page
+    And I click the scoresheet link
+    Then the scoresheet page should load
+
   Scenario: Keyboard shortcuts load and expose bindings
     When I open the index page
     Then the keyboard shortcuts should load successfully

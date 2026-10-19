@@ -83,7 +83,7 @@ export const createUiModeController = (): UiModeController => {
 
   if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
-      const target = (e.target as HTMLElement | null)?.closest<HTMLButtonElement>('[data-ui-mode]');
+      const target = (e.target as HTMLElement | null)?.closest<HTMLButtonElement>('button[data-ui-mode]');
       if (!target) return;
       const mode = target.dataset.uiMode;
       if (isValidMode(mode)) {

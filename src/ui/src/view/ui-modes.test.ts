@@ -95,4 +95,16 @@ describe('UiModeController', () => {
     expect(controller.getMode()).toBe('standard');
     expect(document.body.dataset.uiMode).toBe('standard');
   });
+
+  it('does not prevent default on clicks outside mode buttons', () => {
+    createUiModeController();
+    const link = document.createElement('a');
+    link.href = '#';
+    document.body.appendChild(link);
+
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const notCancelled = link.dispatchEvent(event);
+    expect(notCancelled).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+  });
 });

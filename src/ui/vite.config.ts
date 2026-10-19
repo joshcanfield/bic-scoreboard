@@ -33,7 +33,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        scoresheet: path.resolve(__dirname, 'scoresheet.html')
+        scoresheet: path.resolve(__dirname, 'scoresheet.html'),
+        scoreboard: path.resolve(__dirname, 'scoreboard.html')
       }
     }
   }

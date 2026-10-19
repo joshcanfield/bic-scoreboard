@@ -55,22 +55,47 @@ div {
 #score_box .clock .digits {
     width: 520px;
     height: 180px;
-    padding-left: 5px;
     margin-left: 10px;
     margin-top: 25px;
     border-radius: 10px;
-}
-
-#score_box .clock .digit.minutes.ones::after {
-    content: ":";
-    font-size: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 #score_box .clock .digit {
     color: #af0e0e;
     font-size: 180px;
     line-height: 160px;
-    float: left;
+    width: 105px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 0 0 105px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    box-sizing: border-box;
+}
+
+#score_box .clock .digit.minutes.ones {
+    position: relative;
+    margin-right: 30px;
+}
+
+#score_box .clock .digit.minutes.ones::after {
+    content: ":";
+    position: absolute;
+    right: -25px;
+    top: 48%;
+    transform: translateY(-50%);
+    font-size: 110px;
+    line-height: 1;
+    width: 20px;
+    text-align: center;
+    pointer-events: none;
 }
 
 #score_box .score .digits {
@@ -78,17 +103,27 @@ div {
     height: 170px;
     margin-left: 80px;
     margin-top: 10px;
-    padding-left: 5px;
     font-size: 140px;
     line-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 #score_box .score .digit {
-    width: 100px;
+    width: 95px;
     height: 170px;
-    float: left;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
     border-radius: 10px;
     color: #efe24b;
+    flex: 0 0 95px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    box-sizing: border-box;
 }
 
 #score_box .clock {
@@ -143,15 +178,37 @@ div {
 
 #penalty_box .player .digits {
     width: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+#penalty_box .player .digits .digit {
+    width: 85px;
+    flex: 0 0 85px;
 }
 
 #penalty_box .penalty .digits {
     width: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+#penalty_box .penalty .digits .digit {
+    width: 78px;
+    flex: 0 0 78px;
 }
 
 #penalty_box .period .digits {
     width: 90px;
     margin-left: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 #penalty_box .digits {
@@ -159,26 +216,37 @@ div {
     font-size: 35px;
     height: 140px;
     margin-bottom: 10px;
-    padding-left: 5px;
 }
 
 #penalty_box .digits .digit {
-    float: left;
-    width: 90px;
     height: 100%;
-    margin-top: 7px;
     font-size: 115px;
     line-height: 115px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+    box-sizing: border-box;
 }
 
 #penalty_box .digits .digit.minutes {
-    margin-right: 10px;
+    position: relative;
+    margin-right: 20px;
 }
 
 #penalty_box .digits .digit.minutes::after {
     content: ":";
+    position: absolute;
+    right: -16px;
+    top: 48%;
+    transform: translateY(-50%);
     font-size: 80px;
+    line-height: 1;
+    width: 15px;
+    text-align: center;
+    pointer-events: none;
 }
 
 #penalty_box .period {
